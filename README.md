@@ -1,20 +1,49 @@
 # Cuaderno de Fuerza
 
-Libreta de gimnasio y paseos para recuperar fuerza poco a poco tras una operación.
+Libretas de gimnasio para el móvil, una por persona. Sin servidor ni cuentas: cada libreta
+guarda sus datos en el navegador del móvil donde se usa (con copia de seguridad en Ajustes).
 
-- Cada día propone una sesión variada (calentamiento, piernas, espalda y brazos, equilibrio, estiramientos) con máquinas guiadas.
-- Check por ejercicio, series, repeticiones, kilos y cómo fue (fácil / bien / duro). Si dos veces seguidas fue fácil, sugiere subir un poco.
-- Registro de paseos (minutos y km) y gráficos de progreso.
-- Señales de alarma para parar.
+| Página | Para | Motor |
+|---|---|---|
+| [`aita/`](https://jonmg.github.io/cuaderno-gimnasio/aita/) | Aita | Recuperación: sesión suave y variada cada día, paseos, señales de alarma |
+| [`jon/`](https://jonmg.github.io/cuaderno-gimnasio/jon/) | Jon | Rutina de 3 días (`planes/rutina-3dias.js`) |
+| [`mikel/`](https://jonmg.github.io/cuaderno-gimnasio/mikel/) | Mikel | Rutina de 3 días (el mismo plan) |
 
-Es una sola página (`index.html`) sin servidor. Los datos se guardan **solo en el navegador del móvil**:
-usa *Ajustes → Copia de seguridad* de vez en cuando.
+La raíz es una portada con los enlaces. Si el móvil tenía datos de la primera versión de la
+app de Aita (que vivía en la raíz), salta directamente a `aita/` y los recupera.
 
-## Publicar con GitHub Pages
+## Estructura
 
-Settings → Pages → *Deploy from a branch* → rama `main`, carpeta `/ (root)` → Save.
-Queda en `https://jonmg.github.io/cuaderno-gimnasio/`.
+```
+comun/base.js         núcleo: datos por persona, pestañas, copia de seguridad, gráficos
+comun/recuperacion.js motor de Aita
+comun/rutina.js       motor de rutina fija: series, doble progresión, descansos, deporte, rodilla
+comun/estilos.css
+planes/rutina-3dias.js  el plan de Jon y Mikel, editable como datos
+<persona>/index.html  define window.PERFIL (nombre, clave de almacenamiento, motor)
+```
 
-En el móvil: abrir el enlace → menú del navegador → *Añadir a pantalla de inicio*.
+## Añadir una persona
 
-No sustituye al médico ni al entrenador: los pesos de partida son orientativos.
+1. Copia la carpeta `jon/` con otro nombre, por ejemplo `ane/`.
+2. En `ane/index.html` cambia `id`, `nombre` y `clave` de `window.PERFIL` (la clave debe ser única:
+   todas las páginas de jonmg.github.io comparten el almacenamiento del navegador).
+3. En `ane/manifest.webmanifest` cambia el nombre. Añade el enlace en `index.html`.
+4. Para otro plan: copia `planes/rutina-3dias.js`, edítalo y apunta a él desde su `index.html`.
+
+Al cambiar código en `comun/`, sube el `?v=` de los `<script>` y `<link>` para que los móviles no
+usen la versión en caché.
+
+## Rutina: cómo decide
+
+- **Qué día toca**: el siguiente al último entrenado (Día 1 → 2 → 3 → 1), no el día de la semana.
+- **Subir peso (doble progresión)**: si la última vez todas las series obligatorias llegaron al
+  máximo del rango, propone subir el incremento de Ajustes (2,5 kg por defecto). En máquinas
+  asistidas propone bajar la ayuda.
+- **Constancia**: cuenta días entrenados por semana (gimnasio o deporte) frente al objetivo.
+
+## Publicar
+
+GitHub Pages: Settings → Pages → *Deploy from a branch* → `main`, `/ (root)`.
+
+La app propone; quien entrena decide. No sustituye al médico, al fisio ni al entrenador.
