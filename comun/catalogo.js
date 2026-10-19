@@ -65,6 +65,7 @@ window.APARATOS = [
   ["banco", "Banco regulable", "banco"], ["banco-scott", "Banco Scott (predicador)", "banco"],
   ["banco-lumbar", "Banco de hiperextensiones (romano)", "banco"], ["paralelas", "Paralelas / silla romana", "banco"],
   ["barra-dominadas", "Barra de dominadas", "banco"], ["suelo", "Suelo / colchoneta", "banco"],
+  ["espalderas", "Espalderas", "banco", "Barras de pared: para colgarse, estirar y apoyarse."],
   // Zona funcional
   ["kettlebell", "Kettlebell", "funcional"], ["bandas", "Bandas elásticas", "funcional"], ["fitball", "Fitball", "funcional"],
   ["bosu", "Bosu", "funcional"], ["cajon", "Cajón / step", "funcional"], ["trx", "TRX", "funcional"],
@@ -74,6 +75,20 @@ window.APARATOS = [
   ["bici-spinning", "Bici de ciclo indoor", "cardio"], ["eliptica", "Elíptica", "cardio"], ["remo-ergo", "Remo ergómetro", "cardio"],
   ["escaladora", "Escaladora", "cardio"],
 ].map(([id, nombre, tipo, nota]) => ({ id, nombre, tipo, nota }));
+
+/* Sitios donde se entrena (el perfil dice cuáles usa en PERFIL.lugares). El id es también la
+   carpeta de sus fotos (fotos/<id>/). aparatos: lo que hay; sin la lista, hay de todo.
+   nombres: cómo se llama allí una máquina del catálogo. tema: colores y letra de la app. */
+window.LUGARES = {
+  "vivagym-miribilla": { nombre: "VivaGym Miribilla", corto: "VivaGym", tema: "vivagym" },
+  tekniker: {
+    nombre: "Gimnasio Tekniker", corto: "Tekniker", tema: "tekniker",
+    aparatos: ["mancuernas", "banco", "barra", "banco-press", "multipower", "barra-dominadas", "espalderas", "suelo",
+      "polea-baja", "polea-alta", "polea-doble", "maq-press-pecho", "maq-extension", "cinta", "eliptica", "bici-spinning"],
+    // La máquina de 4 puestos: remo, jalón y dos poleas (baja para bíceps y hombro, alta para tríceps).
+    nombres: { "polea-baja": "Multiestación · remo sentado", "polea-alta": "Multiestación · jalón con asiento", "polea-doble": "Multiestación · poleas alta y baja" },
+  },
+};
 
 (function () {
   const L = [];
@@ -293,8 +308,8 @@ window.APARATOS = [
   f("rueda", "Rueda abdominal", ["abdomen"], [["Rueda", "rueda"]], A, 3, [8, 12],
     ["De rodillas, manos en la rueda.", "Rueda hacia delante con el abdomen firme.", "Vuelve sin arquear la espalda."],
     ["Ir más lejos de lo que aguantas sin arquear."], { sinPeso: true });
-  f("elevacion-piernas", "Elevación de piernas", ["abdomen"], [["En silla romana", "paralelas"], ["Colgado en barra", "barra-dominadas"]], A, 3, [8, 12],
-    ["Espalda apoyada en la silla romana o colgado de la barra.", "Sube las rodillas hacia el pecho.", "Baja controlando sin balanceo."],
+  f("elevacion-piernas", "Elevación de piernas", ["abdomen"], [["En silla romana", "paralelas"], ["Colgado en barra", "barra-dominadas"], ["Colgado en espalderas", "espalderas"]], A, 3, [8, 12],
+    ["Espalda apoyada en la silla romana, o colgado de la barra o de las espalderas.", "Sube las rodillas hacia el pecho.", "Baja controlando sin balanceo."],
     ["Balancearse."], { sinPeso: true });
   f("pallof", "Press Pallof", ["oblicuos", "abdomen"], [["En polea", "polea-doble"], ["Con banda", "bandas"]], A, 3, [10, 12],
     ["De lado a la polea a la altura del pecho.", "Empuja al frente sin dejar que el cuerpo gire.", "Vuelve al pecho."],
@@ -314,7 +329,7 @@ window.APARATOS = [
   f("movilidad-hombro", "Movilidad de hombros", ["cuerpo", "hombro"], [["Con banda", "bandas"]], A, 2, [10, 15],
     ["Sujeta la banda con los brazos estirados.", "Pasa por encima de la cabeza hacia atrás y vuelve.", "Ve cerrando el agarre poco a poco."],
     ["Forzar si duele."], { sinPeso: true });
-  f("estiramientos", "Estiramientos", ["cuerpo"], [["En colchoneta", "suelo"]], A, 1, [5, 10],
+  f("estiramientos", "Estiramientos", ["cuerpo"], [["En colchoneta", "suelo"], ["En espalderas", "espalderas"]], A, 1, [5, 10],
     ["Estira piernas, cadera, espalda y hombros.", "Mantén cada postura 20–30 segundos.", "Sin rebotes ni dolor."],
     ["Rebotar."], { unidad: "min", sinPeso: true });
 

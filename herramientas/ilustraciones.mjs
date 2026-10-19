@@ -138,6 +138,9 @@ D["paralelas"] = () => sombra() + base(60, 340) + tubo(110, 24, 110, SUELO) + tu
   linea([[110, 106], [196, 106]], 7) + pad(176, 100, 46, 14) + asa(196, 106, 212, 106) + asa(260, 24, 300, 24);
 D["barra-dominadas"] = () => sombra(200, 280) + base(80, 320) + tubo(110, 50, 110, SUELO) + tubo(290, 50, 290, SUELO) + linea([[100, 50], [300, 50]], 9, C.acento) +
   tubo(110, 70, 150, 50, 5) + tubo(290, 70, 250, 50, 5);
+// Espalderas: dos largueros y peldaños redondos, separada un poco de la pared.
+D["espalderas"] = () => sombra(200, 260) + `<rect x="110" y="20" width="180" height="242" fill="${C.suelo}" opacity=".6"/>` + tubo(130, 20, 130, SUELO, 12) + tubo(270, 20, 270, SUELO, 12) +
+  Array.from({ length: 10 }, (_, i) => tubo(130, 36 + i * 23, 270, 36 + i * 23, i === 0 ? 8 : 6)).join("") + linea([[130, 36], [270, 36]], 8, C.acento);
 D["suelo"] = () => sombra(200, 300) + `<path d="M70 240 L120 196 L340 196 L290 240 Z" fill="${C.acento}"/><path d="M70 240 L290 240 L290 250 L70 250 Z" fill="${C.tapiz}"/>`;
 D["kettlebell"] = () => sombra(200, 180) + `<path d="M160 150 C160 100 240 100 240 150" fill="none" stroke="${C.tapiz}" stroke-width="18"/><circle cx="200" cy="200" r="62" fill="${C.tapiz}"/><circle cx="182" cy="182" r="14" fill="${C.luz}" opacity=".12"/>`;
 D["bandas"] = () => sombra(200, 260) + `<ellipse cx="160" cy="210" rx="90" ry="34" fill="none" stroke="${C.acento}" stroke-width="12"/><ellipse cx="240" cy="200" rx="90" ry="34" fill="none" stroke="${C.tapiz}" stroke-width="12"/><ellipse cx="200" cy="226" rx="80" ry="26" fill="none" stroke="${C.metal}" stroke-width="10"/>`;

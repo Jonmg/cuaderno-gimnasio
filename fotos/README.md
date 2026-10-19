@@ -1,7 +1,8 @@
 # Fotos de las máquinas
 
-Fotos compartidas por gimnasio: `fotos/<gimnasio>/<máquina>.jpg`. La app enseña a todos los que
-usan ese gimnasio (Ajustes → Perfil → Gimnasio) las fotos de su carpeta. Si alguien tiene una
+Fotos compartidas por gimnasio: `fotos/<gimnasio>/<máquina>.jpg` (por ahora,
+`vivagym-miribilla/` y `tekniker/`). La app enseña a todos los que entrenan en ese gimnasio
+(el lugar elegido en Hoy, o Ajustes → Perfil) las fotos de su carpeta. Si alguien tiene una
 foto propia de una máquina, en su móvil manda la suya.
 
 ## Imágenes genéricas (`fotos/general/`)
@@ -100,6 +101,7 @@ Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica →
 | `paralelas.jpg` | Paralelas / silla romana |
 | `barra-dominadas.jpg` | Barra de dominadas |
 | `suelo.jpg` | Suelo / colchoneta |
+| `espalderas.jpg` | Espalderas |
 
 ### Zona Funcional (SOFT)
 

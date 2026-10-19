@@ -53,6 +53,46 @@
   color-scheme: dark;
 }
 
+/* ---------- Tema Tekniker ----------
+   Para entrenar en el gimnasio de Tekniker (ver LUGARES en catalogo.js): azul eléctrico de la
+   marca, gris grafito para el texto, azul marino en la banda y el amarillo del logo como detalle.
+   Letra geométrica y fina (Albert Sans, parecida a la TT Hoves de su web) y botones en píldora.
+   Inspirado en su web, sin usar su logo. */
+:root[data-marca="tekniker"] {
+  --bg: #F3F3F4; --card: #FFFFFF; --ink: #3C3C3B; --titulo: #1D1D1B; --muted: #6C757D; --line: #DEE2E6;
+  --accent: #032CDD; --accent-ink: #FFFFFF; --accent-texto: #0223B1; --accent-soft: #E0E6FF;
+  --sec: #456EEF; --sec-claro: #E9EDFE; --sec-oscuro: #022491;
+  --band: #021A7A; --band-ink: #FFFFFF; --band-muted: #AFC0FF;
+  --fig: #C5CDEB; --detalle: #FEDB00;
+  --sombra: 0 1px 2px rgb(2 26 122 / .06), 0 6px 18px rgb(2 26 122 / .06);
+  --f-body: "Albert Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  --f-tit: "Albert Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  --f-num: "Albert Sans", "Segoe UI", Roboto, Arial, sans-serif;
+  --peso-tit: 600; --radio-btn: 999px;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-marca="tekniker"]:not([data-theme="light"]) {
+    --bg: #0B0F1E; --card: #141A2E; --ink: #E7E9F0; --titulo: #FFFFFF; --muted: #9AA3BD; --line: #263050;
+    --accent: #5C7CFF; --accent-ink: #FFFFFF; --accent-texto: #9DB0FF; --accent-soft: #1B2556;
+    --sec: #7B95FF; --sec-claro: #1A2242; --sec-oscuro: #B3C2FF;
+    --band: #0A1450; --band-ink: #FFFFFF; --band-muted: #9DB0FF; --fig: #2E3960;
+    --sombra: 0 1px 2px rgb(0 0 0 / .4);
+  }
+}
+:root[data-marca="tekniker"][data-theme="dark"] {
+  --bg: #0B0F1E; --card: #141A2E; --ink: #E7E9F0; --titulo: #FFFFFF; --muted: #9AA3BD; --line: #263050;
+  --accent: #5C7CFF; --accent-ink: #FFFFFF; --accent-texto: #9DB0FF; --accent-soft: #1B2556;
+  --sec: #7B95FF; --sec-claro: #1A2242; --sec-oscuro: #B3C2FF;
+  --band: #0A1450; --band-ink: #FFFFFF; --band-muted: #9DB0FF; --fig: #2E3960;
+  --sombra: 0 1px 2px rgb(0 0 0 / .4);
+}
+:root[data-marca="tekniker"] .btn { border-radius: var(--radio-btn); }
+:root[data-marca="tekniker"] .hero::after { background: linear-gradient(90deg, var(--accent) 0 82%, var(--detalle) 82%); }
+:root[data-marca="tekniker"] .hero::before { border-color: rgb(255 255 255 / .06); border-radius: 0; transform: rotate(45deg); }
+:root[data-marca="tekniker"] .hero h1, :root[data-marca="tekniker"] h2 { font-weight: var(--peso-tit); letter-spacing: -.015em; }
+:root[data-marca="tekniker"] .marca { font-weight: 600; }
+:root[data-marca="tekniker"] .num { font-stretch: normal; }
+
 /* ---------- Base ---------- */
 * { box-sizing: border-box; }
 body {
@@ -383,3 +423,8 @@ code { font-size: .85em; background: var(--bg); border-radius: 5px; padding: 1px
 .cromo-candado { position: absolute; inset: 0; display: grid; place-items: center; font-family: var(--f-tit); font-size: 2rem; color: var(--muted); }
 .cromo.dorado { border-color: #E2A400; background: linear-gradient(160deg, #FFF6D6, var(--card) 60%); }
 .cromo-oro { position: absolute; top: 2px; right: 6px; color: #E2A400; font-size: 1.1rem; text-shadow: 0 1px 2px rgb(0 0 0 / .25); }
+
+/* ---------- Lugar de entrenamiento ---------- */
+.chips.lugares { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.chips.lugares .chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.chips.lugares .ui-icono { width: 18px; height: 18px; }

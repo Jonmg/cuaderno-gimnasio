@@ -300,5 +300,9 @@
  "hammer-remo": {
   "archivo": "hammer-remo.svg",
   "tipo": "ilustracion"
+ },
+ "espalderas": {
+  "archivo": "espalderas.svg",
+  "tipo": "ilustracion"
  }
 }

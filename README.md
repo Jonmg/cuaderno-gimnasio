@@ -12,7 +12,7 @@ médico, al fisio ni al entrenador.
 | Libreta | Para | Qué hace |
 |---|---|---|
 | **[Aita](https://jonmg.github.io/cuaderno-gimnasio/aita/)** | Manolo | Recuperar fuerza tras una operación: sesión suave y variada cada día, paseos, señales de alarma, ficha y foto de cada máquina |
-| **[Jon](https://jonmg.github.io/cuaderno-gimnasio/jon/)** | Jon | Rutina de 3 días con progresión, descansos, fotos de máquinas |
+| **[Jon](https://jonmg.github.io/cuaderno-gimnasio/jon/)** | Jon | Rutina de 3 días con progresión, descansos, fotos de máquinas; en VivaGym o en el gimnasio de Tekniker |
 | **[Mikel](https://jonmg.github.io/cuaderno-gimnasio/mikel/)** | Mikel | La misma rutina de 3 días, con sus propios datos |
 
 Portada con los tres enlaces: <https://jonmg.github.io/cuaderno-gimnasio/>. Si un móvil tenía
@@ -93,6 +93,8 @@ libreta desde el mismo sitio (mejor, desde el icono).
   repeticiones con los mismos), bienvenida tras una semana o más sin ir, aviso de la última serie
   del día, sesión completa y semana cumplida. Tras tres semanas sin hacer un ejercicio, propone
   repetir peso en vez de subir.
+- **Dónde entrenas** (Jon): VivaGym Miribilla o el gimnasio de Tekniker, con un botón en *Hoy*
+  (ver *Lugares de entrenamiento*).
 - **Álbum de cromos:** cada máquina es un cromo que se consigue al entrenar con ella y se vuelve
   dorado con foto real (Ejercicios → Álbum).
 - **Ejercicios:** catálogo con buscador y filtros por músculo y material, ficha de cada
@@ -168,6 +170,7 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-foto-compartida` | Enviar el archivo de fotos o crear la propuesta en GitHub |
 | `gim-paso-a-paso-aita` | Empezar la sesión paso a paso; una vez al día |
 | `gim-semana-enviada` | Enviar (o descargar) la imagen de *Mi semana* |
+| `gim-lugar-cambiado` | Cambiar el lugar de entrenamiento (sin decir cuál) |
 
 **Lo que no se mide nunca:** nada que escriba o elija el usuario (pesos, repeticiones, minutos,
 notas, nombre, gimnasio, búsquedas, qué ejercicio o máquina, fotos, ajustes de máquina, el token
@@ -253,6 +256,28 @@ crear además sus propios ejercicios desde la app.
 
 Los ejercicios de Manolo están aparte, en `CATALOGO` y `FICHAS` de `comun/recuperacion.js`:
 cada uno con su máquina (`ap`, un `id` de `APARATOS`), pasos y errores.
+
+### Lugares de entrenamiento
+
+Un perfil puede entrenar en varios sitios: en su `window.PERFIL`, `"lugares": ["vivagym-miribilla",
+"tekniker"]` (ahora solo Jon). Cada lugar está en `LUGARES` de `comun/catalogo.js`:
+
+- **Nombre y carpeta de fotos:** el `id` es la carpeta (`fotos/tekniker/`).
+- **Tema:** `tema: "tekniker"` activa `:root[data-marca="tekniker"]` en `comun/estilos.css`
+  (azul de Tekniker, banda azul marino, detalle amarillo, letra Albert Sans, botones en píldora).
+- **Aparatos:** con la lista `aparatos`, la app solo propone las variantes que se pueden hacer
+  allí; el ejercicio del plan que no se puede hacer se cambia solo por otro del mismo músculo
+  (en Tekniker, Prensa → Sentadilla en multipower y Curl femoral → Curl nórdico), con *elegir
+  otro* por si no convence. Ejercicios, Máquinas y Álbum enseñan lo de ese sitio (*Ver todos*
+  para el catálogo entero).
+- **Nombres:** `nombres` renombra máquinas del catálogo en ese sitio. En Tekniker, la máquina de
+  4 puestos son tres "aparatos": remo (`polea-baja`), jalón (`polea-alta`) y las poleas alta y
+  baja (`polea-doble`).
+- **Historial:** cada día guarda dónde se entrenó. Las máquinas, poleas y cardio solo se comparan
+  con el mismo sitio (cada máquina pesa distinto); el peso libre, en cualquiera.
+
+Para añadir un lugar: una entrada en `LUGARES`, su id en el `PERFIL` de quien lo use, la carpeta
+`fotos/<id>/` y, si se quiere otro aspecto, un bloque `data-marca` en los estilos.
 
 ### Mensajes de la familia (Manolo)
 

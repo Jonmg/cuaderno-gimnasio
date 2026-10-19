@@ -42,6 +42,25 @@ const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === a
 const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
 const enElPlan = new Set(P.dias.flatMap(d => d.ejercicios.map(e => e.id)));
 
+/* ---------- Lo que hay en el lugar ----------
+   Con un lugar de pocas máquinas (LUGARES[…].aparatos) solo se proponen las variantes que se
+   pueden hacer allí, y el ejercicio del plan que no se puede hacer se cambia solo por otro del
+   mismo músculo. */
+const disponible = v => !v?.ap || hayAparato(v.ap);
+const sePuedeAqui = e => !!e && variantes(e).some(disponible);
+const primeraAqui = e => Math.max(0, variantes(e).findIndex(disponible));
+function alternativa(e, evitar) {
+  const mismo = c => c.m[0] === e.m[0] ? 2 : c.m.includes(e.m[0]) ? 1 : 0;
+  const puntos = c => mismo(c) * 4 + (c.tipo === e.tipo ? 2 : 0) + ((c.unidad || "") === (e.unidad || "") && !!c.sinPeso === !!e.sinPeso ? 1 : 0);
+  return todos().filter(c => !evitar.has(c.id) && mismo(c) && sePuedeAqui(c)).sort((a, b) => puntos(b) - puntos(a))[0] || null;
+}
+// Las máquinas no se comparan entre gimnasios (cada una pesa distinto); el peso libre, sí.
+const TIPOS_DEL_SITIO = ["maquina", "discos", "polea", "cardio"];
+function mismoSitio(id, v, k) {
+  const ap = variante(cat(id) || {}, v)?.ap;
+  return lugares().length < 2 || !TIPOS_DEL_SITIO.includes(AP[ap]?.tipo) || lugarDe(k) === lugarId();
+}
+
 /* ---------- Pauta ---------- */
 const variantes = e => (e.variantes || [""]).map(v => typeof v === "string" ? { n: v } : v);
 const variante = (e, v) => variantes(e)[v] || variantes(e)[0];
@@ -69,12 +88,18 @@ function prescripcion(pe, exId) {
 }
 function huecos(d) {
   const dia = diaDef(d); if (!dia) return [];
-  const out = [];
+  const out = [], restringido = !!lugar()?.aparatos;
+  const evitar = new Set([...dia.ejercicios.map(pe => pe.id), ...Object.values(d.cambios || {}), ...Object.values(Datos.ajustes.sustituciones || {}), ...(d.extras || [])]);
   for (const pe of dia.ejercicios) {
     if (d.quitados?.includes(pe.id)) continue;
     const hoy = d.cambios?.[pe.id], siempre = Datos.ajustes.sustituciones?.[pe.id];
-    const exId = (hoy && cat(hoy)) ? hoy : (siempre && cat(siempre)) ? siempre : pe.id;
-    out.push({ slot: pe.id, e: prescripcion(pe, exId), original: pe, cambiado: exId !== pe.id, cambioHoy: exId === hoy && exId !== pe.id });
+    let exId = (hoy && cat(hoy)) ? hoy : (siempre && cat(siempre)) ? siempre : pe.id, porLugar = false;
+    // Lo elegido hoy a mano se respeta; lo demás, si aquí no se puede hacer, se cambia solo.
+    if (restringido && exId !== hoy && !sePuedeAqui(cat(exId))) {
+      const alt = alternativa(cat(exId), evitar);
+      if (alt) { exId = alt.id; porLugar = true; evitar.add(alt.id); }
+    }
+    out.push({ slot: pe.id, e: prescripcion(pe, exId), original: pe, cambiado: exId !== pe.id, cambioHoy: exId === hoy && exId !== pe.id, porLugar, sinAparato: restringido && !sePuedeAqui(cat(exId)) });
   }
   for (const id of d.extras || []) { const c = cat(id); if (c) out.push({ slot: "x:" + id, e: { ...c, seccion: zonaDe(c) }, extra: true }); }
   return out;
@@ -93,7 +118,7 @@ function siguienteDia(k) {
   return P.dias[(i + 1) % P.dias.length].id;
 }
 function diaDe(k) {
-  if (!Datos.dias[k]) Datos.dias[k] = { fecha: k, ej: {}, calent: [], deporte: [], rodilla: null, nota: "", nuevo: true };
+  if (!Datos.dias[k]) Datos.dias[k] = { fecha: k, ej: {}, calent: [], deporte: [], rodilla: null, nota: "", nuevo: true, ...(lugares().length ? { lugar: lugarId() } : {}) };
   const d = Datos.dias[k];
   if (d.nuevo) d.diaPlan = siguienteDia(k);
   return d;
@@ -106,7 +131,7 @@ const empezado = (d, id) => !!d.ej?.[id]?.series.some(s => s.hecho);
 function ultimaVez(id, v, antes) {
   for (const k of Object.keys(Datos.dias).filter(k => k < antes).sort().reverse()) {
     const x = Datos.dias[k].ej?.[id];
-    if (x && x.v === v && x.series.some(s => s.hecho)) return { k, x };
+    if (x && x.v === v && x.series.some(s => s.hecho) && mismoSitio(id, v, k)) return { k, x };
   }
   return null;
 }
@@ -115,11 +140,15 @@ function sesionesDe(id) {
 }
 function entrada(d, e) {
   if (!d.ej[e.id]) {
-    // Repite la variante de la última vez que se hizo este ejercicio.
-    const prev = Object.keys(Datos.dias).filter(k => k < d.fecha && Datos.dias[k].ej?.[e.id]?.series.some(s => s.hecho)).sort().pop();
-    d.ej[e.id] = { v: prev ? Datos.dias[prev].ej[e.id].v : 0, series: [], rodilla: false };
+    // Repite la variante de la última vez que se hizo este ejercicio (mejor, en este mismo lugar).
+    const antes = Object.keys(Datos.dias).filter(k => k < d.fecha && Datos.dias[k].ej?.[e.id]?.series.some(s => s.hecho)).sort();
+    const prev = antes.filter(k => lugarDe(k) === lugarId()).pop() || antes.pop();
+    const v0 = prev ? Datos.dias[prev].ej[e.id].v : 0;
+    d.ej[e.id] = { v: disponible(variante(e, v0)) ? v0 : primeraAqui(e), series: [], rodilla: false };
   }
   const x = d.ej[e.id];
+  // Si se cambió de lugar antes de empezar, pasa a una variante que haya aquí.
+  if (!x.series.some(s => s.hecho) && !disponible(variante(e, x.v))) x.v = primeraAqui(e);
   while (x.series.length < e.series) x.series.push({ peso: "", reps: "", hecho: false });
   return x;
 }
@@ -229,7 +258,8 @@ function cromos() {
   }
   return APARATOS.map(a => ({ a, desde: desde[a.id] || (Fotos.url[a.id] ? "foto" : ""), dorado: !!fotoReal(a.id) }));
 }
-const cromosConseguidos = () => cromos().filter(c => c.desde).length;
+// Los cromos del lugar actual (en un sitio con pocas máquinas, solo las suyas).
+const cromosAqui = () => cromos().filter(c => hayAparato(c.a.id));
 function sesionCompleta(d) {
   const obligados = huecos(d).filter(h => !h.e.opcional);
   return obligados.length > 0 && obligados.every(h => d.ej[h.e.id]?.series.slice(0, obligatorias(h.e)).every(s => s.hecho));
@@ -249,9 +279,9 @@ function celebrarSerie(d, e, x, s, antes) {
     if (dias == null) msgs.push(`💪 ¡Primer entreno apuntado, ${n}! Empieza la cuenta.`);
     else if (dias >= 7) msgs.push(`💪 ¡De vuelta, ${n}! Lo difícil era volver. Hoy con calma: mejor quedarse corto que pasarse.`);
   }
-  const hist = mejorMarca(e, x.v, k => k < HOY), todo = mejorMarca(e, x.v, () => true, s);
+  const hist = mejorMarca(e, x.v, k => k < HOY && mismoSitio(e.id, x.v, k)), todo = mejorMarca(e, x.v, k => mismoSitio(e.id, x.v, k), s);
   if (hist && todo && mejorQue(modoMarca(e, x), s, todo.s)) msgs.push(`🏆 ¡Nuevo récord! ${nombreCompleto(e, x.v)}: ${textoMarca(e, x.v, s)}`);
-  if (antes.apNuevo) msgs.push(`🃏 Nuevo cromo: ${AP[antes.apNuevo].nombre} (${cromosConseguidos()} de ${APARATOS.length})`);
+  if (antes.apNuevo) { const cs = cromosAqui(); msgs.push(`🃏 Nuevo cromo: ${AP[antes.apNuevo].nombre} (${cs.filter(c => c.desde).length} de ${cs.length})`); }
   if (!antes.completa && sesionCompleta(d)) {
     const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal, sem = resumenSemanas(1)[0], hechos = sem.gym + sem.soloDeporte, racha = rachaSemanas();
     msgs.push(hechos === obj ? `🎉 ¡Semana cumplida, ${n}! ${hechos} de ${obj}${racha > 1 ? ` · ${racha} semanas seguidas` : ""}`
@@ -346,7 +376,7 @@ function pintarHoy() {
       <div class="small muted">${racha ? `Racha: <b>${racha} semana${racha > 1 ? "s" : ""}</b> cumpliendo` : "Cumple el objetivo esta semana para empezar la racha"}</div></div>
     </section>
     <section class="card" aria-labelledby="t-toca">
-      <h2 id="t-toca">Hoy toca</h2>
+      <h2 id="t-toca">Hoy toca</h2>${htmlLugares()}
       <div class="chips cinco" role="group" aria-label="Qué entrenas hoy">
         ${P.dias.map(x => `<button class="chip" data-diaplan="${x.id}" aria-pressed="${d.diaPlan === x.id}"><b>${esc(x.nombre)}</b><span class="small">${esc(x.titulo)}</span></button>`).join("")}
         <button class="chip" data-diaplan="libre" aria-pressed="${d.diaPlan === "libre"}"><b>Libre</b><span class="small">Eliges tú</span></button>
@@ -406,7 +436,9 @@ function pintarEjercicio(d, dia, hueco) {
   const vs = variantes(e);
   const ajusteMaquina = Datos.ajustes.notasEj?.[e.id];
   let origen = "";
-  if (hueco.cambiado) origen = `<p class="small muted" style="margin:0">En lugar de ${esc(hueco.original.nombre)}${hueco.cambioHoy ? " (solo hoy)" : " (cambio fijo)"}${bloqueado ? "" : ` · <button class="enlace" data-revertir="${slot}">volver al del plan</button>`}</p>`;
+  if (hueco.porLugar) origen = `<p class="small muted" style="margin:0">En ${esc(lugar().corto)} no hay con qué hacer ${esc(hueco.original.nombre)}: hoy toca este${bloqueado ? "" : ` · <button class="enlace" data-cambiar="${slot}">elegir otro</button>`}</p>`;
+  else if (hueco.sinAparato) origen = `<p class="aviso small" style="margin:0">En ${esc(lugar().corto)} no hay con qué hacerlo. Cámbialo o quítalo hoy.</p>`;
+  else if (hueco.cambiado) origen = `<p class="small muted" style="margin:0">En lugar de ${esc(hueco.original.nombre)}${hueco.cambioHoy ? " (solo hoy)" : " (cambio fijo)"}${bloqueado ? "" : ` · <button class="enlace" data-revertir="${slot}">volver al del plan</button>`}</p>`;
   if (hueco.extra) origen = `<p class="small muted" style="margin:0">Añadido hoy${bloqueado ? "" : ` · <button class="enlace" data-quitarextra="${e.id}">quitar</button>`}</p>`;
   let h = `<article class="ejr ${completo ? "hecho" : ""}">
     <div class="ejr-cab">
@@ -419,8 +451,10 @@ function pintarEjercicio(d, dia, hueco) {
     ${origen}
     ${ajusteMaquina ? `<p class="ajuste-maq small">⚙ ${esc(ajusteMaquina)}</p>` : ""}
     ${e.nota ? `<p class="nota">${esc(e.nota)}</p>` : ""}`;
-  if (vs.length > 1) h += `<div class="variantes" role="group" aria-label="Con qué lo haces">${vs.map((v, i) => `<button class="chip var" data-var="${e.id}" data-v="${i}" aria-pressed="${x.v === i}" ${bloqueado && x.v !== i ? "disabled" : ""}>${v.ap ? fotoAp(v.ap) : ""}<span>${esc(v.n)}</span></button>`).join("")}</div>`;
-  else if (vs[0]?.ap) h += `<button class="ap-linea" data-aparato="${vs[0].ap}">${fotoAp(vs[0].ap)}<span>${esc(AP[vs[0].ap]?.nombre || vs[0].n)}</span></button>`;
+  // Solo las variantes que se pueden hacer aquí (y la ya empezada, aunque no).
+  const aqui = vs.map((v, i) => ({ v, i })).filter(o => disponible(o.v) || (bloqueado && x.v === o.i));
+  if (aqui.length > 1) h += `<div class="variantes" role="group" aria-label="Con qué lo haces">${aqui.map(({ v, i }) => `<button class="chip var" data-var="${e.id}" data-v="${i}" aria-pressed="${x.v === i}" ${bloqueado && x.v !== i ? "disabled" : ""}>${v.ap ? fotoAp(v.ap) : ""}<span>${esc(v.n)}</span></button>`).join("")}</div>`;
+  else if (aqui[0]?.v.ap) h += `<button class="ap-linea" data-aparato="${aqui[0].v.ap}">${fotoAp(aqui[0].v.ap)}<span>${esc(AP[aqui[0].v.ap]?.nombre || aqui[0].v.n)}</span></button>`;
   if (u) h += `<p class="ultima num">${textoUltima(e, u)}</p>`;
   if (c && !completo) h += `<p class="consejo ${c.tipo}">${esc(c.texto)}${c.peso != null && x.series.some(s => !s.hecho) ? ` <button class="enlace" data-usar="${e.id}" data-peso="${c.peso}">Usar ${fmt(c.peso)} kg</button>` : ""}</p>`;
   h += `<div class="series ${e.sinPeso ? "sin-peso" : ""}">`;
@@ -551,13 +585,14 @@ function pintarProgreso() {
 
 /* ---------- Listas de ejercicios (buscador y filtros) ---------- */
 // El filtro de músculo mira el principal: "Bíceps" da curls, no jalones.
-function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [] }) {
+function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [], aqui = false }) {
   const t = sinAcentos(q).trim();
   const grupo = FILTROS_MUSCULO.find(f => f[0] === musc)?.[1];
   return todos()
     .filter(e => !excluir.has(e.id)
+      && (!aqui || sePuedeAqui(e))
       && (!grupo || grupo.includes(e.m[0]))
-      && (!mat || e.variantes.some(v => AP[v.ap]?.tipo === mat))
+      && (!mat || e.variantes.some(v => AP[v.ap]?.tipo === mat && (!aqui || disponible(v))))
       && (!t || sinAcentos(`${e.nombre} ${nombreMusculos(e)} ${e.variantes.map(v => `${v.n} ${AP[v.ap]?.nombre || ""}`).join(" ")}`).includes(t)))
     .sort((a, b) => primero.includes(b.m[0]) - primero.includes(a.m[0]) || a.nombre.localeCompare(b.nombre, "es"));
 }
@@ -632,7 +667,7 @@ function hojaSelector() {
 function listaSel() {
   const d = Datos.dias[HOY];
   const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
-  return htmlLista(filtrar({ ...Sel, excluir: enUso(d), primero: hueco?.e.m || [] }), "elegir");
+  return htmlLista(filtrar({ ...Sel, excluir: enUso(d), primero: hueco?.e.m || [], aqui: true }), "elegir");
 }
 function crearPropio() {
   const nombre = $("#nuevoNombre").value.trim(), min = num($("#nuevoMin").value), max = num($("#nuevoMax").value);
@@ -673,7 +708,7 @@ function hojaAyuda(id) {
     <div><h3>${va.ap ? esc(AP[va.ap]?.nombre) : "Foto"}</h3>${vs.length > 1 ? `<p class="small muted" style="margin:0 0 6px">Variante: ${esc(va.n)}</p>` : ""}</div>
     ${htmlFoto(clave, va.ap ? AP[va.ap]?.nombre : e.nombre)}
     ${va.ap ? `<p class="small muted" style="margin:0">La foto es de la máquina: sale en todos los ejercicios que la usan.</p>` : ""}
-    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !fotoReal(v.ap) ? " · sin foto real" : ""}</span></span></button>`).join("")}</div></div>` : ""}
+    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !hayAparato(v.ap) ? ` · no hay en ${esc(lugar().corto)}` : v.ap && !fotoReal(v.ap) ? " · sin foto real" : ""}</span></span></button>`).join("")}</div></div>` : ""}
     <label class="campo" for="notaEj"><b style="color:var(--ink)">Cómo ajusto la máquina</b><span class="small muted">Asiento, respaldo, agarre, número de máquina… Se ve en el ejercicio.</span>
       <textarea id="notaEj" data-notaej="${id}" rows="2" class="area">${esc(Datos.ajustes.notasEj?.[id] || "")}</textarea></label>
     ${e.pasos?.length ? `<div><h3>Cómo se hace</h3><ol class="pasos">${e.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>` : ""}
@@ -703,13 +738,13 @@ HOJAS.aparato = hojaAparato;
 
 /* ---------- Álbum de cromos ---------- */
 function htmlAlbum() {
-  const cs = cromos(), con = cs.filter(c => c.desde).length, oro = cs.filter(c => c.desde && c.dorado).length;
+  const cs = cromosAqui(), con = cs.filter(c => c.desde).length, oro = cs.filter(c => c.desde && c.dorado).length;
   return `<section class="card" aria-labelledby="t-album">
-      <div class="top"><h2 id="t-album">Álbum de máquinas</h2><span class="num" style="font-size:1.4rem">${con}/${cs.length}</span></div>
+      <div class="top"><h2 id="t-album">Álbum${lugar() ? ` de ${esc(lugar().corto)}` : " de máquinas"}</h2><span class="num" style="font-size:1.4rem">${con}/${cs.length}</span></div>
       <div class="progreso-dia" aria-hidden="true"><i style="width:${Math.round(100 * con / cs.length)}%"></i></div>
       <p class="small muted" style="margin:0">Cada máquina es un cromo: se consigue al entrenar con ella. Se vuelve <b>dorado ★</b> cuando tiene foto real: haz la de ${esc(gimnasio() || "tu gimnasio")} y compártela. Llevas <b>${oro}</b> dorado${oro === 1 ? "" : "s"}.</p>
     </section>
-    <section class="card">${TIPOS_APARATO.map(([t, nombre]) => `<div><p class="eyebrow" style="margin:6px 0 8px">${nombre}</p><div class="album">${cs.filter(c => c.a.tipo === t).map(c => {
+    <section class="card">${TIPOS_APARATO.filter(([t]) => cs.some(c => c.a.tipo === t)).map(([t, nombre]) => `<div><p class="eyebrow" style="margin:6px 0 8px">${nombre}</p><div class="album">${cs.filter(c => c.a.tipo === t).map(c => {
       const u = urlFoto(c.a.id), estado = !c.desde ? "bloqueado" : c.dorado ? "dorado" : "";
       return `<button class="cromo ${estado}" data-aparato="${c.a.id}" aria-label="${esc(c.a.nombre)}${!c.desde ? ", sin conseguir" : c.dorado ? ", dorado" : ""}">
         <span class="cromo-img">${u ? `<img src="${u}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : iconoAparato(c.a.tipo)}${!c.desde ? `<b class="cromo-candado">?</b>` : ""}</span>
@@ -718,7 +753,8 @@ function htmlAlbum() {
 }
 
 /* ---------- Vista: Ejercicios y máquinas ---------- */
-const Lib = { vista: "ejercicios", q: "", musc: "", mat: "" };
+const Lib = { vista: "ejercicios", q: "", musc: "", mat: "", todo: false };
+const libAqui = () => !!lugar()?.aparatos && !Lib.todo;
 function pintarEjercicios() {
   const seg = `<div class="seg" role="tablist" aria-label="Ver">
     <button role="tab" data-libvista="ejercicios" aria-selected="${Lib.vista === "ejercicios"}">Ejercicios</button>
@@ -726,18 +762,19 @@ function pintarEjercicios() {
     <button role="tab" data-libvista="album" aria-selected="${Lib.vista === "album"}">Álbum</button></div>`;
   if (Lib.vista === "album") { $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}${htmlAlbum()}</div>`; return; }
   if (Lib.vista === "maquinas") {
-    const delGym = APARATOS.filter(a => FotosGym.url[a.id]).length, propias = Compartir.pendientes(), mias = propias.filter(ap => !FotosGym.url[ap]).length;
+    const apsAqui = APARATOS.filter(a => hayAparato(a.id));
+    const delGym = apsAqui.filter(a => FotosGym.url[a.id]).length, propias = Compartir.pendientes(), mias = propias.filter(ap => !FotosGym.url[ap]).length;
     $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}
     <section class="card" aria-labelledby="t-fotosgym">
       <h2 id="t-fotosgym">Fotos del gimnasio</h2>
-      <p class="small muted" style="margin:0">${esc(gimnasio())}: <b>${delGym} de ${APARATOS.length}</b> máquinas con foto compartida. ${mias ? `Tienes <b>${mias}</b> foto${mias > 1 ? "s" : ""} nueva${mias > 1 ? "s" : ""} sin compartir.` : "Las fotos que hagas se pueden compartir para que las vean todos."}</p>
+      <p class="small muted" style="margin:0">${esc(gimnasio())}: <b>${delGym} de ${apsAqui.length}</b> máquinas con foto compartida. ${mias ? `Tienes <b>${mias}</b> foto${mias > 1 ? "s" : ""} nueva${mias > 1 ? "s" : ""} sin compartir.` : "Las fotos que hagas se pueden compartir para que las vean todos."}</p>
       ${FotosGym.error ? `<p class="small" style="margin:0;color:var(--warn)">No se pudo actualizar la lista: ${esc(FotosGym.error)}.</p>` : ""}
       <div class="fila">${propias.length ? `<button class="btn ${mias ? "" : "sec "}peq" data-abrircompartir>Compartir mis fotos</button>` : ""}<button class="btn sec peq" data-actualizarfotos>Actualizar</button></div>
     </section>
     <section class="card">
       <h2>Máquinas y material</h2>
       <p class="small muted" style="margin:0">Una foto por máquina sirve para todos los ejercicios que la usan.</p>
-      ${TIPOS_APARATO.map(([t, n]) => `<div><p class="eyebrow" style="margin:10px 0 0">${n}</p><div class="lista">${APARATOS.filter(a => a.tipo === t).map(a => {
+      ${TIPOS_APARATO.filter(([t]) => apsAqui.some(a => a.tipo === t)).map(([t, n]) => `<div><p class="eyebrow" style="margin:10px 0 0">${n}</p><div class="lista">${apsAqui.filter(a => a.tipo === t).map(a => {
         const k = ejerciciosCon(a.id).length;
         return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? " · tu foto" : FotosGym.url[a.id] ? "" : " · sin foto real"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
       }).join("")}</div></div>`).join("")}
@@ -749,7 +786,8 @@ function pintarEjercicios() {
     <p class="small muted" style="margin:0">Elige músculo y material para ver con qué puedes trabajarlo. Toca uno para ver cómo se hace.</p>
     <input id="buscarEj" class="texto" type="search" placeholder="Buscar: prensa, polea, isquios…" value="${esc(Lib.q)}" autocomplete="off">
     ${htmlFiltros(Lib, "lib")}
-    <div id="listaLib" class="lista">${htmlLista(filtrar(Lib), "ayuda")}</div>
+    ${lugar()?.aparatos ? `<p class="small muted" style="margin:0">${Lib.todo ? `Todos los ejercicios del catálogo. <button class="enlace" data-libtodo>Solo lo que hay en ${esc(lugar().corto)}</button>` : `Solo lo que se puede hacer en ${esc(lugar().corto)}. <button class="enlace" data-libtodo>Ver todos</button>`}</p>` : ""}
+    <div id="listaLib" class="lista">${htmlLista(filtrar({ ...Lib, aqui: libAqui() }), "ayuda")}</div>
     <button class="btn sec" data-crearlib>Crear ejercicio nuevo</button>
   </section></div>`;
   verZona();
@@ -862,6 +900,7 @@ window.App = {
       Lib[k] = v; return;
     }
     if (ds.libvista) { Lib.vista = ds.libvista; return; }
+    if ("libtodo" in ds) { Lib.todo = !Lib.todo; return; }
     if ("crear" in ds) { Sel.paso = "crear"; abrirHoja(hojaSelector()); return false; }
     if ("volversel" in ds) { Sel.paso = "lista"; abrirHoja(hojaSelector()); return false; }
     if (ds.elegir) {
@@ -943,7 +982,7 @@ window.App = {
   // Buscadores: solo se repinta la lista, para no perder el foco del teclado.
   entrada(t) {
     if (t.id === "buscarSel" && Sel) { Sel.q = t.value; $("#listaSel").innerHTML = listaSel(); }
-    else if (t.id === "buscarEj") { Lib.q = t.value; $("#listaLib").innerHTML = htmlLista(filtrar(Lib), "ayuda"); }
+    else if (t.id === "buscarEj") { Lib.q = t.value; $("#listaLib").innerHTML = htmlLista(filtrar({ ...Lib, aqui: libAqui() }), "ayuda"); }
   },
 };
 // Aviso breve en la zona del temporizador (por ejemplo, en mitad de una superserie).

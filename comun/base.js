@@ -49,7 +49,43 @@ const Datos = {
   guardarAjustes() { this.guardar(); },
 };
 const nombreVisible = () => Datos.ajustes.nombre || PERFIL.nombre;
-const gimnasio = () => Datos.ajustes.gimnasio ?? PERFIL.gimnasio ?? "";
+
+/* ---------- Lugar de entrenamiento ----------
+   Con PERFIL.lugares (ids de LUGARES, en catalogo.js) la persona elige dónde entrena. El lugar
+   decide el nombre del gimnasio, la carpeta de fotos compartidas, el tema de colores y, si tiene
+   lista de aparatos, qué propone la app. Se guarda en cada día (d.lugar) y el último elegido,
+   en ajustes. Sin PERFIL.lugares, el gimnasio es el texto de Ajustes, como siempre. */
+const lugares = () => (PERFIL.lugares || []).filter(id => window.LUGARES?.[id]);
+function lugarId() {
+  const ls = lugares(), id = Datos.dias[HOY]?.lugar || Datos.ajustes.lugar;
+  return ls.includes(id) ? id : ls[0] || "";
+}
+const lugar = () => window.LUGARES?.[lugarId()] || null;
+// Dónde se entrenó un día (los días de antes de haber lugares, en el primero de la lista).
+const lugarDe = k => { const ls = lugares(), id = Datos.dias[k]?.lugar; return ls.includes(id) ? id : ls[0] || ""; };
+// ¿Hay ese aparato aquí? Sin lista de aparatos, sí.
+const hayAparato = ap => !lugar()?.aparatos || lugar().aparatos.includes(ap);
+const gimnasio = () => lugar()?.nombre ?? Datos.ajustes.gimnasio ?? PERFIL.gimnasio ?? "";
+// Tema de colores y nombres de las máquinas en el lugar actual.
+function aplicarLugar() {
+  const l = lugar();
+  document.documentElement.dataset.marca = l?.tema || "vivagym";
+  const color = getComputedStyle(document.documentElement).getPropertyValue("--band").trim();
+  if (color) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", color);
+  for (const a of window.APARATOS || []) { a.nombreBase ??= a.nombre; a.nombre = l?.nombres?.[a.id] || a.nombreBase; }
+}
+function elegirLugar(id) {
+  if (!lugares().includes(id)) return;
+  Datos.ajustes.lugar = id;
+  if (Datos.dias[HOY]) Datos.dias[HOY].lugar = id;
+  Datos.guardar(); aplicarLugar();
+  FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
+}
+// Botones para elegir el lugar (vacío si el perfil solo tiene uno).
+function htmlLugares() {
+  const ls = lugares(); if (ls.length < 2) return "";
+  return `<div class="chips lugares" role="group" aria-label="Dónde entrenas">${ls.map(id => `<button class="chip" data-lugar="${id}" aria-pressed="${id === lugarId()}">${iconoUI("ubicacion")}${esc(LUGARES[id].corto || LUGARES[id].nombre)}</button>`).join("")}</div>`;
+}
 
 /* ---------- Esqueleto y navegación ---------- */
 let pestaña = "hoy";
@@ -86,6 +122,7 @@ function montar() {
     if (ev.target.closest("[data-cerrar]")) { cerrarHoja(); return; }
     const b = ev.target.closest("button"); if (!b || b.closest("nav.tabs") || b.dataset.t || b.dataset.ir) return;
     if (clickCopia(b)) return;
+    if (b.dataset.lugar) { elegirLugar(b.dataset.lugar); evento("gim-lugar-cambiado"); repintar(); return; }
     if (App.click(b) !== false) repintar();
   });
   document.addEventListener("change", ev => {
@@ -99,6 +136,7 @@ function montar() {
   Fotos.cargar().then(async n => { if (App.alCargarFotos) n += await App.alCargarFotos(); if (n) repintar(); });
 
   Datos.cargar(App.ajustesIniciales);
+  aplicarLugar();
   FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
   FotosGen.cargar().then(ok => { if (ok) repintar(); });
   try { const t = localStorage.getItem(PERFIL.clave + "-tab"); if (PESTAÑAS.some(p => p[0] === t)) pestaña = t; } catch (e) {}
@@ -124,7 +162,8 @@ function fraseDelDia(lista, extra = "") {
 function htmlPerfil() {
   return `<section class="card"><h2>Perfil</h2>
     <label class="campo" for="nombre">Nombre<input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre)}" class="texto"></label>
-    <label class="campo" for="gimnasio">Gimnasio<input id="gimnasio" value="${esc(gimnasio())}" placeholder="Nombre del gimnasio" class="texto"></label>
+    ${lugares().length > 1 ? `<div class="campo">Dónde entrenas${htmlLugares()}</div>`
+      : `<label class="campo" for="gimnasio">Gimnasio<input id="gimnasio" value="${esc(gimnasio())}" placeholder="Nombre del gimnasio" class="texto"></label>`}
   </section>`;
 }
 // Repinta sin perder la posición de lectura.
@@ -338,7 +377,7 @@ const Fotos = {
    mucho una vez por hora y se guarda en el móvil por si no hay conexión. Las imágenes se
    sirven desde la propia web. La foto propia de cada uno manda sobre la compartida. */
 const REPO = window.REPO || "Jonmg/cuaderno-gimnasio";
-const slugGym = () => sinAcentos(gimnasio()).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "general";
+const slugGym = () => lugarId() || sinAcentos(gimnasio()).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "general";
 const EXT_FOTO = /\.(jpe?g|png|webp)$/i;
 const FotosGym = {
   url: {}, archivos: {}, actualizado: 0, error: "",
