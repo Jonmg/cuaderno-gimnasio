@@ -8,8 +8,11 @@
   "tipo": "ilustracion"
  },
  "maq-contractora": {
-  "archivo": "maq-contractora.svg",
-  "tipo": "ilustracion"
+  "archivo": "maq-contractora.jpg",
+  "tipo": "foto",
+  "autor": "Aliva Sahoo",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Pec_deck_Fly.jpg"
  },
  "maq-press-hombro": {
   "archivo": "maq-press-hombro.svg",
@@ -20,8 +23,11 @@
   "tipo": "ilustracion"
  },
  "maq-jalon": {
-  "archivo": "maq-jalon.svg",
-  "tipo": "ilustracion"
+  "archivo": "maq-jalon.jpg",
+  "tipo": "foto",
+  "autor": "Aliva Sahoo",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Back_Pull_down.jpg"
  },
  "maq-remo": {
   "archivo": "maq-remo.svg",
@@ -32,8 +38,11 @@
   "tipo": "ilustracion"
  },
  "maq-curl": {
-  "archivo": "maq-curl.svg",
-  "tipo": "ilustracion"
+  "archivo": "maq-curl.jpg",
+  "tipo": "foto",
+  "autor": "Aliva Sahoo",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Bicep_curl_machine.jpg"
  },
  "maq-triceps": {
   "archivo": "maq-triceps.svg",
@@ -64,8 +73,11 @@
   "tipo": "ilustracion"
  },
  "maq-abd-add": {
-  "archivo": "maq-abd-add.svg",
-  "tipo": "ilustracion"
+  "archivo": "maq-abd-add.jpg",
+  "tipo": "foto",
+  "autor": "Teemeah",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Hip_abductor_machine.jpg"
  },
  "maq-hip-thrust": {
   "archivo": "maq-hip-thrust.svg",
@@ -96,20 +108,29 @@
   "tipo": "ilustracion"
  },
  "polea-alta": {
-  "archivo": "polea-alta.svg",
-  "tipo": "ilustracion"
+  "archivo": "polea-alta.jpg",
+  "tipo": "foto",
+  "autor": "Santeri Viinamäki",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Lat_pulldown_machine_20180112.jpg"
  },
  "polea-baja": {
   "archivo": "polea-baja.svg",
   "tipo": "ilustracion"
  },
  "mancuernas": {
-  "archivo": "mancuernas.svg",
-  "tipo": "ilustracion"
+  "archivo": "mancuernas.jpg",
+  "tipo": "foto",
+  "autor": "Santeri Viinamäki",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Dumbbells_on_rack_20180112.jpg"
  },
  "barra": {
-  "archivo": "barra.svg",
-  "tipo": "ilustracion"
+  "archivo": "barra.jpg",
+  "tipo": "foto",
+  "autor": "Tomáš Pilík",
+  "licencia": "CC BY-SA 3.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Olympic_barbell.jpg"
  },
  "barra-z": {
   "archivo": "barra-z.svg",
@@ -124,12 +145,18 @@
   "tipo": "ilustracion"
  },
  "rack": {
-  "archivo": "rack.svg",
-  "tipo": "ilustracion"
+  "archivo": "rack.jpg",
+  "tipo": "foto",
+  "autor": "James Steakley",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Turner_Hall_Milwaukee_weights_room.jpg"
  },
  "multipower": {
-  "archivo": "multipower.svg",
-  "tipo": "ilustracion"
+  "archivo": "multipower.jpg",
+  "tipo": "foto",
+  "autor": "Aliva Sahoo",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Bench_press_Machine.jpg"
  },
  "barra-t": {
   "archivo": "barra-t.svg",
@@ -160,16 +187,22 @@
   "tipo": "ilustracion"
  },
  "kettlebell": {
-  "archivo": "kettlebell.svg",
-  "tipo": "ilustracion"
+  "archivo": "kettlebell.jpg",
+  "tipo": "foto",
+  "autor": "Detlef Romeike",
+  "licencia": "CC BY-SA 2.5",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Kettlebell_truebalance_romeike.jpg"
  },
  "bandas": {
   "archivo": "bandas.svg",
   "tipo": "ilustracion"
  },
  "fitball": {
-  "archivo": "fitball.svg",
-  "tipo": "ilustracion"
+  "archivo": "fitball.jpg",
+  "tipo": "foto",
+  "autor": "www.localfitness.com.au",
+  "licencia": "CC BY-SA 3.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Fitball_Group_Fitness_Class.JPG"
  },
  "bosu": {
   "archivo": "bosu.svg",
@@ -184,20 +217,29 @@
   "tipo": "ilustracion"
  },
  "balon": {
-  "archivo": "balon.svg",
-  "tipo": "ilustracion"
+  "archivo": "balon.jpg",
+  "tipo": "foto",
+  "autor": "FASTILY",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Medicine_Ball_2_2017-01-13.jpg"
  },
  "rueda": {
   "archivo": "rueda.svg",
   "tipo": "ilustracion"
  },
  "cinta": {
-  "archivo": "cinta.svg",
-  "tipo": "ilustracion"
+  "archivo": "cinta.jpg",
+  "tipo": "foto",
+  "autor": "GhoziSeptiandri",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Treadmill-gym.jpg"
  },
  "bici": {
-  "archivo": "bici.svg",
-  "tipo": "ilustracion"
+  "archivo": "bici.jpg",
+  "tipo": "foto",
+  "autor": "photo taken by KMJ",
+  "licencia": "CC BY-SA 3.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Fahrrad-Ergometer_01_KMJ.jpg"
  },
  "bici-reclinada": {
   "archivo": "bici-reclinada.svg",
@@ -208,20 +250,29 @@
   "tipo": "ilustracion"
  },
  "eliptica": {
-  "archivo": "eliptica.svg",
-  "tipo": "ilustracion"
+  "archivo": "eliptica.jpg",
+  "tipo": "foto",
+  "autor": "Cpetro45",
+  "licencia": "CC BY-SA 3.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Elliptical_machine.jpg"
  },
  "remo-ergo": {
-  "archivo": "remo-ergo.svg",
-  "tipo": "ilustracion"
+  "archivo": "remo-ergo.jpg",
+  "tipo": "foto",
+  "autor": "rrafson",
+  "licencia": "CC BY-SA 3.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Rowing_machine.jpg"
  },
  "escaladora": {
   "archivo": "escaladora.svg",
   "tipo": "ilustracion"
  },
  "hammer-pecho": {
-  "archivo": "hammer-pecho.svg",
-  "tipo": "ilustracion"
+  "archivo": "hammer-pecho.jpg",
+  "tipo": "foto",
+  "autor": "Aliva Sahoo",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Chest_Incline.jpg"
  },
  "hammer-hombro": {
   "archivo": "hammer-hombro.svg",
@@ -236,12 +287,18 @@
   "tipo": "ilustracion"
  },
  "saco": {
-  "archivo": "saco.svg",
-  "tipo": "ilustracion"
+  "archivo": "saco.jpg",
+  "tipo": "foto",
+  "autor": "Aditya Oberai",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Punching_Bag.jpg"
  },
  "esqui-ergo": {
-  "archivo": "esqui-ergo.svg",
-  "tipo": "ilustracion"
+  "archivo": "esqui-ergo.jpg",
+  "tipo": "foto",
+  "autor": "U.S. Space Force photo by Gwendolyn Kurzen",
+  "licencia": "Public domain",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Third_Annual_Guardian_Arena-_Day_2_(9467317).jpg"
  },
  "bici-aire": {
   "archivo": "bici-aire.svg",
@@ -252,8 +309,11 @@
   "tipo": "ilustracion"
  },
  "cuerdas": {
-  "archivo": "cuerdas.svg",
-  "tipo": "ilustracion"
+  "archivo": "cuerdas.jpg",
+  "tipo": "foto",
+  "autor": "National Museum of the U.S. Navy",
+  "licencia": "Public domain",
+  "fuente": "https://commons.wikimedia.org/wiki/File:170331-N-ZY039-015_(33869515046).jpg"
  },
  "trineo": {
   "archivo": "trineo.svg",
