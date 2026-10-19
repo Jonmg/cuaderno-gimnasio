@@ -177,23 +177,6 @@ D["hammer-jalon"] = () => sombra() + base(40, 330) + tubo(112, 30, 112, SUELO) +
 D["hammer-remo"] = () => sombra() + base(40, 360) + pad(120, 206, 70, 17) + tubo(122, 214, 122, SUELO) + pad(212, 148, 18, 82, 6) + tubo(212, 190, 212, SUELO) +
   tubo(300, 40, 300, SUELO) + linea([[300, 40], [262, 96], [256, 142]]) + asa(244, 142, 270, 142) + linea([[284, 66], [332, 92]], 6) + disco(334, 96, 28);
 
-/* ---------- HIIT Box y boxeo ---------- */
-D["esqui-ergo"] = () => sombra(200, 200) + `<rect x="150" y="248" width="110" height="14" rx="4" fill="${C.tubo}"/>` + tubo(204, 248, 204, 30, 14) +
-  `<circle cx="204" cy="70" r="20" fill="${C.tapiz}"/><rect x="186" y="104" width="36" height="22" rx="4" fill="${C.tubo}"/><rect x="192" y="108" width="24" height="10" rx="2" fill="${C.acento}"/>` +
-  cable([[196, 40], [176, 130]]) + cable([[212, 40], [232, 130]]) + asa(170, 130, 182, 154) + asa(226, 154, 238, 130);
-D["bici-aire"] = () => sombra() + base(70, 340) + linea([[120, SUELO], [160, 160], [250, 150], [270, SUELO]], 9) + tubo(160, 160, 150, 118) + pad(146, 112, 46, 12) +
-  `<circle cx="282" cy="186" r="52" fill="${C.tapiz}"/>` + [0, 30, 60, 90, 120, 150].map(a => `<line x1="${282 + 46 * Math.cos(a * Math.PI / 180)}" y1="${186 + 46 * Math.sin(a * Math.PI / 180)}" x2="${282 - 46 * Math.cos(a * Math.PI / 180)}" y2="${186 - 46 * Math.sin(a * Math.PI / 180)}" stroke="${C.metal}" stroke-width="3"/>`).join("") +
-  `<circle cx="282" cy="186" r="10" fill="${C.acento}"/>` + linea([[230, 160], [214, 70]], 8) + asa(206, 62, 226, 66);
-D["cinta-curva"] = () => sombra(200, 340) + `<path d="M50 230 Q200 280 330 210 L336 226 Q200 298 46 246 Z" fill="${C.tapiz}"/>` +
-  `<path d="M60 236 Q200 280 326 214" fill="none" stroke="${C.metal}" stroke-width="3" stroke-dasharray="10 8"/>` + tubo(316, 216, 330, 80) + asa(300, 120, 330, 110) + tubo(60, 240, 60, 140, 6) + asa(60, 140, 100, 140);
-D["cuerdas"] = () => sombra(200, 340) + `<rect x="330" y="200" width="30" height="62" rx="5" fill="${C.tubo}"/><circle cx="345" cy="222" r="8" fill="${C.metal}"/>` +
-  `<path d="M345 222 C300 180 280 260 240 214 S180 170 150 214 S90 250 60 200" fill="none" stroke="${C.tapiz}" stroke-width="10" stroke-linecap="round"/>` +
-  `<path d="M345 226 C300 270 280 190 240 238 S180 280 150 236 S90 200 60 246" fill="none" stroke="${C.acento}" stroke-width="10" stroke-linecap="round"/>`;
-D["trineo"] = () => sombra(200, 300) + `<path d="M80 250 L300 250 L320 238 L320 230 L90 230 Z" fill="${C.tubo}"/>` + tubo(130, 230, 160, 80, 10) + tubo(200, 230, 230, 80, 10) +
-  `<rect x="150" y="70" width="90" height="14" rx="6" fill="${C.acento}"/>` + disco(250, 206, 22) + disco(280, 206, 22);
-D["saco"] = () => sombra(200, 160) + tubo(140, 20, 260, 20, 10) + linea([[200, 24], [200, 54]], 4, C.metal) + linea([[200, 54], [176, 76]], 3, C.metal) + linea([[200, 54], [224, 76]], 3, C.metal) +
-  `<rect x="160" y="74" width="80" height="168" rx="30" fill="${C.tapiz}"/><rect x="160" y="140" width="80" height="16" fill="${C.acento}"/>`;
-
 /* ---------- Salida ---------- */
 global.window = {};
 await import(path.join(raiz, "comun/catalogo.js"));

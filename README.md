@@ -19,6 +19,7 @@ comun/base.js         núcleo: datos por persona, pestañas, copia de seguridad,
 comun/recuperacion.js motor de Aita
 comun/rutina.js       motor de rutina fija: series, doble progresión, descansos, deporte, rodilla
 comun/compartir.js    fotos compartidas: enviar, importar, proponer como pull request, pasar el acceso
+comun/estadisticas.js estadísticas de uso (GoatCounter): ajustes de envío y la función evento()
 herramientas/ilustraciones.mjs  dibuja fotos/general/<máquina>.svg (imagen genérica de cada máquina)
 comun/vendor/qrcode.js  generador de QR (qrcode-generator 1.4.4, MIT), solo se carga al pasar el acceso
 comun/estilos.css
@@ -105,6 +106,45 @@ Los tokens están al principio de `comun/estilos.css`; las ilustraciones usan la
   el día). Cambia según el contexto: sesión hecha, objetivo semanal cumplido, varios días sin
   entrenar, día de pierna…
 - Nombre y gimnasio en `window.PERFIL` de cada página; se pueden cambiar en Ajustes → Perfil.
+
+## Estadísticas
+
+Uso anónimo con [GoatCounter](https://www.goatcounter.com), en el panel
+**https://jon-apps.goatcounter.com** (compartido con otras apps de jonmg.github.io). Todo lo de
+esta app queda bajo `/cuaderno-gimnasio/` y sus eventos empiezan por `gim-`.
+
+**Visitas de página** (una al abrir cada página; cambiar de pestaña no cuenta como visita):
+`/cuaderno-gimnasio/` (portada), `…/aita/`, `…/jon/`, `…/mikel/`. El título enviado es fijo y sin
+nombres (`Cuaderno de Fuerza · jon`). Si la app se abre desde el icono de la pantalla de inicio,
+la procedencia de la visita aparece como `app-instalada` (en *Referrers*).
+
+**Eventos** (10 nombres fijos):
+
+| Evento | Cuándo |
+|---|---|
+| `gim-vista-hoy`, `gim-vista-progreso`, `gim-vista-ejercicios`, `gim-vista-ajustes` | Al cambiar a esa pestaña |
+| `gim-entreno-empezado-{aita,jon,mikel}` | Primera actividad del día (serie, ejercicio, paseo o deporte); una vez al día |
+| `gim-entreno-completo-{aita,jon,mikel}` | Todas las series obligatorias (o todos los ejercicios) hechas; una vez al día |
+| `gim-plan-adaptado` | Cambiar, añadir o crear un ejercicio, o elegir Entreno libre |
+| `gim-ficha-abierta` | Abrir la ficha de ayuda de un ejercicio o de una máquina |
+| `gim-foto-hecha` | Guardar una foto de una máquina |
+| `gim-foto-compartida` | Enviar el archivo de fotos o crear la propuesta en GitHub |
+
+**Lo que no se mide nunca:** nada que escriba o elija el usuario (pesos, repeticiones, minutos,
+notas, nombre, gimnasio, búsquedas, qué ejercicio o máquina, fotos, ajustes de máquina, el token
+de GitHub) ni identificadores de ningún tipo; nada de salud (cómo se encuentra, molestias,
+rodilla). Sin cookies. Lo que va tras `#` en la dirección (como el enlace de acceso a GitHub)
+nunca se envía.
+
+**Cómo funciona:** el script oficial va en cada HTML; antes se carga `comun/estadisticas.js`, que
+fija ruta, título y procedencia, y tiene la única función para eventos, `evento()`. Los eventos
+anteriores a que cargue el script se guardan en cola y se envían al cargar. Si el script no carga
+(bloqueador, sin conexión), la app funciona igual. GoatCounter no cuenta en `localhost`.
+
+**Excluir tus visitas:** abre una vez en cada dispositivo
+`https://jonmg.github.io/cuaderno-gimnasio/#toggle-goatcounter` (vale con cualquier página de la
+app). Sale un aviso y desde entonces ese navegador no cuenta; repitiéndolo se vuelve a activar.
+La marca se guarda para todo `jonmg.github.io`, así que también excluye tus otras apps.
 
 ## Publicar
 

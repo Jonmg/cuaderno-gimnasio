@@ -77,6 +77,7 @@ function montar() {
 
   document.querySelector("nav.tabs").addEventListener("click", ev => {
     const b = ev.target.closest("button[data-tab]"); if (!b) return;
+    if (b.dataset.tab !== pestaña) evento(`gim-vista-${b.dataset.tab}`);
     pestaña = b.dataset.tab; pintar(); window.scrollTo(0, 0);
     try { localStorage.setItem(PERFIL.clave + "-tab", pestaña); } catch (e) {}
   });
@@ -188,7 +189,11 @@ function avisoCopia(diasActivos) {
   if (diasActivos < 5 || Date.now() - ult < 30 * 864e5) return "";
   return `<p class="aviso small" style="margin:0">${ult ? "Hace más de un mes que no guardas una copia." : "Aún no has guardado ninguna copia."} Tus datos están solo en este móvil: <button class="enlace" data-ir="ajustes">haz una copia en Ajustes</button>.</p>`;
 }
-document.addEventListener("click", ev => { const b = ev.target.closest("[data-ir]"); if (b) { pestaña = b.dataset.ir; pintar(); window.scrollTo(0, 0); } });
+document.addEventListener("click", ev => {
+  const b = ev.target.closest("[data-ir]"); if (!b) return;
+  if (b.dataset.ir !== pestaña) evento(`gim-vista-${b.dataset.ir}`);
+  pestaña = b.dataset.ir; pintar(); window.scrollTo(0, 0);
+});
 
 /* ---------- Gráficos ----------
    SVG a mano, sin librerías. Colores siempre desde las variables del tema. */

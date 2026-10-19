@@ -36,7 +36,7 @@ const todos = () => [...Object.values(CAT_FIJO), ...propios().map(normalizar)].f
 /* ---------- Músculos y aparatos ---------- */
 const AP = Object.fromEntries(APARATOS.map(a => [a.id, a]));
 const TIPO_AP = Object.fromEntries(TIPOS_APARATO);
-const TIPO_CORTO = { maquina: "Máquina", discos: "Discos", polea: "Polea", mancuernas: "Mancuernas", barra: "Barra", banco: "Banco y suelo", funcional: "Funcional", hiit: "HIIT", cardio: "Cardio" };
+const TIPO_CORTO = { maquina: "Máquina", discos: "Discos", polea: "Polea", mancuernas: "Mancuernas", barra: "Barra", banco: "Banco y suelo", funcional: "Funcional", cardio: "Cardio" };
 const nombreMusculos = e => (e.m || []).map(x => MUSCULOS[x]?.n).filter(Boolean).join(", ");
 const zonaDe = e => MUSCULOS[e.m?.[0]]?.n || e.zona || "";
 const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === ap));
@@ -512,8 +512,8 @@ function htmlFiltros(st, para) {
 /* ---------- Hojas ---------- */
 let Sel = null;          // cambiar / añadir / crear ejercicio
 let Hoja = null;         // qué ficha está abierta, para refrescarla tras una foto
-function abrirAyuda(id) { Hoja = { tipo: "ayuda", id }; abrirHoja(hojaAyuda(id)); }
-function abrirAparato(ap) { Hoja = { tipo: "aparato", id: ap }; abrirHoja(hojaAparato(ap)); }
+function abrirAyuda(id) { Hoja = { tipo: "ayuda", id }; abrirHoja(hojaAyuda(id)); evento("gim-ficha-abierta"); }
+function abrirAparato(ap) { Hoja = { tipo: "aparato", id: ap }; abrirHoja(hojaAparato(ap)); evento("gim-ficha-abierta"); }
 function refrescarHoja() {
   if (Hoja?.tipo === "ayuda") abrirHoja(hojaAyuda(Hoja.id));
   else if (Hoja?.tipo === "aparato") abrirHoja(hojaAparato(Hoja.id));
@@ -584,7 +584,14 @@ function crearPropio() {
   Datos.guardarAjustes();
   return e.id;
 }
-function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaPlan) d.diaPlan = "libre"; tocar(HOY); }
+function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaPlan) d.diaPlan = "libre"; tocar(HOY); evento("gim-plan-adaptado"); }
+// Estadísticas: primer registro del día y sesión completa (todas las series obligatorias hechas).
+function contarEntreno(d) {
+  eventoDelDia("gim-entreno-empezado");
+  const obligados = huecos(d).filter(h => !h.e.opcional);
+  const completa = obligados.length && obligados.every(h => d.ej[h.e.id]?.series.slice(0, obligatorias(h.e)).every(s => s.hecho));
+  if (completa) eventoDelDia("gim-entreno-completo");
+}
 
 // Bloque de foto con sus botones (cámara y galería). La clave es el aparato o el ejercicio.
 // La foto que se ve es la propia si la hay; si no, la del gimnasio; si no, la genérica.
@@ -790,20 +797,20 @@ window.App = {
     if (ds.confirmar) {
       if (ds.confirmar === "siempre") { a.sustituciones = { ...a.sustituciones, [Sel.slot]: Sel.elegido }; if (d.cambios) delete d.cambios[Sel.slot]; Datos.guardarAjustes(); }
       else d.cambios = { ...d.cambios, [Sel.slot]: Sel.elegido };
-      tocar(HOY); cerrarHoja(); return;
+      tocar(HOY); cerrarHoja(); evento("gim-plan-adaptado"); return;
     }
     if ("guardarnuevo" in ds) {
       const id = crearPropio(); if (!id) return false;
       if (Sel.modo === "cambiar") { Sel.elegido = id; Sel.paso = "confirmar"; abrirHoja(hojaSelector()); return; }
       if (Sel.modo === "anadir") { añadirExtra(d, id); cerrarHoja(); return; }
-      Sel = null; abrirAyuda(id); return;
+      evento("gim-plan-adaptado"); Sel = null; abrirAyuda(id); return;
     }
     if (ds.borrarfoto) { Fotos.borrar(ds.borrarfoto).then(() => { refrescarHoja(); repintar(); }); return false; }
     if (ds.borrarpropio) { a.propios = propios().filter(e => e.id !== ds.borrarpropio); Datos.guardarAjustes(); cerrarHoja(); return; }
     if (ds.deshacersust) { delete a.sustituciones[ds.deshacersust]; Datos.guardarAjustes(); return; }
 
     /* Sesión de hoy */
-    if ("diaplan" in ds) { d.diaPlan = ds.diaplan || null; tocar(HOY); }
+    if ("diaplan" in ds) { if (ds.diaplan === "libre" && d.diaPlan !== "libre") evento("gim-plan-adaptado"); d.diaPlan = ds.diaplan || null; tocar(HOY); }
     else if (ds.quitar) { d.quitados = [...new Set([...(d.quitados || []), ds.quitar])]; tocar(HOY); }
     else if (ds.recuperar) { d.quitados = (d.quitados || []).filter(x => x !== ds.recuperar); tocar(HOY); }
     else if (ds.revertir) { if (d.cambios?.[ds.revertir]) delete d.cambios[ds.revertir]; else { delete a.sustituciones[ds.revertir]; Datos.guardarAjustes(); } tocar(HOY); }
@@ -820,6 +827,7 @@ window.App = {
         if (s.peso === "" && !e.sinPeso && ph.peso !== "") s.peso = Number(ph.peso);
         if (s.reps === "") s.reps = Number(ph.reps);
         actividad(d);
+        contarEntreno(d);
         const grupo = e.superserie ? hs.filter(g => g.e.superserie === e.superserie) : [h];
         const pos = grupo.findIndex(g => g.e.id === id);
         if (pos < grupo.length - 1) { pararDescanso(); tocar(HOY); repintar(); msgFlotante(`Sin descanso: ahora ${grupo[pos + 1].e.nombre}`); return false; }
@@ -835,6 +843,7 @@ window.App = {
       const min = num($("#depMin").value);
       if (!min || min <= 0) { $("#depMin").focus(); return false; }
       d.deporte = d.deporte || []; d.deporte.push({ tipo: $("#depTipo").value, min }); tocar(HOY);
+      eventoDelDia("gim-entreno-empezado");
     }
     else if (ds.deldep) { d.deporte.splice(Number(ds.deldep), 1); tocar(HOY); }
     else return false;
@@ -845,7 +854,7 @@ window.App = {
     if (t.dataset.foto) {
       const clave = t.dataset.foto, f = t.files[0]; if (!f) return;
       $("#msgFoto").textContent = "Guardando foto…";
-      reducirFoto(f).then(b => Fotos.guardar(clave, b)).then(() => { refrescarHoja(); repintar(); })
+      reducirFoto(f).then(b => Fotos.guardar(clave, b)).then(() => { evento("gim-foto-hecha"); refrescarHoja(); repintar(); })
         .catch(err => { const m = $("#msgFoto"); if (m) { m.textContent = `No se pudo guardar la foto: ${err.message}`; m.style.color = "var(--warn)"; } });
     }
     else if (t.dataset.notaej) { a.notasEj = { ...a.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }

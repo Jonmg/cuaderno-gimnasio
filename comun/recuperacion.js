@@ -302,7 +302,10 @@ window.App = {
       if (d.tipo === "gym" && !(d.ejercicios || []).length) d.ejercicios = generarSesion(HOY);
       tocar(HOY);
     }
-    else if (b.dataset.check) { const e = d.ejercicios[Number(b.dataset.check)]; e.hecho = !e.hecho; tocar(HOY); }
+    else if (b.dataset.check) {
+      const e = d.ejercicios[Number(b.dataset.check)]; e.hecho = !e.hecho; tocar(HOY);
+      if (e.hecho) { eventoDelDia("gim-entreno-empezado"); if (d.ejercicios.every(x => x.hecho)) eventoDelDia("gim-entreno-completo"); }
+    }
     else if (b.dataset.sens) { const e = d.ejercicios[Number(b.dataset.sens)]; e.sensacion = e.sensacion === b.dataset.v ? "" : b.dataset.v; tocar(HOY); }
     else if (b.dataset.cambiar) {
       const i = Number(b.dataset.cambiar), actual = POR_ID[d.ejercicios[i].id];
@@ -324,7 +327,10 @@ window.App = {
   cambio(t) {
     const d = Datos.dias[HOY];
     if (t.dataset.campo) { d.ejercicios[Number(t.dataset.campo)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
-    else if (t.dataset.paseo) { d.paseo = d.paseo || {}; d.paseo[t.dataset.paseo] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
+    else if (t.dataset.paseo) {
+      d.paseo = d.paseo || {}; d.paseo[t.dataset.paseo] = t.value === "" ? "" : Number(t.value); tocar(HOY);
+      if (t.dataset.paseo === "min" && Number(t.value) > 0) eventoDelDia("gim-entreno-empezado");
+    }
     else if (t.id === "nota") { d.nota = t.value; tocar(HOY); }
     else if (t.id === "nombre") { Datos.ajustes.nombre = t.value.trim(); Datos.guardarAjustes(); pintar(); }
     else if (t.dataset.activo) {

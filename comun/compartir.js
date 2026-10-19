@@ -197,6 +197,7 @@ const Compartir = {
       try {
         await navigator.share({ files: [f], title: "Fotos del gimnasio", text: `${aps.length} foto${aps.length > 1 ? "s" : ""} de máquinas de ${gimnasio()} para la app. Impórtalas en Ejercicios → Máquinas → Compartir.` });
         this.avance("Enviado. Quien lo reciba tiene que importarlo en su app y proponerlo en GitHub.");
+        evento("gim-foto-compartida");
       } catch (e) { this.avance(e.name === "AbortError" ? "" : `No se pudo compartir: ${e.message}`, e.name !== "AbortError"); }
       return;
     }
@@ -204,6 +205,7 @@ const Compartir = {
     const a = document.createElement("a"); a.href = url; a.download = candidatos[0].name;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
     this.avance(`Archivo descargado (${candidatos[0].name}). Mándalo por correo o WhatsApp a quien gestiona la app.`);
+    evento("gim-foto-compartida");
   },
 
   // Importa un archivo de fotos de otra persona: solo donde no hay foto propia.
@@ -263,6 +265,7 @@ const Compartir = {
         body: `Fotos hechas con la app por ${nombreVisible()}.\n\n${aps.map(ap => `- ${AP[ap].nombre} → \`${carpeta}/${ap}.jpg\`${existentes[`${ap}.jpg`] ? " (sustituye a la anterior)" : ""}`).join("\n")}\n\nAl aceptarla, la app las enseña a todos en este gimnasio.`,
       } });
       this.enlace = pr.html_url;
+      evento("gim-foto-compartida");
       this.avance(`Propuesta creada (#${pr.number}). Acéptala en GitHub y en un par de minutos las verán todos.`);
     } catch (e) {
       this.avance(`No se pudo completar: ${e.message}`, true);

@@ -27,7 +27,7 @@ Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica →
 
 ## Nombres de archivo
 
-### Máquinas
+### Zona Fuerza · máquinas guiadas
 
 | Archivo | Máquina |
 |---|---|
@@ -41,9 +41,7 @@ Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica →
 | `maq-asistida.jpg` | Dominadas y fondos asistidos |
 | `maq-curl.jpg` | Curl de bíceps (máquina Scott) |
 | `maq-triceps.jpg` | Tríceps (máquina) |
-| `prensa.jpg` | Prensa inclinada 45° |
 | `prensa-horizontal.jpg` | Prensa horizontal (sentado) |
-| `hack.jpg` | Sentadilla hack / péndulo |
 | `maq-extension.jpg` | Extensión de cuádriceps |
 | `maq-femoral-sentado.jpg` | Curl femoral sentado |
 | `maq-femoral-tumbado.jpg` | Curl femoral tumbado |
@@ -55,6 +53,17 @@ Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica →
 | `maq-abdominal.jpg` | Abdominal (máquina) |
 | `maq-lumbar.jpg` | Lumbar (máquina) |
 
+### Zona Fuerza · carga de discos
+
+| Archivo | Máquina |
+|---|---|
+| `prensa.jpg` | Prensa inclinada 45° |
+| `hack.jpg` | Sentadilla hack / péndulo |
+| `hammer-pecho.jpg` | Press de pecho con discos |
+| `hammer-hombro.jpg` | Press de hombro con discos |
+| `hammer-jalon.jpg` | Jalón con discos |
+| `hammer-remo.jpg` | Remo con discos |
+
 ### Poleas
 
 | Archivo | Máquina |
@@ -63,13 +72,13 @@ Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica →
 | `polea-alta.jpg` | Polea alta de jalón (con asiento) |
 | `polea-baja.jpg` | Polea baja de remo (sentado) |
 
-### Mancuernas
+### Peso libre · mancuernas
 
 | Archivo | Máquina |
 |---|---|
 | `mancuernas.jpg` | Mancuernas |
 
-### Barras y racks
+### Peso libre · barras y racks
 
 | Archivo | Máquina |
 |---|---|
@@ -92,7 +101,7 @@ Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica →
 | `barra-dominadas.jpg` | Barra de dominadas |
 | `suelo.jpg` | Suelo / colchoneta |
 
-### Funcional
+### Zona Funcional (SOFT)
 
 | Archivo | Máquina |
 |---|---|
@@ -105,7 +114,7 @@ Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica →
 | `balon.jpg` | Balón medicinal |
 | `rueda.jpg` | Rueda abdominal |
 
-### Cardio
+### Zona Cardio
 
 | Archivo | Máquina |
 |---|---|

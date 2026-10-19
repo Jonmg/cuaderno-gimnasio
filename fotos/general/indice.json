@@ -300,41 +300,5 @@
  "hammer-remo": {
   "archivo": "hammer-remo.svg",
   "tipo": "ilustracion"
- },
- "saco": {
-  "archivo": "saco.jpg",
-  "tipo": "foto",
-  "autor": "Aditya Oberai",
-  "licencia": "CC BY-SA 4.0",
-  "fuente": "https://commons.wikimedia.org/wiki/File:Punching_Bag.jpg"
- },
- "esqui-ergo": {
-  "archivo": "esqui-ergo.jpg",
-  "tipo": "foto",
-  "autor": "U.S. Space Force photo by Gwendolyn Kurzen",
-  "licencia": "Public domain",
-  "fuente": "https://commons.wikimedia.org/wiki/File:Third_Annual_Guardian_Arena-_Day_2_(9467317).jpg"
- },
- "bici-aire": {
-  "archivo": "bici-aire.svg",
-  "tipo": "ilustracion"
- },
- "cinta-curva": {
-  "archivo": "cinta-curva.jpg",
-  "tipo": "foto",
-  "autor": "Burkhard Mücke",
-  "licencia": "CC BY-SA 4.0",
-  "fuente": "https://commons.wikimedia.org/wiki/File:Cross_Runner_-_Curved_Treadmill_02.jpg"
- },
- "cuerdas": {
-  "archivo": "cuerdas.jpg",
-  "tipo": "foto",
-  "autor": "National Museum of the U.S. Navy",
-  "licencia": "Public domain",
-  "fuente": "https://commons.wikimedia.org/wiki/File:170331-N-ZY039-015_(33869515046).jpg"
- },
- "trineo": {
-  "archivo": "trineo.svg",
-  "tipo": "ilustracion"
  }
 }
