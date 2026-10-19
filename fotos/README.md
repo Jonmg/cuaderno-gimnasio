@@ -4,6 +4,16 @@ Fotos compartidas por gimnasio: `fotos/<gimnasio>/<máquina>.jpg`. La app enseñ
 usan ese gimnasio (Ajustes → Perfil → Gimnasio) las fotos de su carpeta. Si alguien tiene una
 foto propia de una máquina, en su móvil manda la suya.
 
+## Imágenes genéricas (`fotos/general/`)
+
+Mientras una máquina no tiene foto del gimnasio, la app enseña su imagen genérica: una
+ilustración dibujada por `herramientas/ilustraciones.mjs` (se regenera con
+`node herramientas/ilustraciones.mjs`) o, si se añade, una foto con licencia libre. Cada imagen
+está en `fotos/general/indice.json` con su tipo (`ilustracion` o `foto`) y, para las fotos, autor,
+licencia y enlace a la fuente, que la app enseña junto a la imagen.
+
+Orden en cada móvil: foto propia → foto del gimnasio → imagen genérica → icono.
+
 ## Cómo llegan las fotos aquí
 
 1. **Desde la app, con GitHub conectado** (Ajustes → Fotos del gimnasio → Conexión con GitHub):

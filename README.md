@@ -19,6 +19,7 @@ comun/base.js         núcleo: datos por persona, pestañas, copia de seguridad,
 comun/recuperacion.js motor de Aita
 comun/rutina.js       motor de rutina fija: series, doble progresión, descansos, deporte, rodilla
 comun/compartir.js    fotos compartidas: enviar, importar, proponer como pull request, pasar el acceso
+herramientas/ilustraciones.mjs  dibuja fotos/general/<máquina>.svg (imagen genérica de cada máquina)
 comun/vendor/qrcode.js  generador de QR (qrcode-generator 1.4.4, MIT), solo se carga al pasar el acceso
 comun/estilos.css
 planes/rutina-3dias.js  el plan de Jon y Mikel, editable como datos

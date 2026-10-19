@@ -99,6 +99,7 @@ function montar() {
 
   Datos.cargar(App.ajustesIniciales);
   FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
+  FotosGen.cargar().then(ok => { if (ok) repintar(); });
   try { const t = localStorage.getItem(PERFIL.clave + "-tab"); if (PESTAÑAS.some(p => p[0] === t)) pestaña = t; } catch (e) {}
   pintar();
 }
@@ -334,8 +335,25 @@ const FotosGym = {
     } catch (e) { this.error = e.message || "Sin conexión"; return false; }
   },
 };
-// Foto que se ve: la propia si la hay; si no, la del gimnasio.
-const urlFoto = clave => Fotos.url[clave] || FotosGym.url[clave];
+/* ---------- Imágenes genéricas ----------
+   fotos/general/: una ilustración por máquina (herramientas/ilustraciones.mjs) o una foto con
+   licencia libre y su crédito. Se ven mientras no haya foto propia ni del gimnasio. */
+const FotosGen = {
+  info: {},
+  async cargar() {
+    try {
+      const r = await fetch("../fotos/general/indice.json");
+      if (!r.ok) return false;
+      const j = await r.json();
+      for (const [id, v] of Object.entries(j)) this.info[id] = { ...v, url: `../fotos/general/${encodeURIComponent(v.archivo)}` };
+      return true;
+    } catch (e) { return false; }
+  },
+};
+// Foto real (propia o del gimnasio), sin contar las genéricas.
+const fotoReal = clave => Fotos.url[clave] || FotosGym.url[clave];
+// Lo que se ve: la propia; si no, la del gimnasio; si no, la genérica.
+const urlFoto = clave => fotoReal(clave) || FotosGen.info[clave]?.url;
 
 // Reduce la foto a 1000 px de lado mayor en JPEG: unos 100–200 KB en vez de varios MB.
 function reducirFoto(file, max = 1000) {

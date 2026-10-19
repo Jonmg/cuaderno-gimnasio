@@ -587,11 +587,14 @@ function crearPropio() {
 function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaPlan) d.diaPlan = "libre"; tocar(HOY); }
 
 // Bloque de foto con sus botones (cámara y galería). La clave es el aparato o el ejercicio.
-// La foto que se ve es la propia si la hay; si no, la compartida del gimnasio.
+// La foto que se ve es la propia si la hay; si no, la del gimnasio; si no, la genérica.
 function htmlFoto(clave, titulo) {
-  const propia = Fotos.url[clave], comp = FotosGym.url[clave], foto = propia || comp;
-  const origen = propia ? (comp ? "Tu foto (hay otra del gimnasio)" : "Tu foto · solo en este móvil") : comp ? `Foto del gimnasio · ${esc(gimnasio())}` : "";
-  return `<div class="foto-grande">${foto ? `<img src="${foto}" alt="Foto de ${esc(titulo)}">${origen ? `<span class="foto-origen">${origen}</span>` : ""}` : `<p>${iconoUI("camara", "ui-icono grande")}<br>Haz una foto de ${esc(titulo)} para reconocerla a la primera.</p>`}</div>
+  const propia = Fotos.url[clave], comp = FotosGym.url[clave], gen = FotosGen.info[clave], foto = propia || comp || gen?.url;
+  const credito = gen?.tipo === "foto" ? `Foto genérica · ${esc(gen.autor || "")}${gen.licencia ? `, ${esc(gen.licencia)}` : ""}` : "Ilustración · aún sin foto real";
+  const origen = propia ? (comp ? "Tu foto (hay otra del gimnasio)" : "Tu foto · solo en este móvil") : comp ? `Foto del gimnasio · ${esc(gimnasio())}` : gen ? credito : "";
+  const generica = !propia && !comp && gen;
+  return `<div class="foto-grande ${generica ? "generica" : ""}">${foto ? `<img src="${foto}" alt="${generica ? "Imagen genérica" : "Foto"} de ${esc(titulo)}">${origen ? `<span class="foto-origen">${origen}</span>` : ""}` : `<p>${iconoUI("camara", "ui-icono grande")}<br>Haz una foto de ${esc(titulo)} para reconocerla a la primera.</p>`}</div>
+    ${generica ? `<p class="small muted" style="margin:0">Es una imagen de referencia. Haz la foto de la de ${esc(gimnasio() || "tu gimnasio")} y compártela para que todos la reconozcan.${gen.fuente ? ` <a href="${esc(gen.fuente)}" target="_blank" rel="noopener">Fuente ↗</a>` : ""}</p>` : ""}
     <div class="fila">
       <label class="btn peq">${iconoUI("camara")}${comp && !propia ? "Hacer otra foto" : "Hacer foto"}<input type="file" accept="image/*" capture="environment" data-foto="${clave}" hidden></label>
       <label class="btn sec peq">Elegir de la galería<input type="file" accept="image/*" data-foto="${clave}" hidden></label>
@@ -616,7 +619,7 @@ function hojaAyuda(id) {
     <div><h3>${va.ap ? esc(AP[va.ap]?.nombre) : "Foto"}</h3>${vs.length > 1 ? `<p class="small muted" style="margin:0 0 6px">Variante: ${esc(va.n)}</p>` : ""}</div>
     ${htmlFoto(clave, va.ap ? AP[va.ap]?.nombre : e.nombre)}
     ${va.ap ? `<p class="small muted" style="margin:0">La foto es de la máquina: sale en todos los ejercicios que la usan.</p>` : ""}
-    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !urlFoto(v.ap) ? " · sin foto" : ""}</span></span></button>`).join("")}</div></div>` : ""}
+    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !fotoReal(v.ap) ? " · sin foto real" : ""}</span></span></button>`).join("")}</div></div>` : ""}
     <label class="campo" for="notaEj"><b style="color:var(--ink)">Cómo ajusto la máquina</b><span class="small muted">Asiento, respaldo, agarre, número de máquina… Se ve en el ejercicio.</span>
       <textarea id="notaEj" data-notaej="${id}" rows="2" class="area">${esc(Datos.ajustes.notasEj?.[id] || "")}</textarea></label>
     ${e.pasos?.length ? `<div><h3>Cómo se hace</h3><ol class="pasos">${e.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>` : ""}
@@ -660,7 +663,7 @@ function pintarEjercicios() {
       <p class="small muted" style="margin:0">Una foto por máquina sirve para todos los ejercicios que la usan.</p>
       ${TIPOS_APARATO.map(([t, n]) => `<div><p class="eyebrow" style="margin:10px 0 0">${n}</p><div class="lista">${APARATOS.filter(a => a.tipo === t).map(a => {
         const k = ejerciciosCon(a.id).length;
-        return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? " · tu foto" : FotosGym.url[a.id] ? "" : " · sin foto"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
+        return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? " · tu foto" : FotosGym.url[a.id] ? "" : " · sin foto real"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
       }).join("")}</div></div>`).join("")}
     </section></div>`;
     return;

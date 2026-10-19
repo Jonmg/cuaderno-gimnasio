@@ -1,0 +1,222 @@
+{
+ "maq-press-pecho": {
+  "archivo": "maq-press-pecho.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-press-inclinado": {
+  "archivo": "maq-press-inclinado.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-contractora": {
+  "archivo": "maq-contractora.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-press-hombro": {
+  "archivo": "maq-press-hombro.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-laterales": {
+  "archivo": "maq-laterales.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-jalon": {
+  "archivo": "maq-jalon.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-remo": {
+  "archivo": "maq-remo.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-asistida": {
+  "archivo": "maq-asistida.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-curl": {
+  "archivo": "maq-curl.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-triceps": {
+  "archivo": "maq-triceps.svg",
+  "tipo": "ilustracion"
+ },
+ "prensa": {
+  "archivo": "prensa.svg",
+  "tipo": "ilustracion"
+ },
+ "prensa-horizontal": {
+  "archivo": "prensa-horizontal.svg",
+  "tipo": "ilustracion"
+ },
+ "hack": {
+  "archivo": "hack.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-extension": {
+  "archivo": "maq-extension.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-femoral-sentado": {
+  "archivo": "maq-femoral-sentado.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-femoral-tumbado": {
+  "archivo": "maq-femoral-tumbado.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-abd-add": {
+  "archivo": "maq-abd-add.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-hip-thrust": {
+  "archivo": "maq-hip-thrust.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-gluteo": {
+  "archivo": "maq-gluteo.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-gemelo-pie": {
+  "archivo": "maq-gemelo-pie.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-gemelo-sentado": {
+  "archivo": "maq-gemelo-sentado.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-abdominal": {
+  "archivo": "maq-abdominal.svg",
+  "tipo": "ilustracion"
+ },
+ "maq-lumbar": {
+  "archivo": "maq-lumbar.svg",
+  "tipo": "ilustracion"
+ },
+ "polea-doble": {
+  "archivo": "polea-doble.svg",
+  "tipo": "ilustracion"
+ },
+ "polea-alta": {
+  "archivo": "polea-alta.svg",
+  "tipo": "ilustracion"
+ },
+ "polea-baja": {
+  "archivo": "polea-baja.svg",
+  "tipo": "ilustracion"
+ },
+ "mancuernas": {
+  "archivo": "mancuernas.svg",
+  "tipo": "ilustracion"
+ },
+ "barra": {
+  "archivo": "barra.svg",
+  "tipo": "ilustracion"
+ },
+ "barra-z": {
+  "archivo": "barra-z.svg",
+  "tipo": "ilustracion"
+ },
+ "banco-press": {
+  "archivo": "banco-press.svg",
+  "tipo": "ilustracion"
+ },
+ "banco-inclinado": {
+  "archivo": "banco-inclinado.svg",
+  "tipo": "ilustracion"
+ },
+ "rack": {
+  "archivo": "rack.svg",
+  "tipo": "ilustracion"
+ },
+ "multipower": {
+  "archivo": "multipower.svg",
+  "tipo": "ilustracion"
+ },
+ "barra-t": {
+  "archivo": "barra-t.svg",
+  "tipo": "ilustracion"
+ },
+ "banco": {
+  "archivo": "banco.svg",
+  "tipo": "ilustracion"
+ },
+ "banco-scott": {
+  "archivo": "banco-scott.svg",
+  "tipo": "ilustracion"
+ },
+ "banco-lumbar": {
+  "archivo": "banco-lumbar.svg",
+  "tipo": "ilustracion"
+ },
+ "paralelas": {
+  "archivo": "paralelas.svg",
+  "tipo": "ilustracion"
+ },
+ "barra-dominadas": {
+  "archivo": "barra-dominadas.svg",
+  "tipo": "ilustracion"
+ },
+ "suelo": {
+  "archivo": "suelo.svg",
+  "tipo": "ilustracion"
+ },
+ "kettlebell": {
+  "archivo": "kettlebell.svg",
+  "tipo": "ilustracion"
+ },
+ "bandas": {
+  "archivo": "bandas.svg",
+  "tipo": "ilustracion"
+ },
+ "fitball": {
+  "archivo": "fitball.svg",
+  "tipo": "ilustracion"
+ },
+ "bosu": {
+  "archivo": "bosu.svg",
+  "tipo": "ilustracion"
+ },
+ "cajon": {
+  "archivo": "cajon.svg",
+  "tipo": "ilustracion"
+ },
+ "trx": {
+  "archivo": "trx.svg",
+  "tipo": "ilustracion"
+ },
+ "balon": {
+  "archivo": "balon.svg",
+  "tipo": "ilustracion"
+ },
+ "rueda": {
+  "archivo": "rueda.svg",
+  "tipo": "ilustracion"
+ },
+ "cinta": {
+  "archivo": "cinta.svg",
+  "tipo": "ilustracion"
+ },
+ "bici": {
+  "archivo": "bici.svg",
+  "tipo": "ilustracion"
+ },
+ "bici-reclinada": {
+  "archivo": "bici-reclinada.svg",
+  "tipo": "ilustracion"
+ },
+ "bici-spinning": {
+  "archivo": "bici-spinning.svg",
+  "tipo": "ilustracion"
+ },
+ "eliptica": {
+  "archivo": "eliptica.svg",
+  "tipo": "ilustracion"
+ },
+ "remo-ergo": {
+  "archivo": "remo-ergo.svg",
+  "tipo": "ilustracion"
+ },
+ "escaladora": {
+  "archivo": "escaladora.svg",
+  "tipo": "ilustracion"
+ }
+}
