@@ -9,7 +9,11 @@
    2. Sin GitHub: "Enviar" genera un archivo con las fotos para mandarlo por WhatsApp (como
       documento) o por correo a quien gestiona el repositorio, que lo importa en su app y lo
       propone desde allí.
-   El token nunca sale de este móvil salvo hacia api.github.com, y no va en la copia de seguridad. */
+   El token nunca sale de este móvil salvo hacia api.github.com, y no va en la copia de seguridad.
+   Solo los perfiles con PERFIL.proponeFotos ven el botón de proponer y la conexión con GitHub.
+   Un mismo token puede usarse en varios móviles: el que ya lo tiene genera un QR o enlace
+   (…/#gh=<token>) y el otro móvil lo guarda al abrirlo. Nunca va escrito en el código: el
+   repositorio es público y GitHub revoca los tokens que encuentra publicados. */
 
 const CLAVE_TOKEN = "cuaderno-github-token";
 const GH = {
@@ -29,6 +33,34 @@ const GH = {
     return r.status === 204 ? null : r.json();
   },
 };
+const puedeProponer = () => !!PERFIL.proponeFotos;
+const conGH = () => puedeProponer() && !!GH.token();
+// Acepta el token tal cual o el enlace de acceso que lo contiene.
+function extraerToken(v) {
+  v = String(v || "").trim();
+  const i = v.indexOf("#gh=");
+  if (i >= 0) v = decodeURIComponent(v.slice(i + 4));
+  return /^(github_pat_|gh[pousr]_)[A-Za-z0-9_]{20,}$/.test(v) ? v : "";
+}
+// Enlace de acceso: la portada lo guarda y cualquier libreta de este navegador lo usa.
+const enlaceAcceso = () => new URL(`../#gh=${encodeURIComponent(GH.token())}`, location.href).href;
+function cargarQR() {
+  return window.qrcode ? Promise.resolve() : new Promise((ok, mal) => {
+    const sc = document.createElement("script"); sc.src = "../comun/vendor/qrcode.js";
+    sc.onload = ok; sc.onerror = () => mal(new Error("No se pudo cargar el generador de QR")); document.head.appendChild(sc);
+  });
+}
+// Si se abre la libreta con un enlace de acceso, guarda el token y lo borra de la barra de direcciones.
+(function tokenDesdeEnlace() {
+  if (!location.hash.startsWith("#gh=")) return;
+  const t = extraerToken(location.hash);
+  history.replaceState(null, "", location.pathname + location.search);
+  if (t && puedeProponer()) { GH.guardarToken(t); window.addEventListener("DOMContentLoaded", () => aviso("GitHub conectado: este móvil ya puede proponer fotos.")); }
+})();
+function aviso(texto) {
+  const el = document.createElement("div"); el.className = "toast"; el.setAttribute("role", "status"); el.textContent = texto;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 6000);
+}
 const blobABase64 = b => new Promise((ok, mal) => { const f = new FileReader(); f.onload = () => ok(String(f.result)); f.onerror = () => mal(f.error); f.readAsDataURL(b); });
 async function blobDeFoto(ap) { const u = Fotos.url[ap]; return u ? (await fetch(u)).blob() : null; }
 
@@ -47,7 +79,7 @@ const Compartir = {
   },
 
   html() {
-    const pend = this.pendientes(), n = [...this.sel].filter(ap => pend.includes(ap)).length, gh = !!GH.token();
+    const pend = this.pendientes(), n = [...this.sel].filter(ap => pend.includes(ap)).length, gh = conGH();
     return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(gimnasio())}</span><h2>Compartir fotos</h2></div>${botonCerrar}</div>
       <p class="small muted" style="margin:0">Las fotos compartidas las ve todo el que use la app en este gimnasio. Elige cuáles mandar:</p>
       ${pend.length ? `<div class="lista">${pend.map(ap => `<label class="item sel-foto">
@@ -75,18 +107,45 @@ const Compartir = {
 
   htmlAjustes() {
     const t = GH.token();
+    const github = !puedeProponer() ? "" : t ? `
+      <div class="gh-estado"><b>GitHub conectado.</b> Este móvil puede proponer fotos como <i>pull request</i>.</div>
+      <div class="fila"><button class="btn sec peq" data-ghacceso>Pasar el acceso a otro móvil</button><button class="btn sec peq" data-ghprobar>Probar conexión</button><button class="enlace" data-gholvidar>Desconectar este móvil</button></div>
+      <p class="small" id="msgGh" role="status" style="margin:0"></p>` : `
+      <details><summary><b>Conectar con GitHub</b> <span class="small muted">para proponer fotos</span></summary>
+        <div style="display:grid;gap:10px;margin-top:10px">
+          <p class="small muted" style="margin:0">Pega el token <i>fine-grained</i> del repositorio (acceso solo a <code>${esc(REPO)}</code>, con <b>Contents</b> y <b>Pull requests</b> en lectura y escritura), o el enlace de acceso que te pase quien ya lo tiene. Se guarda solo en este móvil.</p>
+          <label class="campo" for="ghToken">Token o enlace de acceso<input id="ghToken" class="texto" type="password" autocomplete="off" placeholder="github_pat_…"></label>
+          <div class="fila"><button class="btn sec peq" data-ghpegar>Pegar</button></div>
+          <p class="small" id="msgGh" role="status" style="margin:0"></p>
+        </div>
+      </details>`;
     return `<section class="card" aria-labelledby="t-gh"><h2 id="t-gh">Fotos del gimnasio</h2>
       <p class="small muted" style="margin:0">Las fotos compartidas de ${esc(gimnasio())} se guardan en el repositorio <code>${esc(REPO)}</code>. ${(n => n === 1 ? "1 máquina tiene foto" : `${n} máquinas tienen foto`)(Object.keys(FotosGym.url).length)}.</p>
       <div class="fila"><button class="btn sec peq" data-abrircompartir>Compartir mis fotos</button><button class="btn sec peq" data-actualizarfotos>Actualizar</button></div>
-      <details><summary><b>Conexión con GitHub</b> <span class="small muted">(solo para quien gestiona el repositorio)</span></summary>
-        <div style="display:grid;gap:10px;margin-top:10px">
-          <p class="small muted" style="margin:0">Con un token, este móvil puede proponer fotos directamente como <i>pull request</i>. Crea un token <i>fine-grained</i> en GitHub → Settings → Developer settings, con acceso solo a <code>${esc(REPO)}</code> y permisos de <b>Contents</b> y <b>Pull requests</b> en lectura y escritura. Se guarda solo en este móvil.</p>
-          <label class="campo" for="ghToken">Token<input id="ghToken" class="texto" type="password" autocomplete="off" placeholder="github_pat_…" value="${t ? "••••••••••••" : ""}"></label>
-          <div class="fila">${t ? `<button class="btn sec peq" data-ghprobar>Probar conexión</button><button class="enlace" data-gholvidar>Olvidar token</button>` : ""}</div>
-          <p class="small" id="msgGh" role="status" style="margin:0"></p>
-        </div>
-      </details>
+      ${github}
     </section>`;
+  },
+
+  // Hoja con el QR y el enlace para conectar otro móvil con el mismo token.
+  abrirAcceso() {
+    Hoja = { tipo: "acceso" };
+    abrirHoja(`<div class="hoja-cab"><div><span class="ej-grupo">GitHub</span><h2>Pasar el acceso</h2></div>${botonCerrar}</div>
+      <p style="margin:0">Escanea este código con la cámara del otro móvil. Al abrir el enlace, ese móvil queda conectado y podrá proponer fotos desde su libreta.</p>
+      <div class="qr" id="qrAcceso"><p class="muted small">Generando el código…</p></div>
+      <div class="fila"><button class="btn sec peq" data-ghcopiar>Copiar enlace</button></div>
+      <p class="small" id="msgAcceso" role="status" style="margin:0"></p>
+      <p class="aviso small">El código lleva dentro el token: quien lo tenga puede proponer cambios en el repositorio. Enséñalo solo a quien quieras dar acceso. Si mandas el enlace por mensaje, bórralo después.</p>
+      <p class="small muted" style="margin:0">En iPhone, si la libreta está instalada en la pantalla de inicio, el enlace se abre en Safari y no llega a la app instalada: copia el enlace y pégalo en Ajustes → Fotos del gimnasio → Conectar con GitHub dentro de la app.</p>`);
+    cargarQR().then(() => {
+      const q = qrcode(0, "M"); q.addData(enlaceAcceso()); q.make();
+      const el = $("#qrAcceso"); if (el) el.innerHTML = q.createSvgTag({ cellSize: 6, margin: 4, scalable: true, alt: "Código QR con el enlace de acceso" });
+    }).catch(e => { const el = $("#qrAcceso"); if (el) el.innerHTML = `<p class="small" style="color:var(--warn)">${esc(e.message)}. Usa "Copiar enlace".</p>`; });
+  },
+
+  guardarDesdeTexto(v) {
+    const t = extraerToken(v), m = $("#msgGh");
+    if (!t) { if (m) { m.textContent = "Eso no parece un token de GitHub (empieza por github_pat_) ni un enlace de acceso."; m.style.color = "var(--warn)"; } return; }
+    GH.guardarToken(t); repintar(); setTimeout(() => this.probar(), 0);
   },
 
   avance(t, malo = false) { this.estado = t; this.malo = malo; const m = $("#msgCompartir"); if (m) { m.textContent = t; m.style.color = malo ? "var(--warn)" : ""; } },
@@ -101,17 +160,23 @@ const Compartir = {
     if ("ghpr" in ds) { this.proponer(); return false; }
     if ("ghprobar" in ds) { this.probar(); return false; }
     if ("gholvidar" in ds) { GH.guardarToken(""); return true; }
+    if ("ghacceso" in ds) { this.abrirAcceso(); return false; }
+    if ("ghcopiar" in ds) {
+      const m = $("#msgAcceso"), ok = t => { if (m) m.textContent = t; };
+      try { navigator.clipboard.writeText(enlaceAcceso()).then(() => ok("Enlace copiado."), () => ok("No se pudo copiar automáticamente.")); } catch (e) { ok("No se pudo copiar automáticamente."); }
+      return false;
+    }
+    if ("ghpegar" in ds) {
+      try { navigator.clipboard.readText().then(v => this.guardarDesdeTexto(v), () => { const m = $("#msgGh"); if (m) m.textContent = "El navegador no deja leer el portapapeles: pégalo a mano en el recuadro."; }); } catch (e) {}
+      return false;
+    }
     return undefined;
   },
   // Devuelve true si el cambio era suyo.
   cambio(t) {
     if (t.dataset.selfoto) { t.checked ? this.sel.add(t.dataset.selfoto) : this.sel.delete(t.dataset.selfoto); abrirHoja(this.html()); return true; }
     if (t.id === "importarFotos") { if (t.files[0]) this.importar(t.files[0]); return true; }
-    if (t.id === "ghToken") {
-      const v = t.value.trim();
-      if (v && !v.includes("•")) { GH.guardarToken(v); repintar(); setTimeout(() => this.probar(), 0); }
-      return true;
-    }
+    if (t.id === "ghToken") { if (t.value.trim()) this.guardarDesdeTexto(t.value); return true; }
     return false;
   },
 
@@ -153,7 +218,7 @@ const Compartir = {
         await Fotos.guardar(ap, await (await fetch(dataUrl)).blob());
         this.sel.add(ap); nuevas++;
       }
-      this.avance(`${nuevas} foto${nuevas === 1 ? "" : "s"} de ${j.de || "otra persona"} importada${nuevas === 1 ? "" : "s"}${ya ? `; ${ya} no, porque ya tenías foto de esa máquina` : ""}${otras ? `; ${otras} no reconocida${otras > 1 ? "s" : ""}` : ""}.${GH.token() && nuevas ? " Revísalas y pulsa Proponer en GitHub." : ""}`);
+      this.avance(`${nuevas} foto${nuevas === 1 ? "" : "s"} de ${j.de || "otra persona"} importada${nuevas === 1 ? "" : "s"}${ya ? `; ${ya} no, porque ya tenías foto de esa máquina` : ""}${otras ? `; ${otras} no reconocida${otras > 1 ? "s" : ""}` : ""}.${conGH() && nuevas ? " Revísalas y pulsa Proponer en GitHub." : ""}`);
       refrescarHoja(); repintar();
     } catch (e) { this.avance(`No se pudo importar: ${e.message}`, true); refrescarHoja(); }
   },
@@ -169,7 +234,7 @@ const Compartir = {
 
   // 2. Pull request con las fotos elegidas: rama nueva + un commit por foto + PR.
   async proponer() {
-    const aps = this.elegidas(); if (!aps.length || this.ocupado) return;
+    const aps = this.elegidas(); if (!aps.length || this.ocupado || !conGH()) return;
     this.ocupado = true; this.enlace = ""; refrescarHoja();
     try {
       this.avance("Conectando con GitHub…");

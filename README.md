@@ -18,7 +18,8 @@ app de Aita (que vivía en la raíz), salta directamente a `aita/` y los recuper
 comun/base.js         núcleo: datos por persona, pestañas, copia de seguridad, gráficos
 comun/recuperacion.js motor de Aita
 comun/rutina.js       motor de rutina fija: series, doble progresión, descansos, deporte, rodilla
-comun/compartir.js    fotos compartidas: enviar, importar y proponer como pull request
+comun/compartir.js    fotos compartidas: enviar, importar, proponer como pull request, pasar el acceso
+comun/vendor/qrcode.js  generador de QR (qrcode-generator 1.4.4, MIT), solo se carga al pasar el acceso
 comun/estilos.css
 planes/rutina-3dias.js  el plan de Jon y Mikel, editable como datos
 <persona>/index.html  define window.PERFIL (nombre, clave de almacenamiento, motor)
@@ -76,9 +77,15 @@ Las fotos de las máquinas se hacen una vez por gimnasio y las ve todo el mundo:
 - La app pide la lista de archivos a la API pública de GitHub (sin cuenta, como mucho una vez
   por hora, con copia en el móvil) y enseña esas fotos. La foto propia de cada uno manda en su móvil.
 - **Para añadir fotos** (Ejercicios → Máquinas → *Compartir mis fotos*):
-  - Con GitHub conectado (Ajustes → Fotos del gimnasio → token *fine-grained* con permisos de
-    Contents y Pull requests solo sobre este repositorio): *Proponer en GitHub* abre un pull
-    request. Al aceptarlo, en un par de minutos las ven todos.
+  - **Proponer en GitHub** (abre un pull request; al aceptarlo, en un par de minutos las ven
+    todos). Solo lo tienen los perfiles con `proponeFotos: true` en su `window.PERFIL` (ahora
+    Jon y Mikel) y con GitHub conectado en ese móvil.
+  - **Conectar un móvil**: Ajustes → Fotos del gimnasio → pegar el token *fine-grained*
+    (acceso solo a este repositorio, Contents y Pull requests en lectura y escritura). Los
+    demás móviles no necesitan su propio token: en uno ya conectado, *Pasar el acceso a otro
+    móvil* enseña un QR con el enlace `…/#gh=<token>`; al abrirlo, ese móvil queda conectado.
+  - **El token nunca va en el código**: el repositorio y la web son públicos y GitHub revoca
+    los tokens que encuentra publicados. Vive solo en el almacenamiento de cada móvil.
   - Sin GitHub: *Enviar* genera un archivo con las fotos para mandarlo por WhatsApp (como
     documento) o correo; quien tiene GitHub lo importa en su app y lo propone.
   - O subiéndolas a mano en GitHub con el nombre de la tabla.

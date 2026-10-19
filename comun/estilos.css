@@ -303,3 +303,9 @@ body.sin-scroll { overflow: hidden; }
 .item.sel-foto input { width: 24px; height: 24px; accent-color: var(--accent); }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 code { font-size: .85em; background: var(--bg); border-radius: 5px; padding: 1px 5px; word-break: break-all; }
+
+/* ---------- Conexión con GitHub ---------- */
+.gh-estado { background: var(--ok-soft); border-radius: 12px; padding: 10px 14px; font-size: .95rem; }
+.qr { background: #FFFFFF; border-radius: 16px; padding: 14px; width: min(100%, 300px); justify-self: center; min-height: 120px; display: grid; place-items: center; }
+.qr svg { width: 100%; height: auto; display: block; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(76px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--band); color: var(--band-ink); border-radius: 12px; padding: 12px 16px; font-weight: 700; box-shadow: 0 8px 24px rgb(0 0 0 / .3); max-width: calc(100% - 32px); }

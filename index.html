@@ -9,16 +9,22 @@
 <link rel="icon" type="image/png" sizes="192x192" href="comun/icono-192.png">
 <link rel="apple-touch-icon" href="comun/icono-180.png">
 <script>
-  // La primera versión de la app de Aita vivía aquí. Si este móvil tiene sus datos,
-  // se le lleva directamente a su página (que los recupera sola). ?portada evita el salto.
   try {
-    if (!location.search.includes("portada") && localStorage.getItem("cuaderno-fuerza-v1")) location.replace("aita/");
+    // Enlace de acceso a GitHub (…/#gh=<token>): se guarda en este navegador y se borra de la barra.
+    if (location.hash.startsWith("#gh=")) {
+      const t = decodeURIComponent(location.hash.slice(4));
+      history.replaceState(null, "", location.pathname + location.search);
+      if (/^(github_pat_|gh[pousr]_)[A-Za-z0-9_]{20,}$/.test(t)) { localStorage.setItem("cuaderno-github-token", t); window.ghConectado = true; }
+    }
+    // La primera versión de la app de Aita vivía aquí. Si este móvil tiene sus datos,
+    // se le lleva directamente a su página (que los recupera sola). ?portada evita el salto.
+    if (!window.ghConectado && !location.search.includes("portada") && localStorage.getItem("cuaderno-fuerza-v1")) location.replace("aita/");
   } catch (e) {}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@600;700&display=swap">
-<link rel="stylesheet" href="comun/estilos.css?v=6">
+<link rel="stylesheet" href="comun/estilos.css?v=7">
 <style>body { padding-bottom: 32px; } [hidden]{display:none!important}</style>
 </head>
 <body>
@@ -30,10 +36,12 @@
   </div>
 </header>
 <div class="wrap">
+  <p class="aviso" id="ghOk" hidden><b>GitHub conectado en este móvil.</b> Entra en tu libreta y, en Ejercicios → Máquinas → Compartir mis fotos, ya tendrás el botón "Proponer en GitHub".</p>
   <a class="card persona" href="aita/"><span><b>Manolo</b><br><span class="muted small">Aita · Recuperar fuerza: gimnasio suave y paseos</span></span><span class="flecha">›</span></a>
   <a class="card persona" href="jon/"><span><b>Jon</b><br><span class="muted small">Rutina de 3 días</span></span><span class="flecha">›</span></a>
   <a class="card persona" href="mikel/"><span><b>Mikel</b><br><span class="muted small">Rutina de 3 días</span></span><span class="flecha">›</span></a>
   <p class="muted small" style="margin:0">Los datos de cada libreta se guardan solo en el móvil donde se usan.</p>
 </div>
+<script>if (window.ghConectado) document.getElementById("ghOk").hidden = false;</script>
 </body>
 </html>
