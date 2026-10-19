@@ -48,6 +48,7 @@ const Datos = {
   guardarAjustes() { this.guardar(); },
 };
 const nombreVisible = () => Datos.ajustes.nombre || PERFIL.nombre;
+const gimnasio = () => Datos.ajustes.gimnasio ?? PERFIL.gimnasio ?? "";
 
 /* ---------- Esqueleto y navegación ---------- */
 let pestaña = "hoy";
@@ -56,14 +57,21 @@ let PESTAÑAS = [["hoy", "Hoy"], ["progreso", "Progreso"], ["ajustes", "Ajustes"
 function montar() {
   if (App.pestañas) PESTAÑAS = App.pestañas;
   document.body.insertAdjacentHTML("afterbegin", `
+    <header class="hero">
+      <div class="hero-in">
+        <div class="hero-top"><span class="marca">Cuaderno de Fuerza</span><span class="gym" id="gym"></span></div>
+        <p class="hero-fecha" id="fechaHoy"></p>
+        <h1 id="saludo"></h1>
+        <p class="hero-msg" id="motivacion"></p>
+      </div>
+    </header>
     <div class="wrap">
-      <header class="top"><h1 id="saludo"></h1><span class="fecha" id="fechaHoy"></span></header>
       <main id="vista"></main>
       <p class="estado-datos" id="estadoDatos">Tus datos se guardan solo en este móvil. Haz una copia de vez en cuando desde Ajustes.</p>
     </div>
     <div id="flotante"></div>
     <div id="hoja" hidden></div>
-    <nav class="tabs" role="tablist" aria-label="Secciones" style="grid-template-columns:repeat(${PESTAÑAS.length},1fr)">${PESTAÑAS.map(([id, t]) => `<button role="tab" id="tab-${id}" data-tab="${id}">${t}</button>`).join("")}</nav>`);
+    <nav class="tabs" role="tablist" aria-label="Secciones" style="grid-template-columns:repeat(${PESTAÑAS.length},1fr)">${PESTAÑAS.map(([id, t]) => `<button role="tab" id="tab-${id}" data-tab="${id}">${iconoUI(id)}<span>${t}</span></button>`).join("")}</nav>`);
   $("#fechaHoy").textContent = fechaLarga(new Date());
 
   document.querySelector("nav.tabs").addEventListener("click", ev => {
@@ -81,11 +89,12 @@ function montar() {
   document.addEventListener("change", ev => {
     const t = ev.target;
     if (t.id === "importarFichero") { if (t.files[0]) t.files[0].text().then(restaurar); return; }
+    if (t.id === "gimnasio") { Datos.ajustes.gimnasio = t.value.trim(); Datos.guardarAjustes(); pintar(); return; }
     App.cambio(t);
   });
   document.addEventListener("input", ev => App.entrada?.(ev.target));
   document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("#hoja").hidden) cerrarHoja(); });
-  Fotos.cargar().then(n => { if (n) repintar(); });
+  Fotos.cargar().then(async n => { if (App.alCargarFotos) n += await App.alCargarFotos(); if (n) repintar(); });
 
   Datos.cargar(App.ajustesIniciales);
   try { const t = localStorage.getItem(PERFIL.clave + "-tab"); if (PESTAÑAS.some(p => p[0] === t)) pestaña = t; } catch (e) {}
@@ -93,8 +102,26 @@ function montar() {
 }
 function pintar() {
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === pestaña)));
-  $("#saludo").textContent = `Hola, ${nombreVisible()}`;
+  $("#saludo").textContent = `${saludoHora()}, ${nombreVisible()}`;
+  const g = gimnasio();
+  $("#gym").innerHTML = g ? `${iconoUI("ubicacion")}${esc(g)}` : "";
+  const m = $("#motivacion");
+  m.textContent = pestaña === "hoy" ? (App.motivacion?.() || "") : "";
+  m.hidden = !m.textContent;
   App.vistas[pestaña]();
+}
+function saludoHora() { const h = new Date().getHours(); return h >= 6 && h < 14 ? "Buenos días" : h >= 14 && h < 21 ? "Buenas tardes" : "Buenas noches"; }
+// Frase del día: misma frase todo el día, distinta cada día. {n} se cambia por el nombre.
+function fraseDelDia(lista, extra = "") {
+  const r = azar(HOY + PERFIL.id + extra)();
+  return lista[Math.floor(r * lista.length)].replaceAll("{n}", nombreVisible());
+}
+// Bloque de Ajustes común: nombre y gimnasio.
+function htmlPerfil() {
+  return `<section class="card"><h2>Perfil</h2>
+    <label class="campo" for="nombre">Nombre<input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre)}" class="texto"></label>
+    <label class="campo" for="gimnasio">Gimnasio<input id="gimnasio" value="${esc(gimnasio())}" placeholder="Nombre del gimnasio" class="texto"></label>
+  </section>`;
 }
 // Repinta sin perder la posición de lectura.
 function repintar() { const y = window.scrollY; pintar(); window.scrollTo(0, y); }
@@ -262,6 +289,14 @@ const Fotos = {
   },
   async guardar(id, blob) { await this.op("readwrite", st => st.put(blob, id)); if (this.url[id]) URL.revokeObjectURL(this.url[id]); this.url[id] = URL.createObjectURL(blob); },
   async borrar(id) { await this.op("readwrite", st => st.delete(id)); if (this.url[id]) URL.revokeObjectURL(this.url[id]); delete this.url[id]; },
+  // Cambia la clave de una foto (por ejemplo, de un ejercicio a la máquina que usa).
+  async mover(de, a) {
+    const db = await this.abrir();
+    const blob = await new Promise(ok => { const q = db.transaction("fotos").objectStore("fotos").get(de); q.onsuccess = () => ok(q.result); q.onerror = () => ok(null); });
+    if (!blob) return false;
+    await this.guardar(a, blob); await this.borrar(de);
+    return true;
+  },
 };
 // Reduce la foto a 1000 px de lado mayor en JPEG: unos 100–200 KB en vez de varios MB.
 function reducirFoto(file, max = 1000) {

@@ -34,6 +34,13 @@ const CATALOGO = [
   { id: "estiramientos", nombre: "Estiramientos suaves", grupo: "Vuelta a la calma", tipo: "tiempo", min: 5, pauta: "Piernas, espalda y hombros. Sin rebotes, sin dolor." },
 ];
 const POR_ID = Object.fromEntries(CATALOGO.map(e => [e.id, e]));
+// Músculos de cada ejercicio, para el icono (el primero es el principal).
+const MUSCULOS_EJ = {
+  bici: ["cardio"], cinta: ["cardio"], eliptica: ["cardio"], bicirec: ["cardio"], marcha: ["cardio"],
+  prensa: ["cuadriceps", "gluteo"], extension: ["cuadriceps"], femoral: ["isquios"], abductor: ["gluteo-medio"], aductor: ["aductores"],
+  silla: ["cuadriceps", "gluteo"], talones: ["gemelo"], remo: ["espalda", "dorsal"], jalon: ["dorsal", "biceps"], pecho: ["pecho", "triceps"],
+  biceps: ["biceps"], triceps: ["triceps"], hombro: ["hombro"], equilibrio: ["cuerpo"], puente: ["gluteo", "isquios"], estiramientos: ["cuerpo"],
+};
 // Estructura de una sesión de gimnasio: cuántos ejercicios de cada grupo.
 const ESTRUCTURA = [["Calentamiento", 1], ["Piernas", 2], ["Espalda y brazos", 2], ["Equilibrio", 1], ["Vuelta a la calma", 1]];
 // Plan por defecto según el día de la semana (0 = domingo).
@@ -148,8 +155,8 @@ function pintarGym(d) {
     h += `<div class="ej ${e.hecho ? "hecho" : ""}">
       <button class="check" data-check="${i}" aria-pressed="${e.hecho}" aria-label="Marcar ${esc(c.nombre)} como hecho">${SVG_CHECK}</button>
       <div class="ej-cuerpo">
-        <span class="ej-grupo">${esc(c.grupo)}</span>
-        <span class="ej-nombre">${esc(c.nombre)}</span>
+        <div class="ej-cab"><div class="ej-tit"><span class="ej-grupo">${esc(c.grupo)}</span>
+        <span class="ej-nombre">${esc(c.nombre)}</span></div>${iconoMusculo(MUSCULOS_EJ[c.id] || ["cuerpo"])}</div>
         <span class="ej-pauta">${esc(c.pauta)}</span>
         <div class="campos">${c.tipo === "tiempo"
           ? campo(i, "min", "Minutos", e.min)
@@ -190,8 +197,7 @@ function pintarPaseo(d) {
 function pintarAjustes() {
   const grupos = [...new Set(CATALOGO.map(e => e.grupo))];
   let h = `<div class="wrap" style="padding:0">
-    <section class="card"><label class="campo" for="nombre" style="font-size:1rem;color:var(--ink)"><b>¿Cómo te llamamos?</b></label>
-      <input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre)}" class="texto"></section>
+    ${htmlPerfil()}
     <section class="card"><h2>Ejercicios que puedo hacer</h2>
       <p class="muted small" style="margin:0">Quita los que el médico o el entrenador te hayan desaconsejado, o las máquinas que no tenga tu gimnasio. Las sesiones solo usarán los marcados.</p>`;
   for (const g of grupos) {
@@ -260,10 +266,33 @@ function pintarProgreso() {
   $("#vista").innerHTML = h;
 }
 
+/* ---------- Frase del día ---------- */
+const FRASES = [
+  "{n}, la fuerza vuelve poco a poco. Hoy, un pasito más.", "Cada paseo cuenta, {n}. Las piernas se acuerdan de todo lo que haces.",
+  "{n}, hoy no hace falta correr: basta con no parar.", "Constancia antes que intensidad, {n}. Eso es lo que te devuelve la fuerza.",
+  "{n}, lo difícil ya lo pasaste. Ahora toca ir ganando terreno.", "Un día más de trabajo es un día más de fuerza, {n}.",
+  "{n}, escucha al cuerpo: si pide calma, calma; si pide marcha, marcha.", "{n}, cada serie de hoy es una escalera más fácil mañana.",
+  "Poco a poco se llega lejos, {n}. Y tú ya vas lejos.", "{n}, un buen paseo y a las máquinas: que no se oxide nada.",
+  "Respira hondo, {n}. Hoy también suma.", "{n}, la mejor sesión es la que se hace, aunque sea corta.",
+  "Sin prisa pero sin pausa, {n}.", "{n}, que el día empiece con energía: un vaso de agua y a por ello.",
+  "El mejor momento para moverse es hoy, {n}.", "{n}, tu entrenador estaría orgulloso. Sigue con el plan.",
+  "{n}, cada día que te mueves es un día que ganas.", "Hoy toca sumar, {n}. Lo que sea, pero sumar.",
+];
+function motivacion() {
+  const n = nombreVisible(), d = Datos.dias[HOY];
+  const ultimo = Object.keys(Datos.dias).filter(k => k < HOY && diaActivo(Datos.dias[k])).sort().pop();
+  const sinMoverse = ultimo ? Math.round((deClave(HOY) - deClave(ultimo)) / 864e5) : 0;
+  if (diaActivo(d)) return `¡Hecho por hoy, ${n}! Ahora a descansar y a beber agua.`;
+  if (sinMoverse >= 3) return `${n}, hace ${sinMoverse} días que no apuntas nada. Un paseo corto hoy y retomamos.`;
+  if ((d?.tipo || PLAN_SEMANA[new Date().getDay()]) === "descanso") return `${n}, hoy toca descansar: también es parte del plan.`;
+  return fraseDelDia(FRASES);
+}
+
 /* ---------- Eventos ---------- */
 window.App = {
   ajustesIniciales: { nombre: "", desactivados: [] },
   vistas: { hoy: pintarHoy, progreso: pintarProgreso, ajustes: pintarAjustes },
+  motivacion,
   click(b) {
     const d = Datos.dias[HOY];
     if (b.dataset.energia) { d.energia = Number(b.dataset.energia); tocar(HOY); }

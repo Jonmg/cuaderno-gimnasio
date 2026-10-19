@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Cuaderno de Fuerza</title>
-<meta name="theme-color" content="#1E6B57">
+<meta name="theme-color" content="#0F1A33">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="comun/icono-192.png">
 <link rel="apple-touch-icon" href="comun/icono-180.png">
@@ -18,20 +18,19 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Barlow+Condensed:wght@600;700&display=swap">
-<link rel="stylesheet" href="comun/estilos.css?v=4">
-<style>
-  body { margin: 0; padding-bottom: 32px; }
-  .persona { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; text-decoration: none; color: var(--ink); }
-  .persona b { font-size: 1.3rem; }
-  .persona .flecha { font-family: var(--f-num); font-size: 2rem; color: var(--accent); }
-  .persona:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; }
-</style>
+<link rel="stylesheet" href="comun/estilos.css?v=5">
+<style>body { padding-bottom: 32px; } [hidden]{display:none!important}</style>
 </head>
 <body>
+<header class="hero">
+  <div class="hero-in">
+    <div class="hero-top"><span class="marca">Cuaderno de Fuerza</span><span class="gym">VivaGym Miribilla</span></div>
+    <h1>¿Quién entrena hoy?</h1>
+    <p class="hero-msg">Cada uno tiene su libreta. Ábrela en tu móvil y añádela a la pantalla de inicio desde el menú del navegador.</p>
+  </div>
+</header>
 <div class="wrap">
-  <header class="top"><h1>Cuaderno de Fuerza</h1></header>
-  <p class="muted" style="margin:0">Cada uno tiene su libreta. Ábrela en tu móvil y añádela a la pantalla de inicio desde el menú del navegador.</p>
-  <a class="card persona" href="aita/"><span><b>Aita</b><br><span class="muted small">Recuperar fuerza: gimnasio suave y paseos</span></span><span class="flecha">›</span></a>
+  <a class="card persona" href="aita/"><span><b>Manolo</b><br><span class="muted small">Aita · Recuperar fuerza: gimnasio suave y paseos</span></span><span class="flecha">›</span></a>
   <a class="card persona" href="jon/"><span><b>Jon</b><br><span class="muted small">Rutina de 3 días</span></span><span class="flecha">›</span></a>
   <a class="card persona" href="mikel/"><span><b>Mikel</b><br><span class="muted small">Rutina de 3 días</span></span><span class="flecha">›</span></a>
   <p class="muted small" style="margin:0">Los datos de cada libreta se guardan solo en el móvil donde se usan.</p>

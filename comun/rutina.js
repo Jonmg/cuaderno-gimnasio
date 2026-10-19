@@ -11,19 +11,39 @@ const DIA = Object.fromEntries(P.dias.map(d => [d.id, d]));
 const LIBRE = { id: "libre", nombre: "Entreno libre", titulo: "Tú eliges los ejercicios", calentamiento: [], ejercicios: [] };
 const diaDef = d => DIA[d?.diaPlan] || (d?.diaPlan === "libre" ? LIBRE : null);
 const DEPORTES = ["Pádel", "Correr", "Bici", "Natación", "Fútbol", "Caminar", "Montaña", "Otro"];
+const ZONA_A_MUSCULO = { Pecho: "pecho", Espalda: "dorsal", Hombro: "hombro", "Bíceps": "biceps", "Tríceps": "triceps", Pierna: "cuadriceps", "Glúteo": "gluteo", Gemelo: "gemelo", Core: "abdomen", Estabilidad: "cuerpo", Cardio: "cardio", Movilidad: "cuerpo" };
 
 /* ---------- Catálogo ----------
-   Ficha de cada ejercicio = catálogo base + lo que diga el plan para ese id (pauta, variantes,
-   nota). Los creados por la persona viven en sus ajustes. */
+   Ficha de cada ejercicio = catálogo base (músculos, variantes con su aparato, ayuda) + lo que
+   diga el plan para ese id (nombre, pauta, nota). Los creados por la persona viven en sus ajustes. */
 const CAT_FIJO = {};
 for (const e of window.CATALOGO_BASE) CAT_FIJO[e.id] = { ...e };
 for (const d of P.dias) for (const e of d.ejercicios) {
   const { seccion, superserie, opcional, rodilla, ...ficha } = e;
-  CAT_FIJO[e.id] = { zona: seccion, equipo: "Otro", ...CAT_FIJO[e.id], ...ficha };
+  CAT_FIJO[e.id] = normalizar({ ...CAT_FIJO[e.id], ...ficha });
+}
+// Los ejercicios creados con la versión anterior tenían zona y equipo en vez de músculos y variantes.
+function normalizar(e) {
+  if (!e) return e;
+  const m = e.m?.length ? e.m : [ZONA_A_MUSCULO[e.zona] || "cuerpo"];
+  const variantes = (e.variantes?.length ? e.variantes : [{ n: "" }]).map(v => typeof v === "string" ? { n: v } : v);
+  return { ...e, m, variantes };
 }
 const propios = () => Datos.ajustes.propios || [];
-const cat = id => CAT_FIJO[id] || propios().find(p => p.id === id);
-const todos = () => [...Object.values(CAT_FIJO), ...propios()].filter(e => !e.oculto);
+const cat = id => CAT_FIJO[id] || normalizar(propios().find(p => p.id === id));
+const todos = () => [...Object.values(CAT_FIJO), ...propios().map(normalizar)].filter(e => !e.oculto);
+
+/* ---------- Músculos y aparatos ---------- */
+const AP = Object.fromEntries(APARATOS.map(a => [a.id, a]));
+const TIPO_AP = Object.fromEntries(TIPOS_APARATO);
+const TIPO_CORTO = { maquina: "Máquina", polea: "Polea", mancuernas: "Mancuernas", barra: "Barra", banco: "Banco y suelo", funcional: "Funcional", cardio: "Cardio" };
+const nombreMusculos = e => (e.m || []).map(x => MUSCULOS[x]?.n).filter(Boolean).join(", ");
+const zonaDe = e => MUSCULOS[e.m?.[0]]?.n || e.zona || "";
+const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === ap));
+// Clave de la foto de una variante: la del aparato (compartida); si no tiene, la del ejercicio.
+const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
+// Miniatura de un aparato: su foto si la hay; si no, el icono de su tipo.
+const fotoAp = (ap, clase = "ap-chip") => Fotos.url[ap] ? `<img class="${clase}" src="${Fotos.url[ap]}" alt="">` : `<span class="${clase} sin-foto">${iconoAparato(AP[ap]?.tipo)}</span>`;
 const enElPlan = new Set(P.dias.flatMap(d => d.ejercicios.map(e => e.id)));
 
 /* ---------- Pauta ---------- */
@@ -39,7 +59,6 @@ function pauta(e) {
 }
 const descansoDe = e => Number(Datos.ajustes.descansos?.[e.tipo]) || P.descansos[e.tipo] || 60;
 const obligatorias = e => e.series - (e.seriesOpcionales || 0);
-const miniatura = (id, clase = "mini-foto") => Fotos.url[id] ? `<img class="${clase}" src="${Fotos.url[id]}" alt="">` : "";
 
 /* ---------- Huecos del día ----------
    Un hueco es un ejercicio del plan (con el cambio que se haya hecho hoy o para siempre) o un
@@ -61,7 +80,7 @@ function huecos(d) {
     const exId = (hoy && cat(hoy)) ? hoy : (siempre && cat(siempre)) ? siempre : pe.id;
     out.push({ slot: pe.id, e: prescripcion(pe, exId), original: pe, cambiado: exId !== pe.id, cambioHoy: exId === hoy && exId !== pe.id });
   }
-  for (const id of d.extras || []) { const c = cat(id); if (c) out.push({ slot: "x:" + id, e: { ...c, seccion: c.zona }, extra: true }); }
+  for (const id of d.extras || []) { const c = cat(id); if (c) out.push({ slot: "x:" + id, e: { ...c, seccion: zonaDe(c) }, extra: true }); }
   return out;
 }
 const enUso = d => new Set(huecos(d).map(h => h.e.id));
@@ -321,8 +340,8 @@ function pintarEjercicio(d, dia, hueco) {
   if (hueco.extra) origen = `<p class="small muted" style="margin:0">Añadido hoy${bloqueado ? "" : ` · <button class="enlace" data-quitarextra="${e.id}">quitar</button>`}</p>`;
   let h = `<article class="ejr ${completo ? "hecho" : ""}">
     <div class="ejr-cab">
-      ${miniatura(e.id) ? `<button class="foto-btn" data-ayuda="${e.id}" aria-label="Ayuda de ${esc(e.nombre)}">${miniatura(e.id)}</button>` : ""}
-      <div class="ejr-tit"><span class="ej-grupo">${esc(e.seccion || e.zona)}${e.opcional && !e.superserie ? " · opcional" : ""}</span>
+      <button class="musculo-btn" data-ayuda="${e.id}" aria-label="Ayuda de ${esc(e.nombre)}">${iconoMusculo(e.m)}</button>
+      <div class="ejr-tit"><span class="ej-grupo">${esc(e.seccion || zonaDe(e))}${e.opcional && !e.superserie ? " · opcional" : ""}</span>
         <h3 class="ej-nombre">${esc(e.nombre)}</h3>
         <span class="ej-pauta">${pauta(e)} · descanso ${descansoDe(e)} s</span></div>
       <button class="ayuda-btn" data-ayuda="${e.id}" aria-label="Ayuda y foto de ${esc(e.nombre)}">?</button>
@@ -330,7 +349,8 @@ function pintarEjercicio(d, dia, hueco) {
     ${origen}
     ${ajusteMaquina ? `<p class="ajuste-maq small">⚙ ${esc(ajusteMaquina)}</p>` : ""}
     ${e.nota ? `<p class="nota">${esc(e.nota)}</p>` : ""}`;
-  if (vs.length > 1) h += `<div class="sens" role="group" aria-label="Variante">${vs.map((v, i) => `<button class="chip" data-var="${e.id}" data-v="${i}" aria-pressed="${x.v === i}" ${bloqueado && x.v !== i ? "disabled" : ""}>${esc(v.n)}</button>`).join("")}</div>`;
+  if (vs.length > 1) h += `<div class="variantes" role="group" aria-label="Con qué lo haces">${vs.map((v, i) => `<button class="chip var" data-var="${e.id}" data-v="${i}" aria-pressed="${x.v === i}" ${bloqueado && x.v !== i ? "disabled" : ""}>${v.ap ? fotoAp(v.ap) : ""}<span>${esc(v.n)}</span></button>`).join("")}</div>`;
+  else if (vs[0]?.ap) h += `<button class="ap-linea" data-aparato="${vs[0].ap}">${fotoAp(vs[0].ap)}<span>${esc(AP[vs[0].ap]?.nombre || vs[0].n)}</span></button>`;
   if (u) h += `<p class="ultima num">${textoUltima(e, u)}</p>`;
   if (c && !completo) h += `<p class="consejo ${c.tipo}">${esc(c.texto)}${c.peso != null && x.series.some(s => !s.hecho) ? ` <button class="enlace" data-usar="${e.id}" data-peso="${c.peso}">Usar ${fmt(c.peso)} kg</button>` : ""}</p>`;
   h += `<div class="series ${e.sinPeso ? "sin-peso" : ""}">`;
@@ -456,39 +476,54 @@ function pintarProgreso() {
   $("#vista").innerHTML = h;
 }
 
-/* ---------- Listas de ejercicios (buscador) ---------- */
+/* ---------- Listas de ejercicios (buscador y filtros) ---------- */
 const sinAcentos = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-function filtrar({ q = "", zona = "", excluir = new Set(), primero = "" }) {
+// El filtro de músculo mira el principal: "Bíceps" da curls, no jalones.
+function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [] }) {
   const t = sinAcentos(q).trim();
+  const grupo = FILTROS_MUSCULO.find(f => f[0] === musc)?.[1];
   return todos()
-    .filter(e => !excluir.has(e.id) && (!zona || e.zona === zona) && (!t || sinAcentos(`${e.nombre} ${e.zona} ${e.equipo}`).includes(t)))
-    .sort((a, b) => (b.zona === primero) - (a.zona === primero) || a.nombre.localeCompare(b.nombre, "es"));
+    .filter(e => !excluir.has(e.id)
+      && (!grupo || grupo.includes(e.m[0]))
+      && (!mat || e.variantes.some(v => AP[v.ap]?.tipo === mat))
+      && (!t || sinAcentos(`${e.nombre} ${nombreMusculos(e)} ${e.variantes.map(v => `${v.n} ${AP[v.ap]?.nombre || ""}`).join(" ")}`).includes(t)))
+    .sort((a, b) => primero.includes(b.m[0]) - primero.includes(a.m[0]) || a.nombre.localeCompare(b.nombre, "es"));
 }
 function htmlLista(lista, accion) {
-  if (!lista.length) return `<p class="muted small" style="margin:0">No hay ninguno con ese nombre. Puedes crearlo abajo.</p>`;
+  if (!lista.length) return `<p class="muted small" style="margin:0">No hay ninguno así. Prueba con otro filtro o créalo abajo.</p>`;
   return lista.map(e => {
     const n = sesionesDe(e.id).length;
+    const tipos = [...new Set(e.variantes.map(v => AP[v.ap]?.tipo).filter(Boolean))];
     return `<button class="item" data-${accion}="${e.id}">
-      ${miniatura(e.id, "item-foto") || `<span class="item-foto vacia" aria-hidden="true">${esc(e.nombre[0])}</span>`}
-      <span class="item-txt"><b>${esc(e.nombre)}</b><span class="small muted">${esc(e.zona)} · ${esc(e.equipo)}${enElPlan.has(e.id) ? " · en tu plan" : ""}${e.propio ? " · creado por ti" : ""}${n ? ` · ${n} ${n > 1 ? "sesiones" : "sesión"}` : ""}</span></span>
+      ${iconoMusculo(e.m, { clase: "musculo item-ico" })}
+      <span class="item-txt"><b>${esc(e.nombre)}</b><span class="small muted">${esc(nombreMusculos(e))}${enElPlan.has(e.id) ? " · en tu plan" : ""}${e.propio ? " · creado por ti" : ""}${n ? ` · ${n} ${n > 1 ? "sesiones" : "sesión"}` : ""}</span>
+      ${tipos.length ? `<span class="etiquetas">${tipos.map(t => `<span class="etiqueta">${TIPO_CORTO[t]}</span>`).join("")}</span>` : ""}</span>
     </button>`;
   }).join("");
 }
-// Tras repintar, deja a la vista el chip de zona elegido (la fila se desplaza en horizontal).
+// Tras repintar, deja a la vista los chips elegidos (las filas se desplazan en horizontal).
 const verZona = () => document.querySelectorAll('.zonas [aria-pressed="true"]').forEach(c => c.scrollIntoView({ inline: "center", block: "nearest" }));
-const htmlZonas = (actual, accion) => `<div class="zonas" role="group" aria-label="Zona">
-  <button class="chip mini" data-${accion}="" aria-pressed="${!actual}">Todas</button>
-  ${ZONAS.map(z => `<button class="chip mini" data-${accion}="${z}" aria-pressed="${actual === z}">${z}</button>`).join("")}</div>`;
+function htmlFiltros(st, para) {
+  const fila = (k, titulo, opciones) => `<div class="filtro"><span class="eyebrow">${titulo}</span><div class="zonas" role="group" aria-label="${titulo}">
+    <button class="chip mini" data-filtro="${k}|" data-para="${para}" aria-pressed="${!st[k]}">Todo</button>
+    ${opciones.map(([v, t]) => `<button class="chip mini" data-filtro="${k}|${v}" data-para="${para}" aria-pressed="${st[k] === v}">${t}</button>`).join("")}</div></div>`;
+  return fila("musc", "Músculo", FILTROS_MUSCULO.map(([n]) => [n, n])) + fila("mat", "Material", TIPOS_APARATO.map(([id]) => [id, TIPO_CORTO[id]]));
+}
 
-/* ---------- Hoja: cambiar, añadir o crear ejercicio ---------- */
-let Sel = null;
+/* ---------- Hojas ---------- */
+let Sel = null;          // cambiar / añadir / crear ejercicio
+let Hoja = null;         // qué ficha está abierta, para refrescarla tras una foto
+function abrirAyuda(id) { Hoja = { tipo: "ayuda", id }; abrirHoja(hojaAyuda(id)); }
+function abrirAparato(ap) { Hoja = { tipo: "aparato", id: ap }; abrirHoja(hojaAparato(ap)); }
+function refrescarHoja() { if (Hoja?.tipo === "ayuda") abrirHoja(hojaAyuda(Hoja.id)); else if (Hoja?.tipo === "aparato") abrirHoja(hojaAparato(Hoja.id)); }
+
 function hojaSelector() {
   const d = Datos.dias[HOY];
   const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
   if (Sel.paso === "confirmar") {
     const nuevo = cat(Sel.elegido), dia = diaDef(d);
     return `<div class="hoja-cab"><h2>Cambiar ejercicio</h2>${botonCerrar}</div>
-      <p style="margin:0"><span class="muted">${esc(hueco.e.nombre)}</span> → <b>${esc(nuevo.nombre)}</b></p>
+      <div class="cambio">${iconoMusculo(hueco.e.m)}<span>${esc(hueco.e.nombre)}</span><b aria-hidden="true">→</b>${iconoMusculo(nuevo.m)}<span><b>${esc(nuevo.nombre)}</b></span></div>
       <p class="small muted" style="margin:0">Se registra como ${esc(nuevo.nombre)}, con su propio historial.</p>
       <div class="grid-botones">
         <button class="btn" data-confirmar="hoy">Solo hoy</button>
@@ -497,13 +532,14 @@ function hojaSelector() {
       <button class="enlace" data-volversel style="justify-self:start">Elegir otro</button>`;
   }
   if (Sel.paso === "crear") {
-    const z = Sel.zona || hueco?.e.zona || "";
+    const grupo = FILTROS_MUSCULO.find(f => f[0] === Sel.musc)?.[1];
+    const mDef = grupo?.[0] || hueco?.e.m[0] || "pecho";
+    const apDef = Sel.mat ? APARATOS.find(a => a.tipo === Sel.mat)?.id : "";
     return `<div class="hoja-cab"><h2>Crear ejercicio</h2>${botonCerrar}</div>
-      <label class="campo" for="nuevoNombre">Nombre<input id="nuevoNombre" class="texto" placeholder="Por ejemplo: Remo en máquina Hammer" value="${esc(Sel.q)}"></label>
-      <div class="campos">
-        <label class="campo">Zona<select id="nuevoZona">${ZONAS.map(x => `<option ${x === z ? "selected" : ""}>${x}</option>`).join("")}</select></label>
-        <label class="campo">Equipo<select id="nuevoEquipo">${EQUIPOS.map(x => `<option>${x}</option>`).join("")}</select></label>
-      </div>
+      <label class="campo" for="nuevoNombre">Nombre<input id="nuevoNombre" class="texto" placeholder="Por ejemplo: Remo Hammer unilateral" value="${esc(Sel.q)}"></label>
+      <label class="campo" for="nuevoMusculo">Músculo principal<select id="nuevoMusculo">${Object.entries(MUSCULOS).map(([id, m]) => `<option value="${id}" ${id === mDef ? "selected" : ""}>${m.n}</option>`).join("")}</select></label>
+      <label class="campo" for="nuevoAparato">Máquina o material<select id="nuevoAparato"><option value="">Otro / sin material</option>
+        ${TIPOS_APARATO.map(([t, n]) => `<optgroup label="${n}">${APARATOS.filter(a => a.tipo === t).map(a => `<option value="${a.id}" ${a.id === apDef ? "selected" : ""}>${esc(a.nombre)}</option>`).join("")}</optgroup>`).join("")}</select></label>
       <div class="campos">
         <label class="campo">Se mide en<select id="nuevoMedida"><option value="peso">Repeticiones con peso</option><option value="reps">Repeticiones sin peso</option><option value="s">Segundos</option><option value="min">Minutos</option></select></label>
         <label class="campo">Tipo<select id="nuevoTipo"><option value="principal">Principal (más descanso)</option><option value="aislamiento" selected>Aislamiento</option></select></label>
@@ -518,15 +554,15 @@ function hojaSelector() {
   }
   const titulo = Sel.modo === "cambiar" ? `Cambiar ${esc(hueco.e.nombre)}` : "Añadir ejercicio";
   return `<div class="hoja-cab"><h2>${titulo}</h2>${botonCerrar}</div>
-    <input id="buscarSel" class="texto" type="search" placeholder="Buscar: prensa, polea, hombro…" value="${esc(Sel.q)}" autocomplete="off">
-    ${htmlZonas(Sel.zona, "zonasel")}
+    <input id="buscarSel" class="texto" type="search" placeholder="Buscar: prensa, polea, isquios…" value="${esc(Sel.q)}" autocomplete="off">
+    ${htmlFiltros(Sel, "sel")}
     <div id="listaSel" class="lista">${listaSel()}</div>
     <button class="btn sec" data-crear>Crear ejercicio nuevo</button>`;
 }
 function listaSel() {
   const d = Datos.dias[HOY];
   const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
-  return htmlLista(filtrar({ q: Sel.q, zona: Sel.zona, excluir: enUso(d), primero: hueco?.e.zona }), "elegir");
+  return htmlLista(filtrar({ ...Sel, excluir: enUso(d), primero: hueco?.e.m || [] }), "elegir");
 }
 function crearPropio() {
   const nombre = $("#nuevoNombre").value.trim(), min = num($("#nuevoMin").value), max = num($("#nuevoMax").value);
@@ -534,11 +570,11 @@ function crearPropio() {
   if (!nombre) { msg("Ponle un nombre."); return null; }
   if (!min || !max || min > max) { msg("Revisa el rango: el mínimo no puede ser mayor que el máximo."); return null; }
   if (todos().some(e => sinAcentos(e.nombre) === sinAcentos(nombre))) { msg("Ya hay un ejercicio con ese nombre: búscalo en la lista."); return null; }
-  const medida = $("#nuevoMedida").value;
+  const medida = $("#nuevoMedida").value, ap = $("#nuevoAparato").value;
   const e = {
     id: "p-" + sinAcentos(nombre).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) + "-" + Date.now().toString(36),
-    nombre, zona: $("#nuevoZona").value, equipo: $("#nuevoEquipo").value, tipo: $("#nuevoTipo").value,
-    series: Number($("#nuevoSeries").value), reps: [min, max], propio: true,
+    nombre, m: [$("#nuevoMusculo").value], variantes: [ap ? { n: AP[ap].nombre, ap } : { n: "" }],
+    tipo: $("#nuevoTipo").value, series: Number($("#nuevoSeries").value), reps: [min, max], propio: true, pasos: [], errores: [],
     ...(medida === "reps" ? { sinPeso: true } : medida === "s" || medida === "min" ? { unidad: medida, sinPeso: true } : {}),
   };
   Datos.ajustes.propios = [...propios(), e];
@@ -547,39 +583,79 @@ function crearPropio() {
 }
 function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaPlan) d.diaPlan = "libre"; tocar(HOY); }
 
-/* ---------- Hoja: ayuda de un ejercicio ---------- */
+// Bloque de foto con sus botones (cámara y galería). La clave es el aparato o el ejercicio.
+function htmlFoto(clave, titulo) {
+  const foto = Fotos.url[clave];
+  return `<div class="foto-grande">${foto ? `<img src="${foto}" alt="Foto de ${esc(titulo)}">` : `<p>${iconoUI("camara", "ui-icono grande")}<br>Haz una foto de ${esc(titulo)} para reconocerla a la primera.</p>`}</div>
+    <div class="fila">
+      <label class="btn peq">${iconoUI("camara")}Hacer foto<input type="file" accept="image/*" capture="environment" data-foto="${clave}" hidden></label>
+      <label class="btn sec peq">Elegir de la galería<input type="file" accept="image/*" data-foto="${clave}" hidden></label>
+      ${foto ? `<button class="enlace" data-borrarfoto="${clave}">Quitar foto</button>` : ""}
+    </div>
+    <p class="small" id="msgFoto" role="status" style="margin:0"></p>`;
+}
+
+/* ---------- Hoja: ficha de un ejercicio ---------- */
 function hojaAyuda(id) {
   const e = cat(id); if (!e) return "";
   const ses = sesionesDe(id);
-  const foto = Fotos.url[id];
-  return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(e.zona)} · ${esc(e.equipo)}</span><h2>${esc(e.nombre)}</h2></div>${botonCerrar}</div>
-    <div class="foto-grande">${foto ? `<img src="${foto}" alt="Foto de ${esc(e.nombre)}">` : `<p>Haz una foto de la máquina para reconocerla a la primera.</p>`}</div>
-    <div class="fila">
-      <label class="btn peq">Hacer foto<input type="file" accept="image/*" capture="environment" data-foto="${id}" hidden></label>
-      <label class="btn sec peq">Elegir de la galería<input type="file" accept="image/*" data-foto="${id}" hidden></label>
-      ${foto ? `<button class="enlace" data-borrarfoto="${id}">Quitar foto</button>` : ""}
-    </div>
-    <p class="small" id="msgFoto" role="status" style="margin:0"></p>
+  // Variante de referencia: la de hoy si ya está, si no la última que se usó.
+  const vAct = Datos.dias[HOY]?.ej?.[id]?.v ?? ses[0]?.x.v ?? 0;
+  const va = variante(e, vAct), clave = claveFoto(e, vAct);
+  const vs = variantes(e);
+  return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(nombreMusculos(e))}</span><h2>${esc(e.nombre)}</h2></div>${botonCerrar}</div>
+    <div class="ficha-top">${iconoMusculo(e.m, { clase: "musculo grande" })}
+      <div class="ficha-txt"><p style="margin:0"><b>Trabaja:</b> ${esc(nombreMusculos(e))}</p>
+      <p class="small muted" style="margin:0">Pauta habitual: ${pauta(e)} · descanso ${descansoDe(e)} s</p></div></div>
+    <div><h3>${va.ap ? esc(AP[va.ap]?.nombre) : "Foto"}</h3>${vs.length > 1 ? `<p class="small muted" style="margin:0 0 6px">Variante: ${esc(va.n)}</p>` : ""}</div>
+    ${htmlFoto(clave, va.ap ? AP[va.ap]?.nombre : e.nombre)}
+    ${va.ap ? `<p class="small muted" style="margin:0">La foto es de la máquina: sale en todos los ejercicios que la usan.</p>` : ""}
+    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !Fotos.url[v.ap] ? " · sin foto" : ""}</span></span></button>`).join("")}</div></div>` : ""}
     <label class="campo" for="notaEj"><b style="color:var(--ink)">Cómo ajusto la máquina</b><span class="small muted">Asiento, respaldo, agarre, número de máquina… Se ve en el ejercicio.</span>
       <textarea id="notaEj" data-notaej="${id}" rows="2" class="area">${esc(Datos.ajustes.notasEj?.[id] || "")}</textarea></label>
-    ${e.musculos ? `<p style="margin:0"><b>Trabaja:</b> ${esc(e.musculos)}</p>` : ""}
     ${e.pasos?.length ? `<div><h3>Cómo se hace</h3><ol class="pasos">${e.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>` : ""}
     ${e.errores?.length ? `<div><h3>Ojo con</h3><ul class="pasos">${e.errores.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>` : ""}
     ${e.nota ? `<p class="nota">${esc(e.nota)}</p>` : ""}
-    <p class="small muted" style="margin:0">Pauta habitual: ${pauta(e)} · descanso ${descansoDe(e)} s</p>
-    <div><h3>Tu historial</h3>${ses.length ? `<div class="historial">${ses.slice(0, 6).map(({ k, x }) => `<div class="hist"><span>${fechaCorta(deClave(k))}${variantes(e).length > 1 ? ` · ${esc(variante(e, x.v).n)}` : ""}</span><span class="num">${esc(textoSeries(e, x))}</span></div>`).join("")}</div>` : `<p class="muted small" style="margin:0">Aún no lo has hecho.</p>`}</div>
+    <div><h3>Tu historial</h3>${ses.length ? `<div class="historial">${ses.slice(0, 6).map(({ k, x }) => `<div class="hist"><span>${fechaCorta(deClave(k))}${vs.length > 1 ? ` · ${esc(variante(e, x.v).n)}` : ""}</span><span class="num">${esc(textoSeries(e, x))}</span></div>`).join("")}</div>` : `<p class="muted small" style="margin:0">Aún no lo has hecho.</p>`}</div>
     <a class="enlace" href="https://www.youtube.com/results?search_query=${encodeURIComponent(e.nombre + " técnica gimnasio")}" target="_blank" rel="noopener">Ver vídeos de la técnica en YouTube ↗</a>
     ${e.propio ? `<p class="small muted" style="margin:0">Ejercicio creado por ti.${ses.length ? "" : ` <button class="enlace" data-borrarpropio="${id}">Borrar ejercicio</button>`}</p>` : ""}`;
 }
 
-/* ---------- Vista: Ejercicios ---------- */
-const Lib = { q: "", zona: "" };
+/* ---------- Hoja: ficha de una máquina o material ---------- */
+function hojaAparato(ap) {
+  const a = AP[ap]; if (!a) return "";
+  const lista = ejerciciosCon(ap);
+  return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(TIPO_AP[a.tipo])}</span><h2>${esc(a.nombre)}</h2></div>${botonCerrar}</div>
+    ${htmlFoto(ap, a.nombre)}
+    ${a.nota ? `<p class="nota">${esc(a.nota)}</p>` : ""}
+    <label class="campo" for="notaAp"><b style="color:var(--ink)">Notas de la máquina</b><span class="small muted">Dónde está en la sala, número, peculiaridades…</span>
+      <textarea id="notaAp" data-notaap="${ap}" rows="2" class="area">${esc(Datos.ajustes.notasAp?.[ap] || "")}</textarea></label>
+    <div><h3>Ejercicios con ${lista.length === 1 ? "esta máquina" : `esta máquina (${lista.length})`}</h3><div class="lista">${htmlLista(lista, "ayuda")}</div></div>`;
+}
+
+/* ---------- Vista: Ejercicios y máquinas ---------- */
+const Lib = { vista: "ejercicios", q: "", musc: "", mat: "" };
 function pintarEjercicios() {
-  $("#vista").innerHTML = `<div class="wrap" style="padding:0"><section class="card">
+  const seg = `<div class="seg" role="tablist" aria-label="Ver">
+    <button role="tab" data-libvista="ejercicios" aria-selected="${Lib.vista === "ejercicios"}">Ejercicios</button>
+    <button role="tab" data-libvista="maquinas" aria-selected="${Lib.vista === "maquinas"}">Máquinas</button></div>`;
+  if (Lib.vista === "maquinas") {
+    const conFoto = APARATOS.filter(a => Fotos.url[a.id]).length;
+    $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}<section class="card">
+      <h2>Máquinas y material</h2>
+      <p class="small muted" style="margin:0">Una foto por máquina sirve para todos los ejercicios que la usan. Llevas <b>${conFoto} de ${APARATOS.length}</b>.</p>
+      ${TIPOS_APARATO.map(([t, n]) => `<div><p class="eyebrow" style="margin:10px 0 0">${n}</p><div class="lista">${APARATOS.filter(a => a.tipo === t).map(a => {
+        const k = ejerciciosCon(a.id).length;
+        return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? "" : " · sin foto"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
+      }).join("")}</div></div>`).join("")}
+    </section></div>`;
+    return;
+  }
+  $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}<section class="card">
     <h2>Ejercicios</h2>
-    <p class="small muted" style="margin:0">Toca uno para ver cómo se hace, ponerle la foto de la máquina y apuntar cómo la ajustas.</p>
-    <input id="buscarEj" class="texto" type="search" placeholder="Buscar: prensa, polea, hombro…" value="${esc(Lib.q)}" autocomplete="off">
-    ${htmlZonas(Lib.zona, "zonalib")}
+    <p class="small muted" style="margin:0">Elige músculo y material para ver con qué puedes trabajarlo. Toca uno para ver cómo se hace.</p>
+    <input id="buscarEj" class="texto" type="search" placeholder="Buscar: prensa, polea, isquios…" value="${esc(Lib.q)}" autocomplete="off">
+    ${htmlFiltros(Lib, "lib")}
     <div id="listaLib" class="lista">${htmlLista(filtrar(Lib), "ayuda")}</div>
     <button class="btn sec" data-crearlib>Crear ejercicio nuevo</button>
   </section></div>`;
@@ -595,8 +671,7 @@ function pintarAjustes() {
     return pe && cat(id) ? `<div class="hist"><span>${esc(dia.nombre)}: ${esc(pe.nombre)} → <b>${esc(cat(id).nombre)}</b></span><button class="enlace" data-deshacersust="${slot}">Deshacer</button></div>` : "";
   }).join("");
   $("#vista").innerHTML = `<div class="wrap" style="padding:0">
-    <section class="card"><label class="campo" for="nombre" style="font-size:1rem;color:var(--ink)"><b>Nombre</b></label>
-      <input id="nombre" value="${esc(a.nombre)}" placeholder="${esc(PERFIL.nombre)}" class="texto"></section>
+    ${htmlPerfil()}
     <section class="card"><h2>Entrenamiento</h2>
       <div class="campos">
         <label class="campo">Objetivo semanal<select id="aj-objetivo">${opciones([2, 3, 4, 5, 6], a.objetivo, " días")}</select></label>
@@ -628,20 +703,65 @@ function pintarAjustes() {
   </div>`;
 }
 
+/* ---------- Frase del día ---------- */
+const FRASES = [
+  "{n}, hoy se entrena. Mañana se nota.", "La constancia gana a la motivación, {n}. Y tú tienes las dos.",
+  "{n}, una repetición más que la última vez. Ese es todo el juego.", "Hoy no hay excusas, {n}: hay series.",
+  "Lo que cuesta, cuenta, {n}.", "{n}, técnica primero, kilos después.",
+  "El progreso es lento hasta que de repente se nota, {n}.", "{n}, cuarenta y cinco minutos bien hechos valen más que dos horas a medias.",
+  "Entrena hoy para el {n} de dentro de un año.", "{n}, la disciplina es ir también los días que no apetece.",
+  "Agua, música y a darle, {n}.", "{n}, cada kilo que subes te lo has ganado tú.",
+  "Hoy toca superar una marca, {n}. Aunque sea por una repetición.", "{n}, no busques motivación: busca la costumbre.",
+  "Menos pensar y más empujar, {n}.", "{n}, el sofá puede esperar.",
+  "Tus rodillas, tu espalda y tu yo del futuro te lo agradecen, {n}.", "{n}, entrena con cabeza y descansa con ganas.",
+  "Paso a paso, semana a semana, {n}.", "{n}, hoy el que manda eres tú, no la pereza.",
+];
+function motivacion() {
+  const n = nombreVisible(), d = Datos.dias[HOY];
+  const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal;
+  const sem = resumenSemanas(1)[0], hechos = sem.gym + sem.soloDeporte;
+  const ultimo = Object.keys(Datos.dias).filter(k => k < HOY && diaActivo(Datos.dias[k])).sort().pop();
+  const sinEntrenar = ultimo ? Math.round((deClave(HOY) - deClave(ultimo)) / 864e5) : 0;
+  const racha = rachaSemanas();
+  if (diaActivo(d)) return hechos >= obj ? `¡Hecho, ${n}! Objetivo de la semana cumplido. Ahora toca descansar.` : `¡Sesión hecha, ${n}! Agua, buena comida y a descansar.`;
+  if (sinEntrenar >= 4) return `${n}, llevas ${sinEntrenar} días sin entrenar. Hoy es un buen día para volver.`;
+  if (hechos >= obj) return `${n}, ya has cumplido el objetivo de la semana. Lo que hagas hoy es extra.`;
+  if (racha >= 2 && new Date().getDay() === 1) return `${n}, ${racha} semanas seguidas cumpliendo. ¡A por otra!`;
+  if (DIA[d?.diaPlan]?.rodilla) return fraseDelDia([`${n}, hoy toca pierna. Ni se te ocurra saltártela.`, `Día de pierna, ${n}: control, recorrido cómodo y a por ello.`]);
+  return fraseDelDia(FRASES);
+}
+
 /* ---------- Eventos ---------- */
 window.App = {
   pestañas: [["hoy", "Hoy"], ["progreso", "Progreso"], ["ejercicios", "Ejercicios"], ["ajustes", "Ajustes"]],
-  ajustesIniciales: { nombre: "", objetivo: P.objetivoSemanal, incremento: 2.5, descansos: { ...P.descansos }, sonido: true, vibracion: true, propios: [], sustituciones: {}, notasEj: {} },
+  ajustesIniciales: { nombre: "", objetivo: P.objetivoSemanal, incremento: 2.5, descansos: { ...P.descansos }, sonido: true, vibracion: true, propios: [], sustituciones: {}, notasEj: {}, notasAp: {} },
   vistas: { hoy: pintarHoy, progreso: pintarProgreso, ejercicios: pintarEjercicios, ajustes: pintarAjustes },
-  alCerrarHoja() { Sel = null; },
+  motivacion,
+  alCerrarHoja() { Sel = null; Hoja = null; },
+  // Las fotos de la versión anterior iban por ejercicio: pasan a la máquina que usa (si no tiene ya).
+  async alCargarFotos() {
+    let n = 0;
+    for (const k of Object.keys(Fotos.url)) {
+      if (AP[k]) continue;
+      const ap = cat(k)?.variantes?.[0]?.ap;
+      if (ap && !Fotos.url[ap]) { try { if (await Fotos.mover(k, ap)) n++; } catch (e) {} }
+    }
+    return n;
+  },
   click(b) {
     const d = diaDe(HOY), a = Datos.ajustes, ds = b.dataset;
     /* Hojas: no repintan la vista de detrás salvo que cambien datos. */
-    if (ds.ayuda) { abrirHoja(hojaAyuda(ds.ayuda)); return false; }
-    if (ds.cambiar) { const h = huecos(d).find(x => x.slot === ds.cambiar); Sel = { modo: "cambiar", slot: ds.cambiar, q: "", zona: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
-    if ("anadir" in ds) { Sel = { modo: "anadir", q: "", zona: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
-    if ("crearlib" in ds) { Sel = { modo: "explorar", q: "", zona: Lib.zona, paso: "crear" }; abrirHoja(hojaSelector()); return false; }
-    if ("zonasel" in ds) { Sel.zona = ds.zonasel; abrirHoja(hojaSelector()); verZona(); return false; }
+    if (ds.ayuda) { abrirAyuda(ds.ayuda); return false; }
+    if (ds.aparato) { abrirAparato(ds.aparato); return false; }
+    if (ds.cambiar) { Sel = { modo: "cambiar", slot: ds.cambiar, q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
+    if ("anadir" in ds) { Sel = { modo: "anadir", q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
+    if ("crearlib" in ds) { Sel = { modo: "explorar", q: "", musc: Lib.musc, mat: Lib.mat, paso: "crear" }; abrirHoja(hojaSelector()); return false; }
+    if (ds.filtro !== undefined) {
+      const [k, v] = ds.filtro.split("|");
+      if (ds.para === "sel") { Sel[k] = v; abrirHoja(hojaSelector()); verZona(); return false; }
+      Lib[k] = v; return;
+    }
+    if (ds.libvista) { Lib.vista = ds.libvista; return; }
     if ("crear" in ds) { Sel.paso = "crear"; abrirHoja(hojaSelector()); return false; }
     if ("volversel" in ds) { Sel.paso = "lista"; abrirHoja(hojaSelector()); return false; }
     if (ds.elegir) {
@@ -657,11 +777,10 @@ window.App = {
       const id = crearPropio(); if (!id) return false;
       if (Sel.modo === "cambiar") { Sel.elegido = id; Sel.paso = "confirmar"; abrirHoja(hojaSelector()); return; }
       if (Sel.modo === "anadir") { añadirExtra(d, id); cerrarHoja(); return; }
-      Sel = null; abrirHoja(hojaAyuda(id)); return;
+      Sel = null; abrirAyuda(id); return;
     }
-    if (ds.borrarfoto) { Fotos.borrar(ds.borrarfoto).then(() => { abrirHoja(hojaAyuda(ds.borrarfoto)); repintar(); }); return false; }
+    if (ds.borrarfoto) { Fotos.borrar(ds.borrarfoto).then(() => { refrescarHoja(); repintar(); }); return false; }
     if (ds.borrarpropio) { a.propios = propios().filter(e => e.id !== ds.borrarpropio); Datos.guardarAjustes(); cerrarHoja(); return; }
-    if ("zonalib" in ds) { Lib.zona = ds.zonalib; return; }
     if (ds.deshacersust) { delete a.sustituciones[ds.deshacersust]; Datos.guardarAjustes(); return; }
 
     /* Sesión de hoy */
@@ -704,12 +823,13 @@ window.App = {
   cambio(t) {
     const d = diaDe(HOY), a = Datos.ajustes;
     if (t.dataset.foto) {
-      const id = t.dataset.foto, f = t.files[0]; if (!f) return;
+      const clave = t.dataset.foto, f = t.files[0]; if (!f) return;
       $("#msgFoto").textContent = "Guardando foto…";
-      reducirFoto(f).then(b => Fotos.guardar(id, b)).then(() => { abrirHoja(hojaAyuda(id)); repintar(); })
+      reducirFoto(f).then(b => Fotos.guardar(clave, b)).then(() => { refrescarHoja(); repintar(); })
         .catch(err => { const m = $("#msgFoto"); if (m) { m.textContent = `No se pudo guardar la foto: ${err.message}`; m.style.color = "var(--warn)"; } });
     }
     else if (t.dataset.notaej) { a.notasEj = { ...a.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
+    else if (t.dataset.notaap) { a.notasAp = { ...a.notasAp, [t.dataset.notaap]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
     else if (t.dataset.serie) { const [id, i] = t.dataset.serie.split("|"); d.ej[id].series[Number(i)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
     else if (t.dataset.calent) { d.calent = d.calent || []; d.calent[Number(t.dataset.calent)] = t.checked; if (t.checked) actividad(d); tocar(HOY); repintar(); }
     else if (t.id === "nota") { d.nota = t.value; tocar(HOY); }

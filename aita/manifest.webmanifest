@@ -1,11 +1,11 @@
 {
-  "name": "Aita · Cuaderno de Fuerza",
+  "name": "Manolo · Cuaderno de Fuerza",
   "short_name": "Aita",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#F3F5F2",
-  "theme_color": "#1E6B57",
+  "background_color": "#EEF1F6",
+  "theme_color": "#0F1A33",
   "lang": "es",
   "icons": [
     {

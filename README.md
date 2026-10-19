@@ -5,7 +5,7 @@ guarda sus datos en el navegador del móvil donde se usa (con copia de seguridad
 
 | Página | Para | Motor |
 |---|---|---|
-| [`aita/`](https://jonmg.github.io/cuaderno-gimnasio/aita/) | Aita | Recuperación: sesión suave y variada cada día, paseos, señales de alarma |
+| [`aita/`](https://jonmg.github.io/cuaderno-gimnasio/aita/) | Manolo (Aita) | Recuperación: sesión suave y variada cada día, paseos, señales de alarma |
 | [`jon/`](https://jonmg.github.io/cuaderno-gimnasio/jon/) | Jon | Rutina de 3 días (`planes/rutina-3dias.js`) |
 | [`mikel/`](https://jonmg.github.io/cuaderno-gimnasio/mikel/) | Mikel | Rutina de 3 días (el mismo plan) |
 
@@ -47,13 +47,32 @@ usen la versión en caché.
 - **Cambiar ejercicio**: en cada ejercicio del día, elige otro del catálogo (o créalo). Puede ser
   *solo hoy* o *siempre en ese día del plan* (se deshace en Ajustes). Se registra con el nombre
   del ejercicio que de verdad se hizo, con su propio historial y su propia progresión.
+- **Con qué lo haces**: cada ejercicio tiene variantes según la máquina o el material
+  (curl de bíceps con barra, mancuernas, barra Z, polea o máquina; curl femoral sentado,
+  tumbado o con fitball…). Cada variante lleva su propio historial.
 - **Añadir / quitar**: añadir ejercicios extra al día, quitar uno solo hoy, o hacer un
   *Entreno libre* empezando de cero.
-- **Catálogo** (`comun/catalogo.js`): unos 75 ejercicios por zona, con cómo se hace y errores
-  típicos. Para añadir uno para todos, edítalo ahí; cada persona puede crear los suyos en la app.
-- **Ayuda (?)**: ficha de cada ejercicio con foto de la máquina (cámara o galería), cómo la
-  ajustas (asiento, agarre…), pasos, historial y enlace a vídeos. Las fotos se guardan en el
-  móvil (IndexedDB), reducidas a ~1000 px, y no van en la copia de seguridad.
+- **Buscador por músculo y material**: en la pestaña Ejercicios y al cambiar o añadir.
+
+## Catálogo (`comun/catalogo.js`)
+
+- **Músculos**: cada ejercicio indica los que trabaja; el primero es el principal y es el que
+  sale resaltado en el icono (`comun/iconos.js`, figura de frente o de espaldas).
+- **Aparatos**: las máquinas y el material de una sala tipo VivaGym (máquinas guiadas, poleas,
+  peso libre, bancos, funcional y cardio). **La foto es de la máquina**, no del ejercicio: una
+  foto de las mancuernas sirve para todos los ejercicios con mancuernas. Se hacen desde la ficha
+  (?) de cualquier ejercicio o desde Ejercicios → Máquinas. Las fotos se guardan en el móvil
+  (IndexedDB), reducidas a ~1000 px, y no van en la copia de seguridad.
+- **Ejercicios**: con sus variantes (`[nombre, aparato]`), pauta por defecto, pasos y errores
+  típicos. Las variantes nuevas se añaden siempre al final: el historial guarda su posición.
+  Los que pasaron a ser variante de otro quedan con `oculto: true` para no perder su historial.
+
+## Personalización
+
+- Saludo según la hora y una **frase del día** con el nombre (distinta cada día, la misma todo
+  el día). Cambia según el contexto: sesión hecha, objetivo semanal cumplido, varios días sin
+  entrenar, día de pierna…
+- Nombre y gimnasio en `window.PERFIL` de cada página; se pueden cambiar en Ajustes → Perfil.
 
 ## Publicar
 
