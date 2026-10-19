@@ -18,6 +18,7 @@ app de Aita (que vivía en la raíz), salta directamente a `aita/` y los recuper
 comun/base.js         núcleo: datos por persona, pestañas, copia de seguridad, gráficos
 comun/recuperacion.js motor de Aita
 comun/rutina.js       motor de rutina fija: series, doble progresión, descansos, deporte, rodilla
+comun/compartir.js    fotos compartidas: enviar, importar y proponer como pull request
 comun/estilos.css
 planes/rutina-3dias.js  el plan de Jon y Mikel, editable como datos
 <persona>/index.html  define window.PERFIL (nombre, clave de almacenamiento, motor)
@@ -66,6 +67,21 @@ usen la versión en caché.
 - **Ejercicios**: con sus variantes (`[nombre, aparato]`), pauta por defecto, pasos y errores
   típicos. Las variantes nuevas se añaden siempre al final: el historial guarda su posición.
   Los que pasaron a ser variante de otro quedan con `oculto: true` para no perder su historial.
+
+## Fotos compartidas del gimnasio
+
+Las fotos de las máquinas se hacen una vez por gimnasio y las ve todo el mundo:
+
+- Viven en `fotos/<gimnasio>/<máquina>.jpg` (ver [`fotos/README.md`](fotos/README.md) con los nombres).
+- La app pide la lista de archivos a la API pública de GitHub (sin cuenta, como mucho una vez
+  por hora, con copia en el móvil) y enseña esas fotos. La foto propia de cada uno manda en su móvil.
+- **Para añadir fotos** (Ejercicios → Máquinas → *Compartir mis fotos*):
+  - Con GitHub conectado (Ajustes → Fotos del gimnasio → token *fine-grained* con permisos de
+    Contents y Pull requests solo sobre este repositorio): *Proponer en GitHub* abre un pull
+    request. Al aceptarlo, en un par de minutos las ven todos.
+  - Sin GitHub: *Enviar* genera un archivo con las fotos para mandarlo por WhatsApp (como
+    documento) o correo; quien tiene GitHub lo importa en su app y lo propone.
+  - O subiéndolas a mano en GitHub con el nombre de la tabla.
 
 ## Personalización
 

@@ -43,7 +43,7 @@ const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === a
 // Clave de la foto de una variante: la del aparato (compartida); si no tiene, la del ejercicio.
 const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
 // Miniatura de un aparato: su foto si la hay; si no, el icono de su tipo.
-const fotoAp = (ap, clase = "ap-chip") => Fotos.url[ap] ? `<img class="${clase}" src="${Fotos.url[ap]}" alt="">` : `<span class="${clase} sin-foto">${iconoAparato(AP[ap]?.tipo)}</span>`;
+const fotoAp = (ap, clase = "ap-chip") => urlFoto(ap) ? `<img class="${clase}" src="${urlFoto(ap)}" alt="" onerror="this.style.visibility='hidden'">` : `<span class="${clase} sin-foto">${iconoAparato(AP[ap]?.tipo)}</span>`;
 const enElPlan = new Set(P.dias.flatMap(d => d.ejercicios.map(e => e.id)));
 
 /* ---------- Pauta ---------- */
@@ -477,7 +477,6 @@ function pintarProgreso() {
 }
 
 /* ---------- Listas de ejercicios (buscador y filtros) ---------- */
-const sinAcentos = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 // El filtro de músculo mira el principal: "Bíceps" da curls, no jalones.
 function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [] }) {
   const t = sinAcentos(q).trim();
@@ -515,7 +514,11 @@ let Sel = null;          // cambiar / añadir / crear ejercicio
 let Hoja = null;         // qué ficha está abierta, para refrescarla tras una foto
 function abrirAyuda(id) { Hoja = { tipo: "ayuda", id }; abrirHoja(hojaAyuda(id)); }
 function abrirAparato(ap) { Hoja = { tipo: "aparato", id: ap }; abrirHoja(hojaAparato(ap)); }
-function refrescarHoja() { if (Hoja?.tipo === "ayuda") abrirHoja(hojaAyuda(Hoja.id)); else if (Hoja?.tipo === "aparato") abrirHoja(hojaAparato(Hoja.id)); }
+function refrescarHoja() {
+  if (Hoja?.tipo === "ayuda") abrirHoja(hojaAyuda(Hoja.id));
+  else if (Hoja?.tipo === "aparato") abrirHoja(hojaAparato(Hoja.id));
+  else if (Hoja?.tipo === "compartir") abrirHoja(Compartir.html());
+}
 
 function hojaSelector() {
   const d = Datos.dias[HOY];
@@ -584,14 +587,17 @@ function crearPropio() {
 function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaPlan) d.diaPlan = "libre"; tocar(HOY); }
 
 // Bloque de foto con sus botones (cámara y galería). La clave es el aparato o el ejercicio.
+// La foto que se ve es la propia si la hay; si no, la compartida del gimnasio.
 function htmlFoto(clave, titulo) {
-  const foto = Fotos.url[clave];
-  return `<div class="foto-grande">${foto ? `<img src="${foto}" alt="Foto de ${esc(titulo)}">` : `<p>${iconoUI("camara", "ui-icono grande")}<br>Haz una foto de ${esc(titulo)} para reconocerla a la primera.</p>`}</div>
+  const propia = Fotos.url[clave], comp = FotosGym.url[clave], foto = propia || comp;
+  const origen = propia ? (comp ? "Tu foto (hay otra del gimnasio)" : "Tu foto · solo en este móvil") : comp ? `Foto del gimnasio · ${esc(gimnasio())}` : "";
+  return `<div class="foto-grande">${foto ? `<img src="${foto}" alt="Foto de ${esc(titulo)}">${origen ? `<span class="foto-origen">${origen}</span>` : ""}` : `<p>${iconoUI("camara", "ui-icono grande")}<br>Haz una foto de ${esc(titulo)} para reconocerla a la primera.</p>`}</div>
     <div class="fila">
-      <label class="btn peq">${iconoUI("camara")}Hacer foto<input type="file" accept="image/*" capture="environment" data-foto="${clave}" hidden></label>
+      <label class="btn peq">${iconoUI("camara")}${comp && !propia ? "Hacer otra foto" : "Hacer foto"}<input type="file" accept="image/*" capture="environment" data-foto="${clave}" hidden></label>
       <label class="btn sec peq">Elegir de la galería<input type="file" accept="image/*" data-foto="${clave}" hidden></label>
-      ${foto ? `<button class="enlace" data-borrarfoto="${clave}">Quitar foto</button>` : ""}
+      ${propia ? `<button class="enlace" data-borrarfoto="${clave}">${comp ? "Quitar la mía" : "Quitar foto"}</button>` : ""}
     </div>
+    ${propia && AP[clave] ? `<button class="btn sec peq" data-compartir="${clave}" style="justify-self:start">Compartir con el gimnasio</button>` : ""}
     <p class="small" id="msgFoto" role="status" style="margin:0"></p>`;
 }
 
@@ -610,7 +616,7 @@ function hojaAyuda(id) {
     <div><h3>${va.ap ? esc(AP[va.ap]?.nombre) : "Foto"}</h3>${vs.length > 1 ? `<p class="small muted" style="margin:0 0 6px">Variante: ${esc(va.n)}</p>` : ""}</div>
     ${htmlFoto(clave, va.ap ? AP[va.ap]?.nombre : e.nombre)}
     ${va.ap ? `<p class="small muted" style="margin:0">La foto es de la máquina: sale en todos los ejercicios que la usan.</p>` : ""}
-    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !Fotos.url[v.ap] ? " · sin foto" : ""}</span></span></button>`).join("")}</div></div>` : ""}
+    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !urlFoto(v.ap) ? " · sin foto" : ""}</span></span></button>`).join("")}</div></div>` : ""}
     <label class="campo" for="notaEj"><b style="color:var(--ink)">Cómo ajusto la máquina</b><span class="small muted">Asiento, respaldo, agarre, número de máquina… Se ve en el ejercicio.</span>
       <textarea id="notaEj" data-notaej="${id}" rows="2" class="area">${esc(Datos.ajustes.notasEj?.[id] || "")}</textarea></label>
     ${e.pasos?.length ? `<div><h3>Cómo se hace</h3><ol class="pasos">${e.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>` : ""}
@@ -628,6 +634,7 @@ function hojaAparato(ap) {
   return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(TIPO_AP[a.tipo])}</span><h2>${esc(a.nombre)}</h2></div>${botonCerrar}</div>
     ${htmlFoto(ap, a.nombre)}
     ${a.nota ? `<p class="nota">${esc(a.nota)}</p>` : ""}
+    <p class="small muted" style="margin:0">Archivo en el repositorio: <code>fotos/${slugGym()}/${ap}.jpg</code></p>
     <label class="campo" for="notaAp"><b style="color:var(--ink)">Notas de la máquina</b><span class="small muted">Dónde está en la sala, número, peculiaridades…</span>
       <textarea id="notaAp" data-notaap="${ap}" rows="2" class="area">${esc(Datos.ajustes.notasAp?.[ap] || "")}</textarea></label>
     <div><h3>Ejercicios con ${lista.length === 1 ? "esta máquina" : `esta máquina (${lista.length})`}</h3><div class="lista">${htmlLista(lista, "ayuda")}</div></div>`;
@@ -640,13 +647,20 @@ function pintarEjercicios() {
     <button role="tab" data-libvista="ejercicios" aria-selected="${Lib.vista === "ejercicios"}">Ejercicios</button>
     <button role="tab" data-libvista="maquinas" aria-selected="${Lib.vista === "maquinas"}">Máquinas</button></div>`;
   if (Lib.vista === "maquinas") {
-    const conFoto = APARATOS.filter(a => Fotos.url[a.id]).length;
-    $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}<section class="card">
+    const delGym = APARATOS.filter(a => FotosGym.url[a.id]).length, propias = Compartir.pendientes(), mias = propias.filter(ap => !FotosGym.url[ap]).length;
+    $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}
+    <section class="card" aria-labelledby="t-fotosgym">
+      <h2 id="t-fotosgym">Fotos del gimnasio</h2>
+      <p class="small muted" style="margin:0">${esc(gimnasio())}: <b>${delGym} de ${APARATOS.length}</b> máquinas con foto compartida. ${mias ? `Tienes <b>${mias}</b> foto${mias > 1 ? "s" : ""} nueva${mias > 1 ? "s" : ""} sin compartir.` : "Las fotos que hagas se pueden compartir para que las vean todos."}</p>
+      ${FotosGym.error ? `<p class="small" style="margin:0;color:var(--warn)">No se pudo actualizar la lista: ${esc(FotosGym.error)}.</p>` : ""}
+      <div class="fila">${propias.length ? `<button class="btn ${mias ? "" : "sec "}peq" data-abrircompartir>Compartir mis fotos</button>` : ""}<button class="btn sec peq" data-actualizarfotos>Actualizar</button></div>
+    </section>
+    <section class="card">
       <h2>Máquinas y material</h2>
-      <p class="small muted" style="margin:0">Una foto por máquina sirve para todos los ejercicios que la usan. Llevas <b>${conFoto} de ${APARATOS.length}</b>.</p>
+      <p class="small muted" style="margin:0">Una foto por máquina sirve para todos los ejercicios que la usan.</p>
       ${TIPOS_APARATO.map(([t, n]) => `<div><p class="eyebrow" style="margin:10px 0 0">${n}</p><div class="lista">${APARATOS.filter(a => a.tipo === t).map(a => {
         const k = ejerciciosCon(a.id).length;
-        return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? "" : " · sin foto"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
+        return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? " · tu foto" : FotosGym.url[a.id] ? "" : " · sin foto"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
       }).join("")}</div></div>`).join("")}
     </section></div>`;
     return;
@@ -697,8 +711,9 @@ function pintarAjustes() {
     <section class="card"><h2>Cambios fijos en tu plan</h2>
       ${sust ? `<div class="historial">${sust}</div>` : `<p class="muted small" style="margin:0">Ninguno. En cada ejercicio, "Cambiar ejercicio" permite cambiarlo solo hoy o siempre.</p>`}
     </section>
+    ${Compartir.htmlAjustes()}
     ${htmlCopia()}
-    <p class="muted small" style="margin:0">Las fotos de las máquinas se guardan en este móvil y no van en la copia de seguridad.</p>
+    <p class="muted small" style="margin:0">Tus fotos de las máquinas se guardan en este móvil y no van en la copia de seguridad: compártelas con el gimnasio para no perderlas.</p>
     <section class="card"><h2>Importante</h2><p class="muted small" style="margin:0">La app propone; tú decides. Si un ejercicio molesta, baja el peso o cámbialo, y ante dolor de rodilla que se repite, consulta con tu fisio antes de seguir subiendo.</p></section>
   </div>`;
 }
@@ -750,6 +765,7 @@ window.App = {
   },
   click(b) {
     const d = diaDe(HOY), a = Datos.ajustes, ds = b.dataset;
+    const c = Compartir.click(b); if (c !== undefined) return c;
     /* Hojas: no repintan la vista de detrás salvo que cambien datos. */
     if (ds.ayuda) { abrirAyuda(ds.ayuda); return false; }
     if (ds.aparato) { abrirAparato(ds.aparato); return false; }
@@ -822,6 +838,7 @@ window.App = {
   },
   cambio(t) {
     const d = diaDe(HOY), a = Datos.ajustes;
+    if (Compartir.cambio(t)) return;
     if (t.dataset.foto) {
       const clave = t.dataset.foto, f = t.files[0]; if (!f) return;
       $("#msgFoto").textContent = "Guardando foto…";

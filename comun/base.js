@@ -20,6 +20,7 @@ function lunesDe(d) { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay(
 function azar(semilla) { let h = 2166136261; for (const c of semilla) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return () => { h ^= h << 13; h ^= h >>> 17; h ^= h << 5; return ((h >>> 0) % 10000) / 10000; }; }
 const HOY = claveFecha(new Date());
 const SVG_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const sinAcentos = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const num = v => (v === "" || v == null || isNaN(Number(v))) ? null : Number(v);
 const fmt = v => String(Math.round(Number(v) * 10) / 10).replace(".", ",");
 // En los ejes, los miles abreviados: 7381 -> "7,4k".
@@ -89,7 +90,7 @@ function montar() {
   document.addEventListener("change", ev => {
     const t = ev.target;
     if (t.id === "importarFichero") { if (t.files[0]) t.files[0].text().then(restaurar); return; }
-    if (t.id === "gimnasio") { Datos.ajustes.gimnasio = t.value.trim(); Datos.guardarAjustes(); pintar(); return; }
+    if (t.id === "gimnasio") { Datos.ajustes.gimnasio = t.value.trim(); Datos.guardarAjustes(); pintar(); FotosGym.cargar(true).then(() => repintar()); return; }
     App.cambio(t);
   });
   document.addEventListener("input", ev => App.entrada?.(ev.target));
@@ -97,6 +98,7 @@ function montar() {
   Fotos.cargar().then(async n => { if (App.alCargarFotos) n += await App.alCargarFotos(); if (n) repintar(); });
 
   Datos.cargar(App.ajustesIniciales);
+  FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
   try { const t = localStorage.getItem(PERFIL.clave + "-tab"); if (PESTAÑAS.some(p => p[0] === t)) pestaña = t; } catch (e) {}
   pintar();
 }
@@ -298,6 +300,43 @@ const Fotos = {
     return true;
   },
 };
+/* ---------- Fotos compartidas del gimnasio ----------
+   Viven en el repositorio, en fotos/<gimnasio>/<máquina>.jpg, y las ve todo el que use la app
+   en ese gimnasio. La lista de archivos se pide a la API pública de GitHub (sin cuenta) como
+   mucho una vez por hora y se guarda en el móvil por si no hay conexión. Las imágenes se
+   sirven desde la propia web. La foto propia de cada uno manda sobre la compartida. */
+const REPO = window.REPO || "Jonmg/cuaderno-gimnasio";
+const slugGym = () => sinAcentos(gimnasio()).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "general";
+const EXT_FOTO = /\.(jpe?g|png|webp)$/i;
+const FotosGym = {
+  url: {}, archivos: {}, actualizado: 0, error: "",
+  clave: () => `cuaderno-fotos-gym-${slugGym()}`,
+  aplicar(archivos) {
+    this.archivos = archivos; this.url = {};
+    for (const [nombre, sha] of Object.entries(archivos)) this.url[nombre.replace(EXT_FOTO, "")] = `../fotos/${slugGym()}/${encodeURIComponent(nombre)}?v=${String(sha).slice(0, 8)}`;
+  },
+  // Devuelve true si la lista ha cambiado (para repintar).
+  async cargar(forzar = false) {
+    let cache = null;
+    try { cache = JSON.parse(localStorage.getItem(this.clave()) || "null"); } catch (e) {}
+    this.aplicar(cache?.archivos || {}); this.actualizado = cache?.t || 0;
+    if (!forzar && cache && Date.now() - cache.t < 60 * 60e3) return false;
+    try {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/contents/fotos/${slugGym()}`, { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" });
+      if (!r.ok && r.status !== 404) throw new Error(r.status === 403 ? "GitHub ha limitado las consultas; se reintentará más tarde" : `GitHub respondió ${r.status}`);
+      const lista = r.ok ? await r.json() : [];
+      const archivos = {};
+      for (const f of Array.isArray(lista) ? lista : []) if (f.type === "file" && EXT_FOTO.test(f.name)) archivos[f.name] = f.sha;
+      const cambio = JSON.stringify(archivos) !== JSON.stringify(cache?.archivos || {});
+      this.aplicar(archivos); this.actualizado = Date.now(); this.error = "";
+      try { localStorage.setItem(this.clave(), JSON.stringify({ t: this.actualizado, archivos })); } catch (e) {}
+      return cambio;
+    } catch (e) { this.error = e.message || "Sin conexión"; return false; }
+  },
+};
+// Foto que se ve: la propia si la hay; si no, la del gimnasio.
+const urlFoto = clave => Fotos.url[clave] || FotosGym.url[clave];
+
 // Reduce la foto a 1000 px de lado mayor en JPEG: unos 100–200 KB en vez de varios MB.
 function reducirFoto(file, max = 1000) {
   return new Promise((ok, mal) => {
