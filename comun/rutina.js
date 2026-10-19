@@ -45,7 +45,8 @@ const enElPlan = new Set(P.dias.flatMap(d => d.ejercicios.map(e => e.id)));
 /* ---------- Lo que hay en el lugar ----------
    Con un lugar de pocas máquinas (LUGARES[…].aparatos) solo se proponen las variantes que se
    pueden hacer allí, y el ejercicio del plan que no se puede hacer se cambia solo por otro del
-   mismo músculo. */
+   mismo músculo. El registro es uno solo: la última vez, la progresión, los récords y la semana
+   cuentan igual entrene donde entrene. */
 const disponible = v => !v?.ap || hayAparato(v.ap);
 const sePuedeAqui = e => !!e && variantes(e).some(disponible);
 const primeraAqui = e => Math.max(0, variantes(e).findIndex(disponible));
@@ -53,12 +54,6 @@ function alternativa(e, evitar) {
   const mismo = c => c.m[0] === e.m[0] ? 2 : c.m.includes(e.m[0]) ? 1 : 0;
   const puntos = c => mismo(c) * 4 + (c.tipo === e.tipo ? 2 : 0) + ((c.unidad || "") === (e.unidad || "") && !!c.sinPeso === !!e.sinPeso ? 1 : 0);
   return todos().filter(c => !evitar.has(c.id) && mismo(c) && sePuedeAqui(c)).sort((a, b) => puntos(b) - puntos(a))[0] || null;
-}
-// Las máquinas no se comparan entre gimnasios (cada una pesa distinto); el peso libre, sí.
-const TIPOS_DEL_SITIO = ["maquina", "discos", "polea", "cardio"];
-function mismoSitio(id, v, k) {
-  const ap = variante(cat(id) || {}, v)?.ap;
-  return lugares().length < 2 || !TIPOS_DEL_SITIO.includes(AP[ap]?.tipo) || lugarDe(k) === lugarId();
 }
 
 /* ---------- Pauta ---------- */
@@ -131,7 +126,7 @@ const empezado = (d, id) => !!d.ej?.[id]?.series.some(s => s.hecho);
 function ultimaVez(id, v, antes) {
   for (const k of Object.keys(Datos.dias).filter(k => k < antes).sort().reverse()) {
     const x = Datos.dias[k].ej?.[id];
-    if (x && x.v === v && x.series.some(s => s.hecho) && mismoSitio(id, v, k)) return { k, x };
+    if (x && x.v === v && x.series.some(s => s.hecho)) return { k, x };
   }
   return null;
 }
@@ -279,7 +274,7 @@ function celebrarSerie(d, e, x, s, antes) {
     if (dias == null) msgs.push(`💪 ¡Primer entreno apuntado, ${n}! Empieza la cuenta.`);
     else if (dias >= 7) msgs.push(`💪 ¡De vuelta, ${n}! Lo difícil era volver. Hoy con calma: mejor quedarse corto que pasarse.`);
   }
-  const hist = mejorMarca(e, x.v, k => k < HOY && mismoSitio(e.id, x.v, k)), todo = mejorMarca(e, x.v, k => mismoSitio(e.id, x.v, k), s);
+  const hist = mejorMarca(e, x.v, k => k < HOY), todo = mejorMarca(e, x.v, () => true, s);
   if (hist && todo && mejorQue(modoMarca(e, x), s, todo.s)) msgs.push(`🏆 ¡Nuevo récord! ${nombreCompleto(e, x.v)}: ${textoMarca(e, x.v, s)}`);
   if (antes.apNuevo) { const cs = cromosAqui(); msgs.push(`🃏 Nuevo cromo: ${AP[antes.apNuevo].nombre} (${cs.filter(c => c.desde).length} de ${cs.length})`); }
   if (!antes.completa && sesionCompleta(d)) {
@@ -576,7 +571,7 @@ function pintarProgreso() {
 
   h += `<section class="card"><h2>Últimos días</h2><div class="historial">${claves.slice(-14).reverse().map(k => {
     const d = Datos.dias[k], partes = [];
-    if (hizoGym(d)) partes.push(`${diaDef(d)?.nombre || "Gimnasio"}${d.inicio && d.ultima ? ` · ${Math.max(1, Math.round((d.ultima - d.inicio) / 60e3))} min` : ""}`);
+    if (hizoGym(d)) partes.push(`${diaDef(d)?.nombre || "Gimnasio"}${lugares().length > 1 ? ` · ${LUGARES[lugarDe(k)].corto}` : ""}${d.inicio && d.ultima ? ` · ${Math.max(1, Math.round((d.ultima - d.inicio) / 60e3))} min` : ""}`);
     for (const x of d.deporte || []) partes.push(`${x.tipo} ${x.min} min`);
     return `<div class="hist"><span>${fechaLarga(deClave(k))}</span><span class="muted">${esc(partes.join(" · "))}</span></div>`;
   }).join("")}</div></section></div>`;

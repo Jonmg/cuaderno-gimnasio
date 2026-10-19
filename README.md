@@ -273,8 +273,10 @@ Un perfil puede entrenar en varios sitios: en su `window.PERFIL`, `"lugares": ["
 - **Nombres:** `nombres` renombra máquinas del catálogo en ese sitio. En Tekniker, la máquina de
   4 puestos son tres "aparatos": remo (`polea-baja`), jalón (`polea-alta`) y las poleas alta y
   baja (`polea-doble`).
-- **Historial:** cada día guarda dónde se entrenó. Las máquinas, poleas y cardio solo se comparan
-  con el mismo sitio (cada máquina pesa distinto); el peso libre, en cualquiera.
+- **Un solo registro:** cambiar de sitio solo cambia lo que se propone. La rotación de días, los
+  entrenos de la semana, la última vez, la subida de peso, los récords y el progreso cuentan
+  igual en los dos. Cada día guarda dónde se entrenó (se ve en *Últimos días*) y, al volver a un
+  sitio, se propone la variante que se usó allí la última vez.
 
 Para añadir un lugar: una entrada en `LUGARES`, su id en el `PERFIL` de quien lo use, la carpeta
 `fotos/<id>/` y, si se quiere otro aspecto, un bloque `data-marca` en los estilos.
