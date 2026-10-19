@@ -51,9 +51,10 @@ const nombreVisible = () => Datos.ajustes.nombre || PERFIL.nombre;
 
 /* ---------- Esqueleto y navegación ---------- */
 let pestaña = "hoy";
-const PESTAÑAS = [["hoy", "Hoy"], ["progreso", "Progreso"], ["ajustes", "Ajustes"]];
+let PESTAÑAS = [["hoy", "Hoy"], ["progreso", "Progreso"], ["ajustes", "Ajustes"]];
 
 function montar() {
+  if (App.pestañas) PESTAÑAS = App.pestañas;
   document.body.insertAdjacentHTML("afterbegin", `
     <div class="wrap">
       <header class="top"><h1 id="saludo"></h1><span class="fecha" id="fechaHoy"></span></header>
@@ -61,7 +62,8 @@ function montar() {
       <p class="estado-datos" id="estadoDatos">Tus datos se guardan solo en este móvil. Haz una copia de vez en cuando desde Ajustes.</p>
     </div>
     <div id="flotante"></div>
-    <nav class="tabs" role="tablist" aria-label="Secciones">${PESTAÑAS.map(([id, t]) => `<button role="tab" id="tab-${id}" data-tab="${id}">${t}</button>`).join("")}</nav>`);
+    <div id="hoja" hidden></div>
+    <nav class="tabs" role="tablist" aria-label="Secciones" style="grid-template-columns:repeat(${PESTAÑAS.length},1fr)">${PESTAÑAS.map(([id, t]) => `<button role="tab" id="tab-${id}" data-tab="${id}">${t}</button>`).join("")}</nav>`);
   $("#fechaHoy").textContent = fechaLarga(new Date());
 
   document.querySelector("nav.tabs").addEventListener("click", ev => {
@@ -69,16 +71,21 @@ function montar() {
     pestaña = b.dataset.tab; pintar(); window.scrollTo(0, 0);
     try { localStorage.setItem(PERFIL.clave + "-tab", pestaña); } catch (e) {}
   });
-  $("#vista").addEventListener("click", ev => {
-    const b = ev.target.closest("button"); if (!b) return;
+  // Un solo punto de entrada para la página y la hoja de ayuda: el motor decide qué hacer.
+  document.addEventListener("click", ev => {
+    if (ev.target.closest("[data-cerrar]")) { cerrarHoja(); return; }
+    const b = ev.target.closest("button"); if (!b || b.closest("nav.tabs") || b.dataset.t || b.dataset.ir) return;
     if (clickCopia(b)) return;
     if (App.click(b) !== false) repintar();
   });
-  $("#vista").addEventListener("change", ev => {
+  document.addEventListener("change", ev => {
     const t = ev.target;
     if (t.id === "importarFichero") { if (t.files[0]) t.files[0].text().then(restaurar); return; }
     App.cambio(t);
   });
+  document.addEventListener("input", ev => App.entrada?.(ev.target));
+  document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("#hoja").hidden) cerrarHoja(); });
+  Fotos.cargar().then(n => { if (n) repintar(); });
 
   Datos.cargar(App.ajustesIniciales);
   try { const t = localStorage.getItem(PERFIL.clave + "-tab"); if (PESTAÑAS.some(p => p[0] === t)) pestaña = t; } catch (e) {}
@@ -213,5 +220,63 @@ function ultimasSemanas(n) {
   return out;
 }
 const semanaDe = (semanas, k) => { const f = deClave(k); return semanas.find(w => f >= w.inicio && f < w.fin); };
+
+/* ---------- Hoja (panel que sube desde abajo) ---------- */
+function abrirHoja(html) {
+  const h = $("#hoja");
+  const ya = !h.hidden, scroll = ya ? h.querySelector(".hoja").scrollTop : 0;
+  h.innerHTML = `<div class="hoja-fondo" data-cerrar></div><div class="hoja" role="dialog" aria-modal="true">${html}</div>`;
+  h.hidden = false; document.body.classList.add("sin-scroll");
+  h.querySelector(".hoja").scrollTop = scroll;
+}
+function cerrarHoja() { const h = $("#hoja"); h.hidden = true; h.innerHTML = ""; document.body.classList.remove("sin-scroll"); App.alCerrarHoja?.(); }
+const botonCerrar = `<button class="cerrar" data-cerrar aria-label="Cerrar">×</button>`;
+
+/* ---------- Fotos ----------
+   Las fotos de las máquinas van en IndexedDB (cabe mucho más que en localStorage), una base
+   por persona. Se reducen en el móvil antes de guardar. No entran en la copia de seguridad. */
+const Fotos = {
+  url: {}, _db: null,
+  abrir() {
+    return this._db ??= new Promise((ok, mal) => {
+      const r = indexedDB.open(`cuaderno-fotos-${PERFIL.id}`, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("fotos");
+      r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error);
+    });
+  },
+  async op(modo, fn) {
+    const db = await this.abrir();
+    return new Promise((ok, mal) => { const t = db.transaction("fotos", modo); fn(t.objectStore("fotos")); t.oncomplete = ok; t.onerror = () => mal(t.error); });
+  },
+  async cargar() {
+    let n = 0;
+    try {
+      const db = await this.abrir();
+      await new Promise(ok => {
+        const c = db.transaction("fotos").objectStore("fotos").openCursor();
+        c.onsuccess = () => { const cur = c.result; if (!cur) return ok(); this.url[cur.key] = URL.createObjectURL(cur.value); n++; cur.continue(); };
+        c.onerror = () => ok();
+      });
+    } catch (e) {}
+    return n;
+  },
+  async guardar(id, blob) { await this.op("readwrite", st => st.put(blob, id)); if (this.url[id]) URL.revokeObjectURL(this.url[id]); this.url[id] = URL.createObjectURL(blob); },
+  async borrar(id) { await this.op("readwrite", st => st.delete(id)); if (this.url[id]) URL.revokeObjectURL(this.url[id]); delete this.url[id]; },
+};
+// Reduce la foto a 1000 px de lado mayor en JPEG: unos 100–200 KB en vez de varios MB.
+function reducirFoto(file, max = 1000) {
+  return new Promise((ok, mal) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => {
+      const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(u);
+      c.toBlob(b => b ? ok(b) : mal(new Error("No se pudo procesar la foto")), "image/jpeg", 0.78);
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); mal(new Error("Ese archivo no parece una imagen")); };
+    img.src = u;
+  });
+}
 
 window.addEventListener("DOMContentLoaded", montar);

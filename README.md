@@ -42,6 +42,19 @@ usen la versión en caché.
   asistidas propone bajar la ayuda.
 - **Constancia**: cuenta días entrenados por semana (gimnasio o deporte) frente al objetivo.
 
+## Adaptar el entrenamiento (Jon y Mikel)
+
+- **Cambiar ejercicio**: en cada ejercicio del día, elige otro del catálogo (o créalo). Puede ser
+  *solo hoy* o *siempre en ese día del plan* (se deshace en Ajustes). Se registra con el nombre
+  del ejercicio que de verdad se hizo, con su propio historial y su propia progresión.
+- **Añadir / quitar**: añadir ejercicios extra al día, quitar uno solo hoy, o hacer un
+  *Entreno libre* empezando de cero.
+- **Catálogo** (`comun/catalogo.js`): unos 75 ejercicios por zona, con cómo se hace y errores
+  típicos. Para añadir uno para todos, edítalo ahí; cada persona puede crear los suyos en la app.
+- **Ayuda (?)**: ficha de cada ejercicio con foto de la máquina (cámara o galería), cómo la
+  ajustas (asiento, agarre…), pasos, historial y enlace a vídeos. Las fotos se guardan en el
+  móvil (IndexedDB), reducidas a ~1000 px, y no van en la copia de seguridad.
+
 ## Publicar
 
 GitHub Pages: Settings → Pages → *Deploy from a branch* → `main`, `/ (root)`.

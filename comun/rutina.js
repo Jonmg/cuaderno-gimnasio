@@ -1,34 +1,76 @@
 "use strict";
-/* Motor "rutina": un plan fijo de varios días (window.PLAN) que rotan en orden, se haga
-   cuando se haga. Apunta cada serie, propone subir peso con doble progresión, lleva el
-   descanso y la duración de la sesión, el deporte aparte del gimnasio y, si el plan lo
-   pide, las molestias de rodilla. */
+/* Motor "rutina": un plan de varios días (window.PLAN) que rotan en orden, se haga cuando se
+   haga. Cada ejercicio del plan es un hueco que puede ocuparse con cualquier ejercicio del
+   catálogo (window.CATALOGO_BASE + los creados por la persona): el registro va siempre por el
+   ejercicio que de verdad se hizo. Apunta cada serie, propone subir peso con doble progresión,
+   lleva el descanso y la duración de la sesión, el deporte aparte, la rodilla si el plan lo
+   pide, y una ficha de ayuda por ejercicio con foto de la máquina. */
 
 const P = window.PLAN;
-const EJ = {};
-P.dias.forEach(d => d.ejercicios.forEach(e => { EJ[e.id] = { ...e, dia: d.id }; }));
 const DIA = Object.fromEntries(P.dias.map(d => [d.id, d]));
+const LIBRE = { id: "libre", nombre: "Entreno libre", titulo: "Tú eliges los ejercicios", calentamiento: [], ejercicios: [] };
+const diaDef = d => DIA[d?.diaPlan] || (d?.diaPlan === "libre" ? LIBRE : null);
 const DEPORTES = ["Pádel", "Correr", "Bici", "Natación", "Fútbol", "Caminar", "Montaña", "Otro"];
 
-/* ---------- Plan ---------- */
+/* ---------- Catálogo ----------
+   Ficha de cada ejercicio = catálogo base + lo que diga el plan para ese id (pauta, variantes,
+   nota). Los creados por la persona viven en sus ajustes. */
+const CAT_FIJO = {};
+for (const e of window.CATALOGO_BASE) CAT_FIJO[e.id] = { ...e };
+for (const d of P.dias) for (const e of d.ejercicios) {
+  const { seccion, superserie, opcional, rodilla, ...ficha } = e;
+  CAT_FIJO[e.id] = { zona: seccion, equipo: "Otro", ...CAT_FIJO[e.id], ...ficha };
+}
+const propios = () => Datos.ajustes.propios || [];
+const cat = id => CAT_FIJO[id] || propios().find(p => p.id === id);
+const todos = () => [...Object.values(CAT_FIJO), ...propios()].filter(e => !e.oculto);
+const enElPlan = new Set(P.dias.flatMap(d => d.ejercicios.map(e => e.id)));
+
+/* ---------- Pauta ---------- */
 const variantes = e => (e.variantes || [""]).map(v => typeof v === "string" ? { n: v } : v);
 const variante = (e, v) => variantes(e)[v] || variantes(e)[0];
 // Con nombrePorVariante la variante ya es el nombre completo ("Zancada estática corta").
 const nombreCompleto = (e, v) => variantes(e).length < 2 ? e.nombre : e.nombrePorVariante ? variante(e, v).n : `${e.nombre} · ${variante(e, v).n}`;
-const uRep = e => e.unidad === "s" ? "s" : "rep";
+const uRep = e => e.unidad === "s" ? "s" : e.unidad === "min" ? "min" : "rep";
 function pauta(e) {
   const s = e.seriesOpcionales ? `${e.series - e.seriesOpcionales}–${e.series}` : e.series;
   const r = e.reps[0] === e.reps[1] ? e.reps[0] : `${e.reps[0]}–${e.reps[1]}`;
-  return `${s} × ${r}${e.unidad === "s" ? " s" : ""}${e.porLado ? " por lado" : ""}`;
+  return `${s} × ${r}${e.unidad ? " " + e.unidad : ""}${e.porLado ? " por lado" : ""}`;
 }
 const descansoDe = e => Number(Datos.ajustes.descansos?.[e.tipo]) || P.descansos[e.tipo] || 60;
 const obligatorias = e => e.series - (e.seriesOpcionales || 0);
+const miniatura = (id, clase = "mini-foto") => Fotos.url[id] ? `<img class="${clase}" src="${Fotos.url[id]}" alt="">` : "";
+
+/* ---------- Huecos del día ----------
+   Un hueco es un ejercicio del plan (con el cambio que se haya hecho hoy o para siempre) o un
+   ejercicio añadido hoy. Si el cambio es de la misma medida, se respeta la pauta del plan. */
+function prescripcion(pe, exId) {
+  if (exId === pe.id) return { ...cat(pe.id), ...pe };
+  const c = cat(exId);
+  if (!c) return { ...cat(pe.id), ...pe };
+  const misma = (c.unidad || "") === (pe.unidad || "") && !!c.sinPeso === !!pe.sinPeso;
+  const pautaPlan = misma ? { series: pe.series, seriesOpcionales: pe.seriesOpcionales, reps: pe.reps, tipo: pe.tipo } : {};
+  return { ...c, ...pautaPlan, seccion: pe.seccion, superserie: pe.superserie, opcional: pe.opcional, rodilla: pe.rodilla };
+}
+function huecos(d) {
+  const dia = diaDef(d); if (!dia) return [];
+  const out = [];
+  for (const pe of dia.ejercicios) {
+    if (d.quitados?.includes(pe.id)) continue;
+    const hoy = d.cambios?.[pe.id], siempre = Datos.ajustes.sustituciones?.[pe.id];
+    const exId = (hoy && cat(hoy)) ? hoy : (siempre && cat(siempre)) ? siempre : pe.id;
+    out.push({ slot: pe.id, e: prescripcion(pe, exId), original: pe, cambiado: exId !== pe.id, cambioHoy: exId === hoy && exId !== pe.id });
+  }
+  for (const id of d.extras || []) { const c = cat(id); if (c) out.push({ slot: "x:" + id, e: { ...c, seccion: c.zona }, extra: true }); }
+  return out;
+}
+const enUso = d => new Set(huecos(d).map(h => h.e.id));
 
 /* ---------- Días ---------- */
 const hizoGym = d => !!d && !d.nuevo && Object.values(d.ej || {}).some(x => x.series.some(s => s.hecho));
 const minDeporte = d => (d?.deporte || []).reduce((s, x) => s + (Number(x.min) || 0), 0);
 const diaActivo = d => !!d && !d.nuevo && (hizoGym(d) || minDeporte(d) > 0);
-// El día que toca es el siguiente al último que se entrenó, no depende del día de la semana.
+// El día que toca es el siguiente al último del plan que se entrenó, no depende del día de la semana.
 function siguienteDia(k) {
   const prev = Object.keys(Datos.dias).filter(x => x < k && hizoGym(Datos.dias[x]) && DIA[Datos.dias[x].diaPlan]).sort().pop();
   if (!prev) return P.dias[0].id;
@@ -43,6 +85,7 @@ function diaDe(k) {
 }
 const tocar = k => Datos.guardarDia(k);
 function actividad(d) { const t = Date.now(); if (!d.inicio) d.inicio = t; d.ultima = t; }
+const empezado = (d, id) => !!d.ej?.[id]?.series.some(s => s.hecho);
 
 /* ---------- Historial de un ejercicio ---------- */
 function ultimaVez(id, v, antes) {
@@ -51,6 +94,9 @@ function ultimaVez(id, v, antes) {
     if (x && x.v === v && x.series.some(s => s.hecho)) return { k, x };
   }
   return null;
+}
+function sesionesDe(id) {
+  return Object.keys(Datos.dias).sort().reverse().filter(k => !Datos.dias[k].nuevo && Datos.dias[k].ej?.[id]?.series.some(s => s.hecho)).map(k => ({ k, x: Datos.dias[k].ej[id] }));
 }
 function entrada(d, e) {
   if (!d.ej[e.id]) {
@@ -81,7 +127,8 @@ function consejo(e, x, k) {
   const alTope = hechas.length >= obligatorias(e) && reps.slice(0, obligatorias(e)).every(r => r >= e.reps[1]);
   if (alTope) {
     if (e.unidad === "s") return { tipo: "sube", texto: `La última vez llegaste a ${e.reps[1]} s en todas. Prueba ${e.reps[1] + 15} s o una versión más difícil.` };
-    if (e.sinPeso || !pesos.length) return { tipo: "sube", texto: `La última vez completaste ${e.reps[1]}${lado} en todas. Toca añadir algo de peso.` };
+    if (e.unidad === "min") return { tipo: "sube", texto: `La última vez llegaste a ${e.reps[1]} min. Puedes alargar un poco o subir la intensidad.` };
+    if (e.sinPeso || !pesos.length) return { tipo: "sube", texto: `La última vez completaste ${e.reps[1]}${lado} en todas. Toca añadir algo de peso o dificultad.` };
     if (va.asistido) { const p = Math.max(0, Math.min(...pesos) - inc); return { tipo: "sube", texto: `La última vez hiciste ${e.reps[1]} en todas. Baja la ayuda a ${fmt(p)} kg.`, peso: p }; }
     const p = Math.max(...pesos) + inc;
     return { tipo: "sube", texto: `La última vez hiciste ${e.reps[1]}${lado} en todas. Toca subir a ${fmt(p)} kg.`, peso: p };
@@ -89,10 +136,11 @@ function consejo(e, x, k) {
   if (reps.some(r => r < e.reps[0])) return { tipo: "manten", texto: `Alguna serie se quedó por debajo de ${e.reps[0]}. Mantén el peso hasta completar el rango.` };
   return { tipo: "suma", texto: `Mismo peso: intenta sumar una repetición hasta llegar a ${e.reps[1]} en todas.` };
 }
-function textoUltima(e, u) {
-  const s = u.x.series.filter(s => s.hecho).map(s => e.sinPeso ? `${s.reps}` : `${fmt(s.peso || 0)}×${s.reps}`).join(" · ");
-  return `Última vez (${fechaCorta(deClave(u.k))}): ${s}${e.unidad === "s" ? " s" : ""}`;
+function textoSeries(e, x) {
+  const u = e.unidad ? " " + e.unidad : "";
+  return x.series.filter(s => s.hecho).map(s => e.sinPeso || s.peso === "" ? `${s.reps}` : `${fmt(s.peso)}×${s.reps}`).join(" · ") + u;
 }
+const textoUltima = (e, u) => `Última vez (${fechaCorta(deClave(u.k))}): ${textoSeries(e, u.x)}`;
 
 /* ---------- Semanas y constancia ---------- */
 function resumenSemanas(n) {
@@ -110,7 +158,7 @@ function resumenSemanas(n) {
 function volumenDia(d) {
   let v = 0;
   for (const [id, x] of Object.entries(d.ej || {})) {
-    const e = EJ[id]; if (!e || e.sinPeso || variante(e, x.v).asistido) continue;
+    const e = cat(id); if (!e || e.sinPeso || e.unidad || variante(e, x.v).asistido) continue;
     for (const s of x.series) if (s.hecho) v += (num(s.peso) || 0) * (num(s.reps) || 0) * (e.porLado ? 2 : 1);
   }
   return v;
@@ -184,12 +232,13 @@ document.addEventListener("click", ev => {
 });
 // Siguiente serie pendiente, empezando por el ejercicio actual (o el primero de su superserie).
 function siguientePendiente(d, desde) {
-  const ejs = DIA[d.diaPlan].ejercicios;
-  const i0 = Math.max(0, ejs.findIndex(e => e.id === desde || (EJ[desde]?.superserie && e.superserie === EJ[desde].superserie)));
-  for (const e of [...ejs.slice(i0), ...ejs.slice(0, i0)]) {
-    const x = entrada(d, e);
-    const i = x.series.findIndex((s, j) => !s.hecho && j < e.series);
-    if (i >= 0) return `Siguiente: ${nombreCompleto(e, x.v)}, serie ${i + 1}`;
+  const hs = huecos(d);
+  const actual = hs.find(h => h.e.id === desde);
+  const i0 = Math.max(0, hs.findIndex(h => h.e.id === desde || (actual?.e.superserie && h.e.superserie === actual.e.superserie)));
+  for (const h of [...hs.slice(i0), ...hs.slice(0, i0)]) {
+    const x = entrada(d, h.e);
+    const i = x.series.findIndex((s, j) => !s.hecho && j < h.e.series);
+    if (i >= 0) return `Siguiente: ${nombreCompleto(h.e, x.v)}, serie ${i + 1}`;
   }
   return "";
 }
@@ -200,6 +249,7 @@ function pintarHoy() {
   const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal;
   const sem = resumenSemanas(1)[0], hechos = sem.gym + sem.soloDeporte;
   const racha = rachaSemanas();
+  const dia = diaDef(d);
   let h = `<div class="wrap" style="padding:0">
     <section class="card semana" aria-label="Esta semana">
       <div class="puntos" aria-hidden="true">${Array.from({ length: Math.max(obj, hechos) }, (_, i) => `<i class="${i < sem.gym ? "lleno" : i < hechos ? "dep" : ""}"></i>`).join("")}</div>
@@ -208,13 +258,14 @@ function pintarHoy() {
     </section>
     <section class="card" aria-labelledby="t-toca">
       <h2 id="t-toca">Hoy toca</h2>
-      <div class="chips cuatro" role="group" aria-label="Qué entrenas hoy">
+      <div class="chips cinco" role="group" aria-label="Qué entrenas hoy">
         ${P.dias.map(x => `<button class="chip" data-diaplan="${x.id}" aria-pressed="${d.diaPlan === x.id}"><b>${esc(x.nombre)}</b><span class="small">${esc(x.titulo)}</span></button>`).join("")}
+        <button class="chip" data-diaplan="libre" aria-pressed="${d.diaPlan === "libre"}"><b>Libre</b><span class="small">Eliges tú</span></button>
         <button class="chip" data-diaplan="" aria-pressed="${!d.diaPlan}"><b>Solo deporte</b><span class="small">Sin gimnasio</span></button>
       </div>
     </section>`;
-  if (d.diaPlan && DIA[d.diaPlan]) h += pintarSesion(d, DIA[d.diaPlan]);
-  if (d.diaPlan && DIA[d.diaPlan]?.rodilla) h += pintarRodilla(d);
+  if (dia) h += pintarSesion(d, dia);
+  if (dia?.rodilla) h += pintarRodilla(d);
   h += pintarDeporte(d);
   h += `<section class="card"><label class="campo" for="nota" style="font-size:1rem;color:var(--ink)"><b>Nota del día</b><span class="muted small">Cómo te has encontrado, molestias, cambios de máquina…</span></label>
     <textarea id="nota" rows="2" class="area">${esc(d.nota)}</textarea></section>`;
@@ -224,44 +275,60 @@ function pintarHoy() {
 }
 
 function pintarSesion(d, dia) {
-  const ejs = dia.ejercicios;
+  const hs = huecos(d);
   let total = 0, hechas = 0;
-  for (const e of ejs) { if (e.opcional) continue; const x = entrada(d, e); total += obligatorias(e); hechas += Math.min(obligatorias(e), x.series.filter(s => s.hecho).length); }
+  for (const { e } of hs) { if (e.opcional) continue; const x = entrada(d, e); total += obligatorias(e); hechas += Math.min(obligatorias(e), x.series.filter(s => s.hecho).length); }
   const pct = total ? Math.round(100 * hechas / total) : 0;
+  const siguiente = DIA[dia.id] ? DIA[P.dias[(P.dias.indexOf(dia) + 1) % P.dias.length].id].nombre : "";
   let h = `<section class="card" aria-labelledby="t-sesion">
-    <div class="top"><h2 id="t-sesion">${esc(dia.nombre)} · ${esc(dia.titulo)}</h2><span class="num" style="font-size:1.4rem">${hechas}/${total}</span></div>
-    <div class="progreso-dia" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    <div class="top"><h2 id="t-sesion">${esc(dia.nombre)} · ${esc(dia.titulo)}</h2>${total ? `<span class="num" style="font-size:1.4rem">${hechas}/${total}</span>` : ""}</div>
+    ${total ? `<div class="progreso-dia" aria-hidden="true"><i style="width:${pct}%"></i></div>` : ""}
     <p class="small muted" style="margin:0"><span id="crono">${d.inicio ? "" : "El cronómetro arranca con la primera serie"}</span> · objetivo ~${P.duracionMin} min. Descansos: ${esc(P.textoDescansos)}</p>
     ${dia.nota ? `<p class="nota">${esc(dia.nota)}</p>` : ""}
-    ${hechas === total && total ? `<p class="aviso" style="background:var(--accent-soft)"><b>Sesión completa.</b> Buen trabajo. El próximo día toca ${esc(DIA[P.dias[(P.dias.indexOf(dia) + 1) % P.dias.length].id].nombre)}.</p>` : ""}
-    <div class="calent"><span class="eyebrow">Calentamiento</span>
+    ${hechas === total && total ? `<p class="aviso" style="background:var(--accent-soft)"><b>Sesión completa.</b> Buen trabajo.${siguiente ? ` El próximo día toca ${esc(siguiente)}.` : ""}</p>` : ""}
+    ${dia.calentamiento.length ? `<div class="calent"><span class="eyebrow">Calentamiento</span>
       ${dia.calentamiento.map((c, i) => `<label class="lista-check"><input type="checkbox" id="cal-${i}" data-calent="${i}" ${d.calent?.[i] ? "checked" : ""}><span>${esc(c)}</span></label>`).join("")}
-    </div>`;
+    </div>` : ""}`;
+  if (!hs.length) h += `<p class="muted" style="margin:0">Añade los ejercicios que vayas haciendo: cada uno queda registrado con su historial.</p>`;
   let i = 0;
-  while (i < ejs.length) {
-    const e = ejs[i];
+  while (i < hs.length) {
+    const { e } = hs[i];
     if (e.superserie) {
-      const grupo = ejs.filter(x => x.superserie === e.superserie);
+      const grupo = hs.filter(x => x.e.superserie === e.superserie);
       h += `<div class="superserie"><span class="eyebrow">Superserie ${esc(e.superserie)}${e.opcional ? " · opcional" : ""}</span>
         <p class="small muted" style="margin:0">Haz una serie de cada uno sin descanso entre ellos; descansa al terminar la vuelta.</p>
         ${grupo.map(g => pintarEjercicio(d, dia, g)).join("")}</div>`;
       i += grupo.length;
-    } else { h += pintarEjercicio(d, dia, e); i++; }
+    } else { h += pintarEjercicio(d, dia, hs[i]); i++; }
   }
+  const quitados = (d.quitados || []).map(id => dia.ejercicios.find(e => e.id === id)).filter(Boolean);
+  h += `<div class="fila"><button class="btn sec" data-anadir>+ Añadir ejercicio</button></div>`;
+  if (quitados.length) h += `<p class="small muted" style="margin:0">Quitados hoy: ${quitados.map(e => `${esc(e.nombre)} <button class="enlace" data-recuperar="${e.id}">recuperar</button>`).join(" · ")}</p>`;
   return h + `</section>`;
 }
 
-function pintarEjercicio(d, dia, e) {
+function pintarEjercicio(d, dia, hueco) {
+  const { e, slot } = hueco;
   const x = entrada(d, e);
   const bloqueado = x.series.some(s => s.hecho);
   const u = ultimaVez(e.id, x.v, HOY);
   const c = consejo(e, x, HOY);
   const completo = x.series.slice(0, obligatorias(e)).every(s => s.hecho);
   const vs = variantes(e);
+  const ajusteMaquina = Datos.ajustes.notasEj?.[e.id];
+  let origen = "";
+  if (hueco.cambiado) origen = `<p class="small muted" style="margin:0">En lugar de ${esc(hueco.original.nombre)}${hueco.cambioHoy ? " (solo hoy)" : " (cambio fijo)"}${bloqueado ? "" : ` · <button class="enlace" data-revertir="${slot}">volver al del plan</button>`}</p>`;
+  if (hueco.extra) origen = `<p class="small muted" style="margin:0">Añadido hoy${bloqueado ? "" : ` · <button class="enlace" data-quitarextra="${e.id}">quitar</button>`}</p>`;
   let h = `<article class="ejr ${completo ? "hecho" : ""}">
-    <div><span class="ej-grupo">${esc(e.seccion)}${e.opcional && !e.superserie ? " · opcional" : ""}</span>
-    <h3 class="ej-nombre">${esc(e.nombre)}</h3>
-    <span class="ej-pauta">${pauta(e)} · descanso ${descansoDe(e)} s</span></div>
+    <div class="ejr-cab">
+      ${miniatura(e.id) ? `<button class="foto-btn" data-ayuda="${e.id}" aria-label="Ayuda de ${esc(e.nombre)}">${miniatura(e.id)}</button>` : ""}
+      <div class="ejr-tit"><span class="ej-grupo">${esc(e.seccion || e.zona)}${e.opcional && !e.superserie ? " · opcional" : ""}</span>
+        <h3 class="ej-nombre">${esc(e.nombre)}</h3>
+        <span class="ej-pauta">${pauta(e)} · descanso ${descansoDe(e)} s</span></div>
+      <button class="ayuda-btn" data-ayuda="${e.id}" aria-label="Ayuda y foto de ${esc(e.nombre)}">?</button>
+    </div>
+    ${origen}
+    ${ajusteMaquina ? `<p class="ajuste-maq small">⚙ ${esc(ajusteMaquina)}</p>` : ""}
     ${e.nota ? `<p class="nota">${esc(e.nota)}</p>` : ""}`;
   if (vs.length > 1) h += `<div class="sens" role="group" aria-label="Variante">${vs.map((v, i) => `<button class="chip" data-var="${e.id}" data-v="${i}" aria-pressed="${x.v === i}" ${bloqueado && x.v !== i ? "disabled" : ""}>${esc(v.n)}</button>`).join("")}</div>`;
   if (u) h += `<p class="ultima num">${textoUltima(e, u)}</p>`;
@@ -273,13 +340,14 @@ function pintarEjercicio(d, dia, e) {
     h += `<div class="serie ${s.hecho ? "ok" : ""}">
       <span class="sn" title="${opt ? "Serie opcional" : ""}">${i + 1}${opt ? "<sup>opc</sup>" : ""}</span>
       ${e.sinPeso ? "" : `<input class="num" type="number" inputmode="decimal" min="0" step="0.25" id="s-${e.id}-${i}-peso" data-serie="${e.id}|${i}" data-k="peso" value="${esc(s.peso)}" placeholder="${esc(ph.peso)}" aria-label="${nom}: ${variante(e, x.v).asistido ? "kg de ayuda" : "kg"}"><span class="u">${variante(e, x.v).asistido ? "ayuda" : "kg"}</span>`}
-      <input class="num" type="number" inputmode="numeric" min="0" step="1" id="s-${e.id}-${i}-reps" data-serie="${e.id}|${i}" data-k="reps" value="${esc(s.reps)}" placeholder="${esc(ph.reps)}" aria-label="${nom}: ${e.unidad === "s" ? "segundos" : "repeticiones"}"><span class="u">${uRep(e)}</span>
+      <input class="num" type="number" inputmode="numeric" min="0" step="1" id="s-${e.id}-${i}-reps" data-serie="${e.id}|${i}" data-k="reps" value="${esc(s.reps)}" placeholder="${esc(ph.reps)}" aria-label="${nom}: ${e.unidad === "s" ? "segundos" : e.unidad === "min" ? "minutos" : "repeticiones"}"><span class="u">${uRep(e)}</span>
       <button class="check peq" data-ok="${e.id}|${i}" aria-pressed="${s.hecho}" aria-label="Marcar ${nom} como hecha">${SVG_CHECK}</button>
     </div>`;
   });
-  h += `</div>`;
+  h += `</div><div class="fila ej-acciones">`;
   if (dia.rodilla && e.rodilla !== false) h += `<button class="chip mini" data-rod="${e.id}" aria-pressed="${!!x.rodilla}">Me molestó la rodilla</button>`;
-  return h + `</article>`;
+  if (!bloqueado && !hueco.extra) h += `<button class="chip mini" data-cambiar="${slot}">Cambiar ejercicio</button><button class="chip mini" data-quitar="${slot}">Quitar hoy</button>`;
+  return h + `</div></article>`;
 }
 
 function pintarRodilla(d) {
@@ -331,8 +399,9 @@ function pintarProgreso() {
 
   // Progreso por ejercicio y variante.
   const opciones = [];
-  for (const id of Object.keys(EJ)) {
-    const e = EJ[id];
+  const ids = new Set(claves.flatMap(k => Object.keys(Datos.dias[k].ej || {})));
+  for (const id of ids) {
+    const e = cat(id); if (!e) continue;
     for (let v = 0; v < variantes(e).length; v++) {
       const pts = claves.map(k => ({ k, x: Datos.dias[k].ej?.[id] })).filter(p => p.x && p.x.v === v && p.x.series.some(s => s.hecho));
       if (pts.length) opciones.push({ clave: `${id}|${v}`, e, v, pts });
@@ -348,10 +417,10 @@ function pintarProgreso() {
       const val = usaReps ? Math.max(...hs.map(s => num(s.reps) || 0)) : asistido ? Math.min(...hs.map(s => num(s.peso) ?? Infinity)) : Math.max(...hs.map(s => num(s.peso) || 0));
       return { k: p.k, v: Number.isFinite(val) ? val : 0, hs };
     });
-    h += graficoLinea(serie, { unidad: usaReps ? (o.e.unidad === "s" ? " s" : "") : " kg" });
+    h += graficoLinea(serie, { unidad: usaReps ? (o.e.unidad ? " " + o.e.unidad : "") : " kg" });
     const mejor = serie.reduce((a, b) => (asistido ? b.v < a.v : b.v > a.v) ? b : a);
     const mejorSerie = mejor.hs.reduce((a, b) => (num(b.reps) || 0) > (num(a.reps) || 0) ? b : a);
-    h += `<p class="muted small" style="margin:0">${usaReps ? `Mejor marca: <b>${fmt(mejor.v)}${o.e.unidad === "s" ? " s" : " rep"}</b>` : asistido ? `Menos ayuda: <b>${fmt(mejor.v)} kg</b> × ${mejorSerie.reps} (menos ayuda = más fuerza)` : `Mejor serie: <b>${fmt(mejor.v)} kg</b> × ${mejorSerie.reps}`} · ${fechaCorta(deClave(mejor.k))}. ${serie.length} sesión${serie.length > 1 ? "es" : ""}.</p>`;
+    h += `<p class="muted small" style="margin:0">${usaReps ? `Mejor marca: <b>${fmt(mejor.v)} ${uRep(o.e)}</b>` : asistido ? `Menos ayuda: <b>${fmt(mejor.v)} kg</b> × ${mejorSerie.reps} (menos ayuda = más fuerza)` : `Mejor serie: <b>${fmt(mejor.v)} kg</b> × ${mejorSerie.reps}`} · ${fechaCorta(deClave(mejor.k))}. ${serie.length} sesión${serie.length > 1 ? "es" : ""}.</p>`;
   } else h += `<p class="muted">Aún no hay series apuntadas.</p>`;
   h += `</section>`;
 
@@ -363,8 +432,9 @@ function pintarProgreso() {
   const rod = claves.filter(k => Datos.dias[k].rodilla != null).map(k => ({ k, v: Datos.dias[k].rodilla }));
   const marcas = {};
   for (const k of claves) for (const [id, x] of Object.entries(Datos.dias[k].ej || {})) {
-    if (!DIA[EJ[id]?.dia]?.rodilla || !x.series.some(s => s.hecho)) continue;
-    const n = nombreCompleto(EJ[id], x.v); marcas[n] = marcas[n] || { si: 0, veces: 0 }; marcas[n].veces++; if (x.rodilla) marcas[n].si++;
+    const e = cat(id);
+    if (!e || !DIA[Datos.dias[k].diaPlan]?.rodilla || e.rodilla === false || !x.series.some(s => s.hecho)) continue;
+    const n = nombreCompleto(e, x.v); marcas[n] = marcas[n] || { si: 0, veces: 0 }; marcas[n].veces++; if (x.rodilla) marcas[n].si++;
   }
   const conMolestia = Object.entries(marcas).filter(([, m]) => m.si).sort((a, b) => b[1].si / b[1].veces - a[1].si / a[1].veces);
   if (rod.length || conMolestia.length) {
@@ -379,17 +449,151 @@ function pintarProgreso() {
 
   h += `<section class="card"><h2>Últimos días</h2><div class="historial">${claves.slice(-14).reverse().map(k => {
     const d = Datos.dias[k], partes = [];
-    if (hizoGym(d)) partes.push(`${DIA[d.diaPlan]?.nombre || "Gimnasio"}${d.inicio && d.ultima ? ` · ${Math.max(1, Math.round((d.ultima - d.inicio) / 60e3))} min` : ""}`);
+    if (hizoGym(d)) partes.push(`${diaDef(d)?.nombre || "Gimnasio"}${d.inicio && d.ultima ? ` · ${Math.max(1, Math.round((d.ultima - d.inicio) / 60e3))} min` : ""}`);
     for (const x of d.deporte || []) partes.push(`${x.tipo} ${x.min} min`);
     return `<div class="hist"><span>${fechaLarga(deClave(k))}</span><span class="muted">${esc(partes.join(" · "))}</span></div>`;
   }).join("")}</div></section></div>`;
   $("#vista").innerHTML = h;
 }
 
+/* ---------- Listas de ejercicios (buscador) ---------- */
+const sinAcentos = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+function filtrar({ q = "", zona = "", excluir = new Set(), primero = "" }) {
+  const t = sinAcentos(q).trim();
+  return todos()
+    .filter(e => !excluir.has(e.id) && (!zona || e.zona === zona) && (!t || sinAcentos(`${e.nombre} ${e.zona} ${e.equipo}`).includes(t)))
+    .sort((a, b) => (b.zona === primero) - (a.zona === primero) || a.nombre.localeCompare(b.nombre, "es"));
+}
+function htmlLista(lista, accion) {
+  if (!lista.length) return `<p class="muted small" style="margin:0">No hay ninguno con ese nombre. Puedes crearlo abajo.</p>`;
+  return lista.map(e => {
+    const n = sesionesDe(e.id).length;
+    return `<button class="item" data-${accion}="${e.id}">
+      ${miniatura(e.id, "item-foto") || `<span class="item-foto vacia" aria-hidden="true">${esc(e.nombre[0])}</span>`}
+      <span class="item-txt"><b>${esc(e.nombre)}</b><span class="small muted">${esc(e.zona)} · ${esc(e.equipo)}${enElPlan.has(e.id) ? " · en tu plan" : ""}${e.propio ? " · creado por ti" : ""}${n ? ` · ${n} ${n > 1 ? "sesiones" : "sesión"}` : ""}</span></span>
+    </button>`;
+  }).join("");
+}
+// Tras repintar, deja a la vista el chip de zona elegido (la fila se desplaza en horizontal).
+const verZona = () => document.querySelectorAll('.zonas [aria-pressed="true"]').forEach(c => c.scrollIntoView({ inline: "center", block: "nearest" }));
+const htmlZonas = (actual, accion) => `<div class="zonas" role="group" aria-label="Zona">
+  <button class="chip mini" data-${accion}="" aria-pressed="${!actual}">Todas</button>
+  ${ZONAS.map(z => `<button class="chip mini" data-${accion}="${z}" aria-pressed="${actual === z}">${z}</button>`).join("")}</div>`;
+
+/* ---------- Hoja: cambiar, añadir o crear ejercicio ---------- */
+let Sel = null;
+function hojaSelector() {
+  const d = Datos.dias[HOY];
+  const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
+  if (Sel.paso === "confirmar") {
+    const nuevo = cat(Sel.elegido), dia = diaDef(d);
+    return `<div class="hoja-cab"><h2>Cambiar ejercicio</h2>${botonCerrar}</div>
+      <p style="margin:0"><span class="muted">${esc(hueco.e.nombre)}</span> → <b>${esc(nuevo.nombre)}</b></p>
+      <p class="small muted" style="margin:0">Se registra como ${esc(nuevo.nombre)}, con su propio historial.</p>
+      <div class="grid-botones">
+        <button class="btn" data-confirmar="hoy">Solo hoy</button>
+        ${DIA[dia.id] ? `<button class="btn sec" data-confirmar="siempre">Siempre en ${esc(dia.nombre)}</button>` : ""}
+      </div>
+      <button class="enlace" data-volversel style="justify-self:start">Elegir otro</button>`;
+  }
+  if (Sel.paso === "crear") {
+    const z = Sel.zona || hueco?.e.zona || "";
+    return `<div class="hoja-cab"><h2>Crear ejercicio</h2>${botonCerrar}</div>
+      <label class="campo" for="nuevoNombre">Nombre<input id="nuevoNombre" class="texto" placeholder="Por ejemplo: Remo en máquina Hammer" value="${esc(Sel.q)}"></label>
+      <div class="campos">
+        <label class="campo">Zona<select id="nuevoZona">${ZONAS.map(x => `<option ${x === z ? "selected" : ""}>${x}</option>`).join("")}</select></label>
+        <label class="campo">Equipo<select id="nuevoEquipo">${EQUIPOS.map(x => `<option>${x}</option>`).join("")}</select></label>
+      </div>
+      <div class="campos">
+        <label class="campo">Se mide en<select id="nuevoMedida"><option value="peso">Repeticiones con peso</option><option value="reps">Repeticiones sin peso</option><option value="s">Segundos</option><option value="min">Minutos</option></select></label>
+        <label class="campo">Tipo<select id="nuevoTipo"><option value="principal">Principal (más descanso)</option><option value="aislamiento" selected>Aislamiento</option></select></label>
+      </div>
+      <div class="campos">
+        <label class="campo">Series<select id="nuevoSeries">${[1, 2, 3, 4, 5].map(n => `<option ${n === 3 ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+        <label class="campo">Mínimo<input class="num corto" type="number" inputmode="numeric" min="1" id="nuevoMin" value="8"></label>
+        <label class="campo">Máximo<input class="num corto" type="number" inputmode="numeric" min="1" id="nuevoMax" value="12"></label>
+      </div>
+      <p class="small" id="msgNuevo" role="status" style="margin:0"></p>
+      <div class="grid-botones"><button class="btn" data-guardarnuevo>Guardar ejercicio</button>${Sel.modo !== "explorar" ? `<button class="btn sec" data-volversel>Volver a la lista</button>` : ""}</div>`;
+  }
+  const titulo = Sel.modo === "cambiar" ? `Cambiar ${esc(hueco.e.nombre)}` : "Añadir ejercicio";
+  return `<div class="hoja-cab"><h2>${titulo}</h2>${botonCerrar}</div>
+    <input id="buscarSel" class="texto" type="search" placeholder="Buscar: prensa, polea, hombro…" value="${esc(Sel.q)}" autocomplete="off">
+    ${htmlZonas(Sel.zona, "zonasel")}
+    <div id="listaSel" class="lista">${listaSel()}</div>
+    <button class="btn sec" data-crear>Crear ejercicio nuevo</button>`;
+}
+function listaSel() {
+  const d = Datos.dias[HOY];
+  const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
+  return htmlLista(filtrar({ q: Sel.q, zona: Sel.zona, excluir: enUso(d), primero: hueco?.e.zona }), "elegir");
+}
+function crearPropio() {
+  const nombre = $("#nuevoNombre").value.trim(), min = num($("#nuevoMin").value), max = num($("#nuevoMax").value);
+  const msg = t => { $("#msgNuevo").textContent = t; $("#msgNuevo").style.color = "var(--warn)"; };
+  if (!nombre) { msg("Ponle un nombre."); return null; }
+  if (!min || !max || min > max) { msg("Revisa el rango: el mínimo no puede ser mayor que el máximo."); return null; }
+  if (todos().some(e => sinAcentos(e.nombre) === sinAcentos(nombre))) { msg("Ya hay un ejercicio con ese nombre: búscalo en la lista."); return null; }
+  const medida = $("#nuevoMedida").value;
+  const e = {
+    id: "p-" + sinAcentos(nombre).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30) + "-" + Date.now().toString(36),
+    nombre, zona: $("#nuevoZona").value, equipo: $("#nuevoEquipo").value, tipo: $("#nuevoTipo").value,
+    series: Number($("#nuevoSeries").value), reps: [min, max], propio: true,
+    ...(medida === "reps" ? { sinPeso: true } : medida === "s" || medida === "min" ? { unidad: medida, sinPeso: true } : {}),
+  };
+  Datos.ajustes.propios = [...propios(), e];
+  Datos.guardarAjustes();
+  return e.id;
+}
+function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaPlan) d.diaPlan = "libre"; tocar(HOY); }
+
+/* ---------- Hoja: ayuda de un ejercicio ---------- */
+function hojaAyuda(id) {
+  const e = cat(id); if (!e) return "";
+  const ses = sesionesDe(id);
+  const foto = Fotos.url[id];
+  return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(e.zona)} · ${esc(e.equipo)}</span><h2>${esc(e.nombre)}</h2></div>${botonCerrar}</div>
+    <div class="foto-grande">${foto ? `<img src="${foto}" alt="Foto de ${esc(e.nombre)}">` : `<p>Haz una foto de la máquina para reconocerla a la primera.</p>`}</div>
+    <div class="fila">
+      <label class="btn peq">Hacer foto<input type="file" accept="image/*" capture="environment" data-foto="${id}" hidden></label>
+      <label class="btn sec peq">Elegir de la galería<input type="file" accept="image/*" data-foto="${id}" hidden></label>
+      ${foto ? `<button class="enlace" data-borrarfoto="${id}">Quitar foto</button>` : ""}
+    </div>
+    <p class="small" id="msgFoto" role="status" style="margin:0"></p>
+    <label class="campo" for="notaEj"><b style="color:var(--ink)">Cómo ajusto la máquina</b><span class="small muted">Asiento, respaldo, agarre, número de máquina… Se ve en el ejercicio.</span>
+      <textarea id="notaEj" data-notaej="${id}" rows="2" class="area">${esc(Datos.ajustes.notasEj?.[id] || "")}</textarea></label>
+    ${e.musculos ? `<p style="margin:0"><b>Trabaja:</b> ${esc(e.musculos)}</p>` : ""}
+    ${e.pasos?.length ? `<div><h3>Cómo se hace</h3><ol class="pasos">${e.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>` : ""}
+    ${e.errores?.length ? `<div><h3>Ojo con</h3><ul class="pasos">${e.errores.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>` : ""}
+    ${e.nota ? `<p class="nota">${esc(e.nota)}</p>` : ""}
+    <p class="small muted" style="margin:0">Pauta habitual: ${pauta(e)} · descanso ${descansoDe(e)} s</p>
+    <div><h3>Tu historial</h3>${ses.length ? `<div class="historial">${ses.slice(0, 6).map(({ k, x }) => `<div class="hist"><span>${fechaCorta(deClave(k))}${variantes(e).length > 1 ? ` · ${esc(variante(e, x.v).n)}` : ""}</span><span class="num">${esc(textoSeries(e, x))}</span></div>`).join("")}</div>` : `<p class="muted small" style="margin:0">Aún no lo has hecho.</p>`}</div>
+    <a class="enlace" href="https://www.youtube.com/results?search_query=${encodeURIComponent(e.nombre + " técnica gimnasio")}" target="_blank" rel="noopener">Ver vídeos de la técnica en YouTube ↗</a>
+    ${e.propio ? `<p class="small muted" style="margin:0">Ejercicio creado por ti.${ses.length ? "" : ` <button class="enlace" data-borrarpropio="${id}">Borrar ejercicio</button>`}</p>` : ""}`;
+}
+
+/* ---------- Vista: Ejercicios ---------- */
+const Lib = { q: "", zona: "" };
+function pintarEjercicios() {
+  $("#vista").innerHTML = `<div class="wrap" style="padding:0"><section class="card">
+    <h2>Ejercicios</h2>
+    <p class="small muted" style="margin:0">Toca uno para ver cómo se hace, ponerle la foto de la máquina y apuntar cómo la ajustas.</p>
+    <input id="buscarEj" class="texto" type="search" placeholder="Buscar: prensa, polea, hombro…" value="${esc(Lib.q)}" autocomplete="off">
+    ${htmlZonas(Lib.zona, "zonalib")}
+    <div id="listaLib" class="lista">${htmlLista(filtrar(Lib), "ayuda")}</div>
+    <button class="btn sec" data-crearlib>Crear ejercicio nuevo</button>
+  </section></div>`;
+  verZona();
+}
+
 /* ---------- Vista: Ajustes ---------- */
 function opciones(valores, actual, sufijo = "") { return valores.map(v => `<option value="${v}" ${Number(actual) === v ? "selected" : ""}>${fmt(v)}${sufijo}</option>`).join(""); }
 function pintarAjustes() {
   const a = Datos.ajustes;
+  const sust = Object.entries(a.sustituciones || {}).map(([slot, id]) => {
+    const dia = P.dias.find(d => d.ejercicios.some(e => e.id === slot)), pe = dia?.ejercicios.find(e => e.id === slot);
+    return pe && cat(id) ? `<div class="hist"><span>${esc(dia.nombre)}: ${esc(pe.nombre)} → <b>${esc(cat(id).nombre)}</b></span><button class="enlace" data-deshacersust="${slot}">Deshacer</button></div>` : "";
+  }).join("");
   $("#vista").innerHTML = `<div class="wrap" style="padding:0">
     <section class="card"><label class="campo" for="nombre" style="font-size:1rem;color:var(--ink)"><b>Nombre</b></label>
       <input id="nombre" value="${esc(a.nombre)}" placeholder="${esc(PERFIL.nombre)}" class="texto"></section>
@@ -409,24 +613,68 @@ function pintarAjustes() {
       <p class="muted small" style="margin:0">Mantén la app abierta durante el descanso: con la pantalla bloqueada el móvil no deja pitar.</p>
     </section>
     <section class="card"><h2>${esc(P.nombre)}</h2>
-      ${P.dias.map(d => `<details><summary><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</summary><div class="historial">${d.ejercicios.map(e => `<div class="hist"><span>${esc(e.nombre)}${e.opcional ? " (opcional)" : ""}</span><span class="muted num">${pauta(e)}</span></div>`).join("")}</div></details>`).join("")}
+      ${P.dias.map(d => `<details><summary><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</summary><div class="historial">${d.ejercicios.map(pe => {
+        const sid = a.sustituciones?.[pe.id], e = sid && cat(sid) ? prescripcion(pe, sid) : { ...cat(pe.id), ...pe };
+        return `<div class="hist"><span>${esc(e.nombre)}${sid ? ` <span class="muted small">(en lugar de ${esc(pe.nombre)})</span>` : ""}${e.opcional ? " (opcional)" : ""}</span><span class="muted num">${pauta(e)}</span></div>`;
+      }).join("")}</div></details>`).join("")}
       <p class="muted small" style="margin:0">Duración ~${P.duracionMin} min. Descansos: ${esc(P.textoDescansos)}</p>
     </section>
+    <section class="card"><h2>Cambios fijos en tu plan</h2>
+      ${sust ? `<div class="historial">${sust}</div>` : `<p class="muted small" style="margin:0">Ninguno. En cada ejercicio, "Cambiar ejercicio" permite cambiarlo solo hoy o siempre.</p>`}
+    </section>
     ${htmlCopia()}
+    <p class="muted small" style="margin:0">Las fotos de las máquinas se guardan en este móvil y no van en la copia de seguridad.</p>
     <section class="card"><h2>Importante</h2><p class="muted small" style="margin:0">La app propone; tú decides. Si un ejercicio molesta, baja el peso o cámbialo, y ante dolor de rodilla que se repite, consulta con tu fisio antes de seguir subiendo.</p></section>
   </div>`;
 }
 
 /* ---------- Eventos ---------- */
 window.App = {
-  ajustesIniciales: { nombre: "", objetivo: P.objetivoSemanal, incremento: 2.5, descansos: { ...P.descansos }, sonido: true, vibracion: true },
-  vistas: { hoy: pintarHoy, progreso: pintarProgreso, ajustes: pintarAjustes },
+  pestañas: [["hoy", "Hoy"], ["progreso", "Progreso"], ["ejercicios", "Ejercicios"], ["ajustes", "Ajustes"]],
+  ajustesIniciales: { nombre: "", objetivo: P.objetivoSemanal, incremento: 2.5, descansos: { ...P.descansos }, sonido: true, vibracion: true, propios: [], sustituciones: {}, notasEj: {} },
+  vistas: { hoy: pintarHoy, progreso: pintarProgreso, ejercicios: pintarEjercicios, ajustes: pintarAjustes },
+  alCerrarHoja() { Sel = null; },
   click(b) {
-    const d = Datos.dias[HOY];
-    if ("diaplan" in b.dataset) { d.diaPlan = b.dataset.diaplan || null; tocar(HOY); }
-    else if (b.dataset.var) { const x = d.ej[b.dataset.var]; if (x.series.some(s => s.hecho)) return false; x.v = Number(b.dataset.v); tocar(HOY); }
-    else if (b.dataset.ok) {
-      const [id, i] = b.dataset.ok.split("|"), e = EJ[id], x = d.ej[id], s = x.series[Number(i)];
+    const d = diaDe(HOY), a = Datos.ajustes, ds = b.dataset;
+    /* Hojas: no repintan la vista de detrás salvo que cambien datos. */
+    if (ds.ayuda) { abrirHoja(hojaAyuda(ds.ayuda)); return false; }
+    if (ds.cambiar) { const h = huecos(d).find(x => x.slot === ds.cambiar); Sel = { modo: "cambiar", slot: ds.cambiar, q: "", zona: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
+    if ("anadir" in ds) { Sel = { modo: "anadir", q: "", zona: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
+    if ("crearlib" in ds) { Sel = { modo: "explorar", q: "", zona: Lib.zona, paso: "crear" }; abrirHoja(hojaSelector()); return false; }
+    if ("zonasel" in ds) { Sel.zona = ds.zonasel; abrirHoja(hojaSelector()); verZona(); return false; }
+    if ("crear" in ds) { Sel.paso = "crear"; abrirHoja(hojaSelector()); return false; }
+    if ("volversel" in ds) { Sel.paso = "lista"; abrirHoja(hojaSelector()); return false; }
+    if (ds.elegir) {
+      if (Sel.modo === "cambiar") { Sel.elegido = ds.elegir; Sel.paso = "confirmar"; abrirHoja(hojaSelector()); return false; }
+      añadirExtra(d, ds.elegir); cerrarHoja(); return;
+    }
+    if (ds.confirmar) {
+      if (ds.confirmar === "siempre") { a.sustituciones = { ...a.sustituciones, [Sel.slot]: Sel.elegido }; if (d.cambios) delete d.cambios[Sel.slot]; Datos.guardarAjustes(); }
+      else d.cambios = { ...d.cambios, [Sel.slot]: Sel.elegido };
+      tocar(HOY); cerrarHoja(); return;
+    }
+    if ("guardarnuevo" in ds) {
+      const id = crearPropio(); if (!id) return false;
+      if (Sel.modo === "cambiar") { Sel.elegido = id; Sel.paso = "confirmar"; abrirHoja(hojaSelector()); return; }
+      if (Sel.modo === "anadir") { añadirExtra(d, id); cerrarHoja(); return; }
+      Sel = null; abrirHoja(hojaAyuda(id)); return;
+    }
+    if (ds.borrarfoto) { Fotos.borrar(ds.borrarfoto).then(() => { abrirHoja(hojaAyuda(ds.borrarfoto)); repintar(); }); return false; }
+    if (ds.borrarpropio) { a.propios = propios().filter(e => e.id !== ds.borrarpropio); Datos.guardarAjustes(); cerrarHoja(); return; }
+    if ("zonalib" in ds) { Lib.zona = ds.zonalib; return; }
+    if (ds.deshacersust) { delete a.sustituciones[ds.deshacersust]; Datos.guardarAjustes(); return; }
+
+    /* Sesión de hoy */
+    if ("diaplan" in ds) { d.diaPlan = ds.diaplan || null; tocar(HOY); }
+    else if (ds.quitar) { d.quitados = [...new Set([...(d.quitados || []), ds.quitar])]; tocar(HOY); }
+    else if (ds.recuperar) { d.quitados = (d.quitados || []).filter(x => x !== ds.recuperar); tocar(HOY); }
+    else if (ds.revertir) { if (d.cambios?.[ds.revertir]) delete d.cambios[ds.revertir]; else { delete a.sustituciones[ds.revertir]; Datos.guardarAjustes(); } tocar(HOY); }
+    else if (ds.quitarextra) { d.extras = (d.extras || []).filter(x => x !== ds.quitarextra); tocar(HOY); }
+    else if (ds.var) { const x = d.ej[ds.var]; if (x.series.some(s => s.hecho)) return false; x.v = Number(ds.v); tocar(HOY); }
+    else if (ds.ok) {
+      const [id, i] = ds.ok.split("|"), hs = huecos(d), h = hs.find(x => x.e.id === id);
+      if (!h) return false;
+      const e = h.e, x = d.ej[id], s = x.series[Number(i)];
       s.hecho = !s.hecho;
       if (s.hecho) {
         // Lo que no se ha escrito se toma de lo sugerido (la última vez o el rango).
@@ -434,28 +682,35 @@ window.App = {
         if (s.peso === "" && !e.sinPeso && ph.peso !== "") s.peso = Number(ph.peso);
         if (s.reps === "") s.reps = Number(ph.reps);
         actividad(d);
-        const grupo = e.superserie ? DIA[d.diaPlan].ejercicios.filter(g => g.superserie === e.superserie) : [e];
+        const grupo = e.superserie ? hs.filter(g => g.e.superserie === e.superserie) : [h];
+        const pos = grupo.findIndex(g => g.e.id === id);
+        if (pos < grupo.length - 1) { pararDescanso(); tocar(HOY); repintar(); msgFlotante(`Sin descanso: ahora ${grupo[pos + 1].e.nombre}`); return false; }
         const sig = siguientePendiente(d, id);
-        const pos = grupo.findIndex(g => g.id === id);
-        if (pos < grupo.length - 1) { const otro = grupo[pos + 1]; pararDescanso(); tocar(HOY); repintar(); msgFlotante(`Sin descanso: ahora ${otro.nombre}`); return false; }
         if (sig) arrancarDescanso(descansoDe(e), sig); else pararDescanso();
       }
       tocar(HOY);
     }
-    else if (b.dataset.usar) { const x = d.ej[b.dataset.usar]; x.series.forEach(s => { if (!s.hecho) s.peso = Number(b.dataset.peso); }); tocar(HOY); }
-    else if (b.dataset.rod) { const x = d.ej[b.dataset.rod]; x.rodilla = !x.rodilla; tocar(HOY); }
-    else if ("rodilla" in b.dataset) { const n = Number(b.dataset.rodilla); d.rodilla = d.rodilla === n ? null : n; tocar(HOY); }
-    else if ("adddep" in b.dataset) {
+    else if (ds.usar) { const x = d.ej[ds.usar]; x.series.forEach(s => { if (!s.hecho) s.peso = Number(ds.peso); }); tocar(HOY); }
+    else if (ds.rod) { const x = d.ej[ds.rod]; x.rodilla = !x.rodilla; tocar(HOY); }
+    else if ("rodilla" in ds) { const n = Number(ds.rodilla); d.rodilla = d.rodilla === n ? null : n; tocar(HOY); }
+    else if ("adddep" in ds) {
       const min = num($("#depMin").value);
       if (!min || min <= 0) { $("#depMin").focus(); return false; }
       d.deporte = d.deporte || []; d.deporte.push({ tipo: $("#depTipo").value, min }); tocar(HOY);
     }
-    else if (b.dataset.deldep) { d.deporte.splice(Number(b.dataset.deldep), 1); tocar(HOY); }
+    else if (ds.deldep) { d.deporte.splice(Number(ds.deldep), 1); tocar(HOY); }
     else return false;
   },
   cambio(t) {
-    const d = Datos.dias[HOY], a = Datos.ajustes;
-    if (t.dataset.serie) { const [id, i] = t.dataset.serie.split("|"); d.ej[id].series[Number(i)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
+    const d = diaDe(HOY), a = Datos.ajustes;
+    if (t.dataset.foto) {
+      const id = t.dataset.foto, f = t.files[0]; if (!f) return;
+      $("#msgFoto").textContent = "Guardando foto…";
+      reducirFoto(f).then(b => Fotos.guardar(id, b)).then(() => { abrirHoja(hojaAyuda(id)); repintar(); })
+        .catch(err => { const m = $("#msgFoto"); if (m) { m.textContent = `No se pudo guardar la foto: ${err.message}`; m.style.color = "var(--warn)"; } });
+    }
+    else if (t.dataset.notaej) { a.notasEj = { ...a.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
+    else if (t.dataset.serie) { const [id, i] = t.dataset.serie.split("|"); d.ej[id].series[Number(i)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
     else if (t.dataset.calent) { d.calent = d.calent || []; d.calent[Number(t.dataset.calent)] = t.checked; if (t.checked) actividad(d); tocar(HOY); repintar(); }
     else if (t.id === "nota") { d.nota = t.value; tocar(HOY); }
     else if (t.id === "nombre") { a.nombre = t.value.trim(); Datos.guardarAjustes(); pintar(); }
@@ -466,6 +721,11 @@ window.App = {
     else if (t.id === "aj-sonido") { a.sonido = t.checked; Datos.guardarAjustes(); }
     else if (t.id === "aj-vibracion") { a.vibracion = t.checked; Datos.guardarAjustes(); }
     else if (t.id === "selEj") { ejSel = t.value; repintar(); }
+  },
+  // Buscadores: solo se repinta la lista, para no perder el foco del teclado.
+  entrada(t) {
+    if (t.id === "buscarSel" && Sel) { Sel.q = t.value; $("#listaSel").innerHTML = listaSel(); }
+    else if (t.id === "buscarEj") { Lib.q = t.value; $("#listaLib").innerHTML = htmlLista(filtrar(Lib), "ayuda"); }
   },
 };
 // Aviso breve en la zona del temporizador (por ejemplo, en mitad de una superserie).
