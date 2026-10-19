@@ -91,6 +91,14 @@ Las fotos de las máquinas se hacen una vez por gimnasio y las ve todo el mundo:
     documento) o correo; quien tiene GitHub lo importa en su app y lo propone.
   - O subiéndolas a mano en GitHub con el nombre de la tabla.
 
+## Estilo
+
+Inspirado en la sala (VivaGym Miribilla), sin usar su logo ni sus fotos: naranja de marca
+`#FD5000` para lo que se pulsa y el progreso, azul petróleo `#254957`/`#6799AB` para la banda y
+los iconos, fondo claro, títulos y números en Anybody y texto en Open Sans (Google Fonts).
+Los tokens están al principio de `comun/estilos.css`; las ilustraciones usan la misma paleta
+(`PALETA` en `herramientas/ilustraciones.mjs`).
+
 ## Personalización
 
 - Saludo según la hora y una **frase del día** con el nombre (distinta cada día, la misma todo

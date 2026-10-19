@@ -217,7 +217,7 @@ function graficoBarras(items, { meta = null, unidad = "", etiquetaAria = "" } = 
     if (acum) s += `<text x="${x + bw / 2}" y="${y(acum) - 4}" text-anchor="middle" style="fill:var(--ink)">${fmtEje(acum)}${unidad}</text>`;
     s += `<text x="${x + bw / 2}" y="${H - 6}" text-anchor="middle">${esc(it.etiqueta)}</text>`;
   });
-  if (meta) s += `<line x1="${iz}" x2="${W}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--amber)" stroke-width="2" stroke-dasharray="6 4"/>`;
+  if (meta) s += `<line x1="${iz}" x2="${W}" y1="${y(meta)}" y2="${y(meta)}" stroke="var(--sec-oscuro)" stroke-width="2" stroke-dasharray="6 4"/>`;
   return s + `</svg>`;
 }
 // pts: [{ k: fecha, v }]; opciones: { unidad, max }

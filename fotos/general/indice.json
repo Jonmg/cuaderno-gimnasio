@@ -218,5 +218,45 @@
  "escaladora": {
   "archivo": "escaladora.svg",
   "tipo": "ilustracion"
+ },
+ "hammer-pecho": {
+  "archivo": "hammer-pecho.svg",
+  "tipo": "ilustracion"
+ },
+ "hammer-hombro": {
+  "archivo": "hammer-hombro.svg",
+  "tipo": "ilustracion"
+ },
+ "hammer-jalon": {
+  "archivo": "hammer-jalon.svg",
+  "tipo": "ilustracion"
+ },
+ "hammer-remo": {
+  "archivo": "hammer-remo.svg",
+  "tipo": "ilustracion"
+ },
+ "saco": {
+  "archivo": "saco.svg",
+  "tipo": "ilustracion"
+ },
+ "esqui-ergo": {
+  "archivo": "esqui-ergo.svg",
+  "tipo": "ilustracion"
+ },
+ "bici-aire": {
+  "archivo": "bici-aire.svg",
+  "tipo": "ilustracion"
+ },
+ "cinta-curva": {
+  "archivo": "cinta-curva.svg",
+  "tipo": "ilustracion"
+ },
+ "cuerdas": {
+  "archivo": "cuerdas.svg",
+  "tipo": "ilustracion"
+ },
+ "trineo": {
+  "archivo": "trineo.svg",
+  "tipo": "ilustracion"
  }
 }

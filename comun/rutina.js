@@ -36,7 +36,7 @@ const todos = () => [...Object.values(CAT_FIJO), ...propios().map(normalizar)].f
 /* ---------- Músculos y aparatos ---------- */
 const AP = Object.fromEntries(APARATOS.map(a => [a.id, a]));
 const TIPO_AP = Object.fromEntries(TIPOS_APARATO);
-const TIPO_CORTO = { maquina: "Máquina", polea: "Polea", mancuernas: "Mancuernas", barra: "Barra", banco: "Banco y suelo", funcional: "Funcional", cardio: "Cardio" };
+const TIPO_CORTO = { maquina: "Máquina", discos: "Discos", polea: "Polea", mancuernas: "Mancuernas", barra: "Barra", banco: "Banco y suelo", funcional: "Funcional", hiit: "HIIT", cardio: "Cardio" };
 const nombreMusculos = e => (e.m || []).map(x => MUSCULOS[x]?.n).filter(Boolean).join(", ");
 const zonaDe = e => MUSCULOS[e.m?.[0]]?.n || e.zona || "";
 const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === ap));
@@ -414,8 +414,8 @@ function pintarProgreso() {
     return;
   }
   h += `<section class="card"><h2>Entrenos por semana</h2>
-    ${graficoBarras(semanas.map(w => ({ etiqueta: fechaCorta(w.inicio), partes: [{ v: w.gym, color: "var(--accent)" }, { v: w.soloDeporte, color: "var(--amber)" }] })), { meta: obj, etiquetaAria: "Entrenos por semana en las últimas 8 semanas" })}
-    <p class="leyenda small"><span><i style="background:var(--accent)"></i>Gimnasio</span><span><i style="background:var(--amber)"></i>Solo deporte</span><span><i class="raya"></i>Objetivo (${obj})</span></p></section>`;
+    ${graficoBarras(semanas.map(w => ({ etiqueta: fechaCorta(w.inicio), partes: [{ v: w.gym, color: "var(--accent)" }, { v: w.soloDeporte, color: "var(--sec)" }] })), { meta: obj, etiquetaAria: "Entrenos por semana en las últimas 8 semanas" })}
+    <p class="leyenda small"><span><i style="background:var(--accent)"></i>Gimnasio</span><span><i style="background:var(--sec)"></i>Solo deporte</span><span><i class="raya"></i>Objetivo (${obj})</span></p></section>`;
 
   // Progreso por ejercicio y variante.
   const opciones = [];
@@ -717,7 +717,7 @@ function pintarAjustes() {
     ${Compartir.htmlAjustes()}
     ${htmlCopia()}
     <p class="muted small" style="margin:0">Tus fotos de las máquinas se guardan en este móvil y no van en la copia de seguridad: compártelas con el gimnasio para no perderlas.</p>
-    <section class="card"><h2>Importante</h2><p class="muted small" style="margin:0">La app propone; tú decides. Si un ejercicio molesta, baja el peso o cámbialo, y ante dolor de rodilla que se repite, consulta con tu fisio antes de seguir subiendo.</p></section>
+    <section class="card"><h2>Importante</h2><p class="muted small" style="margin:0">App personal, sin relación oficial con el gimnasio. La app propone; tú decides. Si un ejercicio molesta, baja el peso o cámbialo, y ante dolor de rodilla que se repite, consulta con tu fisio antes de seguir subiendo.</p></section>
   </div>`;
 }
 

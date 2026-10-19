@@ -28,10 +28,12 @@ window.FILTROS_MUSCULO = [
   ["Cuádriceps", ["cuadriceps"]], ["Isquios", ["isquios"]], ["Glúteo", ["gluteo", "gluteo-medio"]], ["Aductores", ["aductores"]],
   ["Gemelo", ["gemelo"]], ["Cardio", ["cardio"]], ["Movilidad", ["cuerpo"]],
 ];
-// Tipos de material, en el orden de las zonas del gimnasio.
+// Tipos de material, agrupados como las zonas de una sala VivaGym (fuerza, peso libre,
+// funcional, HIIT Box, cardio).
 window.TIPOS_APARATO = [
-  ["maquina", "Máquinas"], ["polea", "Poleas"], ["mancuernas", "Mancuernas"], ["barra", "Barras y racks"],
-  ["banco", "Bancos y peso corporal"], ["funcional", "Funcional"], ["cardio", "Cardio"],
+  ["maquina", "Zona Fuerza · máquinas guiadas"], ["discos", "Zona Fuerza · carga de discos"], ["polea", "Poleas"],
+  ["mancuernas", "Peso libre · mancuernas"], ["barra", "Peso libre · barras y racks"], ["banco", "Bancos y peso corporal"],
+  ["funcional", "Zona Funcional (SOFT) y boxeo"], ["hiit", "HIIT Box"], ["cardio", "Zona Cardio"],
 ];
 window.APARATOS = [
   // Zona de fuerza: máquinas guiadas
@@ -41,13 +43,16 @@ window.APARATOS = [
   ["maq-jalon", "Jalón convergente (máquina)", "maquina"], ["maq-remo", "Remo con apoyo de pecho", "maquina"],
   ["maq-asistida", "Dominadas y fondos asistidos", "maquina", "El peso que eliges es ayuda: cuanto menos, más difícil."],
   ["maq-curl", "Curl de bíceps (máquina Scott)", "maquina"], ["maq-triceps", "Tríceps (máquina)", "maquina"],
-  ["prensa", "Prensa inclinada 45°", "maquina"], ["prensa-horizontal", "Prensa horizontal (sentado)", "maquina"],
-  ["hack", "Sentadilla hack / péndulo", "maquina"], ["maq-extension", "Extensión de cuádriceps", "maquina"],
+  ["prensa-horizontal", "Prensa horizontal (sentado)", "maquina"], ["maq-extension", "Extensión de cuádriceps", "maquina"],
   ["maq-femoral-sentado", "Curl femoral sentado", "maquina"], ["maq-femoral-tumbado", "Curl femoral tumbado", "maquina"],
   ["maq-abd-add", "Abductores / aductores", "maquina", "En muchas salas es la misma máquina: cambia la posición de los apoyos."],
   ["maq-hip-thrust", "Hip thrust / glúteo (máquina)", "maquina"], ["maq-gluteo", "Patada de glúteo (máquina)", "maquina"],
   ["maq-gemelo-pie", "Gemelo de pie (máquina)", "maquina"], ["maq-gemelo-sentado", "Gemelo sentado (máquina)", "maquina"],
   ["maq-abdominal", "Abdominal (máquina)", "maquina"], ["maq-lumbar", "Lumbar (máquina)", "maquina"],
+  // Zona de fuerza: máquinas con carga de discos (se cargan con discos en vez de pasador)
+  ["prensa", "Prensa inclinada 45°", "discos"], ["hack", "Sentadilla hack / péndulo", "discos"],
+  ["hammer-pecho", "Press de pecho con discos", "discos"], ["hammer-hombro", "Press de hombro con discos", "discos"],
+  ["hammer-jalon", "Jalón con discos", "discos"], ["hammer-remo", "Remo con discos", "discos"],
   // Poleas
   ["polea-doble", "Poleas regulables (cruce de poleas)", "polea", "Las dos torres con la altura regulable: casi todo se puede hacer aquí."],
   ["polea-alta", "Polea alta de jalón (con asiento)", "polea"], ["polea-baja", "Polea baja de remo (sentado)", "polea"],
@@ -64,7 +69,10 @@ window.APARATOS = [
   // Zona funcional
   ["kettlebell", "Kettlebell", "funcional"], ["bandas", "Bandas elásticas", "funcional"], ["fitball", "Fitball", "funcional"],
   ["bosu", "Bosu", "funcional"], ["cajon", "Cajón / step", "funcional"], ["trx", "TRX", "funcional"],
-  ["balon", "Balón medicinal", "funcional"], ["rueda", "Rueda abdominal", "funcional"],
+  ["balon", "Balón medicinal", "funcional"], ["rueda", "Rueda abdominal", "funcional"], ["saco", "Saco de boxeo", "funcional"],
+  // HIIT Box
+  ["esqui-ergo", "Esquí ergómetro", "hiit"], ["bici-aire", "Bici de aire", "hiit"], ["cinta-curva", "Cinta curva", "hiit"],
+  ["cuerdas", "Cuerdas de batida", "hiit"], ["trineo", "Trineo de empuje", "hiit"],
   // Cardio
   ["cinta", "Cinta de correr", "cardio"], ["bici", "Bicicleta estática", "cardio"], ["bici-reclinada", "Bici reclinada", "cardio"],
   ["bici-spinning", "Bici de ciclo indoor", "cardio"], ["eliptica", "Elíptica", "cardio"], ["remo-ergo", "Remo ergómetro", "cardio"],
@@ -81,7 +89,7 @@ window.APARATOS = [
 
   /* ---------- Pecho ---------- */
   f("press-banca", "Press banca", ["pecho", "triceps", "hombro"],
-    [["Con barra", "banco-press"], ["Con mancuernas", "mancuernas"], ["En multipower", "multipower"], ["En máquina", "maq-press-pecho"]], P, 4, [6, 8],
+    [["Con barra", "banco-press"], ["Con mancuernas", "mancuernas"], ["En multipower", "multipower"], ["En máquina", "maq-press-pecho"], ["Máquina de discos", "hammer-pecho"]], P, 4, [6, 8],
     ["Túmbate con los ojos bajo la barra (o las mancuernas sobre el pecho) y los pies firmes.", "Junta los omóplatos y mantén un pequeño arco natural en la espalda.", "Baja controlando hasta la parte baja del pecho, codos a unos 45°.", "Empuja sin bloquear de golpe. En máquina: asas a la altura del pecho medio."],
     ["Rebotar el peso en el pecho.", "Abrir los codos a 90°: carga el hombro.", "Levantar el glúteo del banco."]);
   f("press-inclinado", "Press inclinado", ["pecho", "hombro", "triceps"],
@@ -111,11 +119,11 @@ window.APARATOS = [
 
   /* ---------- Espalda ---------- */
   f("jalon", "Jalón al pecho", ["dorsal", "biceps"],
-    [["Agarre neutro", "polea-alta"], ["Agarre supino", "polea-alta"], ["Agarre ancho", "polea-alta"], ["Máquina convergente", "maq-jalon"]], P, 4, [8, 10],
+    [["Agarre neutro", "polea-alta"], ["Agarre supino", "polea-alta"], ["Agarre ancho", "polea-alta"], ["Máquina convergente", "maq-jalon"], ["Máquina de discos", "hammer-jalon"]], P, 4, [8, 10],
     ["Ajusta el rodillo para que sujete bien los muslos.", "Saca pecho y tira hacia la parte alta del pecho.", "Lleva los codos hacia abajo y atrás; sube controlando."],
     ["Tirar detrás de la nuca.", "Echarse muy atrás para usar el peso del cuerpo."]);
   f("remo", "Remo", ["espalda", "dorsal", "biceps"],
-    [["Con mancuerna", "mancuernas"], ["En máquina", "maq-remo"], ["En polea baja", "polea-baja"], ["Con barra", "barra"], ["En T", "barra-t"]], P, 3, [8, 10],
+    [["Con mancuerna", "mancuernas"], ["En máquina", "maq-remo"], ["En polea baja", "polea-baja"], ["Con barra", "barra"], ["En T", "barra-t"], ["Máquina de discos", "hammer-remo"]], P, 3, [8, 10],
     ["Espalda recta (apoyada en banco, en la máquina o firme si es de pie).", "Tira llevando el codo hacia la cadera.", "Junta los omóplatos al final y vuelve despacio."],
     ["Girar o balancear el tronco.", "Tirar solo con el brazo."]);
   f("dominadas", "Dominadas", ["dorsal", "biceps"], [["En barra", "barra-dominadas"]], P, 3, [5, 10],
@@ -143,7 +151,7 @@ window.APARATOS = [
 
   /* ---------- Hombro ---------- */
   f("press-hombro-mancuernas", "Press de hombro", ["hombro", "triceps"],
-    [["Con mancuernas", "mancuernas"], ["En máquina", "maq-press-hombro"], ["Con barra de pie", "barra"], ["En multipower", "multipower"]], P, 3, [8, 10],
+    [["Con mancuernas", "mancuernas"], ["En máquina", "maq-press-hombro"], ["Con barra de pie", "barra"], ["En multipower", "multipower"], ["Máquina de discos", "hammer-hombro"]], P, 3, [8, 10],
     ["Sentado con respaldo vertical (o de pie con glúteos apretados).", "Empuja hacia arriba desde la altura de las orejas.", "Baja hasta la altura de la barbilla."],
     ["Arquear mucho la espalda.", "Bajar demasiado si molesta el hombro."]);
   f("laterales", "Elevaciones laterales", ["hombro"],
@@ -315,10 +323,10 @@ window.APARATOS = [
     ["Rebotar."], { unidad: "min", sinPeso: true });
 
   /* ---------- Cardio ---------- */
-  f("cinta", "Cinta", ["cardio"], [["Cinta", "cinta"]], A, 1, [10, 20],
+  f("cinta", "Cinta", ["cardio"], [["Cinta", "cinta"], ["Cinta curva", "cinta-curva"]], A, 1, [10, 20],
     ["Empieza caminando y sube el ritmo poco a poco.", "Inclinación si quieres más intensidad sin correr.", "No te agarres a las barras si no lo necesitas."],
     ["Agarrarse con inclinación alta."], { unidad: "min", sinPeso: true });
-  f("bici", "Bicicleta", ["cardio"], [["Estática", "bici"], ["Reclinada", "bici-reclinada"], ["Ciclo indoor", "bici-spinning"]], A, 1, [10, 20],
+  f("bici", "Bicicleta", ["cardio"], [["Estática", "bici"], ["Reclinada", "bici-reclinada"], ["Ciclo indoor", "bici-spinning"], ["Bici de aire", "bici-aire"]], A, 1, [10, 20],
     ["Sillín a la altura de la cadera: rodilla casi estirada abajo.", "Resistencia que te deje hablar a ratos.", "Cadencia constante."],
     ["Sillín bajo: carga la rodilla."], { unidad: "min", sinPeso: true });
   f("eliptica", "Elíptica", ["cardio"], [["Elíptica", "eliptica"]], A, 1, [10, 20],
@@ -327,6 +335,20 @@ window.APARATOS = [
     ["Orden al tirar: piernas, tronco, brazos.", "Vuelta al revés: brazos, tronco, piernas.", "Espalda recta."], ["Tirar solo con los brazos."], { unidad: "min", sinPeso: true });
   f("escaladora", "Escaladora", ["cardio", "gluteo"], [["Escaladora", "escaladora"]], A, 1, [8, 15],
     ["Pisa con todo el pie en cada escalón.", "Tronco recto.", "Agárrate solo para equilibrarte."], ["Colgarse de las barras."], { unidad: "min", sinPeso: true });
+
+  /* ---------- HIIT Box y boxeo ---------- */
+  f("esqui", "Esquí ergómetro", ["cardio", "dorsal", "triceps"], [["SkiErg", "esqui-ergo"]], A, 1, [5, 10],
+    ["De pie frente a la máquina, un asa en cada mano por encima de la cabeza.", "Tira hacia abajo flexionando cadera y rodillas, como un esquiador con bastones.", "Vuelve arriba estirándote y repite con ritmo."],
+    ["Tirar solo con los brazos.", "Redondear la espalda abajo."], { unidad: "min", sinPeso: true });
+  f("cuerdas", "Cuerdas de batida", ["cardio", "hombro"], [["Cuerdas", "cuerdas"]], A, 4, [20, 30],
+    ["Semiflexiona piernas, espalda recta, un extremo de cuerda en cada mano.", "Haz ondas alternando los brazos (o los dos a la vez).", "Mantén el ritmo todo el intervalo y descansa entre series."],
+    ["Bloquear las rodillas.", "Encorvar la espalda."], { unidad: "s", sinPeso: true });
+  f("trineo", "Empuje de trineo", ["cuadriceps", "gluteo", "cardio"], [["Trineo", "trineo"]], P, 4, [15, 25],
+    ["Manos en los postes, cuerpo inclinado hacia delante.", "Empuja con pasos cortos y potentes, apoyando todo el pie.", "Apunta el peso del trineo; las repeticiones son segundos de empuje."],
+    ["Pasos largos que levantan la cadera.", "Dejar caer la cabeza."], { unidad: "s" });
+  f("saco", "Saco de boxeo", ["cardio", "hombro"], [["Saco", "saco"]], A, 3, [2, 3],
+    ["Guantes puestos, guardia alta y pies a la anchura de los hombros.", "Combina directos, crochés y desplazamientos alrededor del saco.", "Asaltos de 2–3 minutos con descanso de 1 minuto."],
+    ["Bajar la guardia.", "Golpear con la muñeca doblada."], { unidad: "min", sinPeso: true });
 
   window.CATALOGO_BASE = L;
 })();

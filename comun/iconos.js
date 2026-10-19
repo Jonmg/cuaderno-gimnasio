@@ -63,6 +63,8 @@ const ICONOS_APARATO = {
   banco: `<rect x="3" y="9" width="18" height="3.4" rx="1.2"/><path d="M6 12.4V19M18 12.4V19M4 19h4M16 19h4"/>`,
   funcional: `<path d="M8.5 9.5a3.5 3.5 0 1 1 7 0"/><path d="M7.3 9.5h9.4"/><circle cx="12" cy="15" r="5.5"/>`,
   cardio: `<path d="M2 12h4l2.3-5 4.4 10 2.3-5H22"/>`,
+  discos: `<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/>`,
+  hiit: `<path d="M13 2 5 13h6l-1 9 8-11h-6z"/>`,
 };
 const iconoAparato = (tipo, clase = "ap-icono") =>
   `<svg class="${clase}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONOS_APARATO[tipo] || ICONOS_APARATO.maquina}</svg>`;
