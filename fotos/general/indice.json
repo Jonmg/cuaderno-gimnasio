@@ -179,12 +179,18 @@
   "tipo": "ilustracion"
  },
  "barra-dominadas": {
-  "archivo": "barra-dominadas.svg",
-  "tipo": "ilustracion"
+  "archivo": "barra-dominadas.jpg",
+  "tipo": "foto",
+  "autor": "Santeri Viinamäki",
+  "licencia": "CC BY 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Pull-up_bar.JPG"
  },
  "suelo": {
-  "archivo": "suelo.svg",
-  "tipo": "ilustracion"
+  "archivo": "suelo.jpg",
+  "tipo": "foto",
+  "autor": "Santeri Viinamäki",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Blue_exercise_mat_20160810.jpg"
  },
  "kettlebell": {
   "archivo": "kettlebell.jpg",
@@ -194,8 +200,11 @@
   "fuente": "https://commons.wikimedia.org/wiki/File:Kettlebell_truebalance_romeike.jpg"
  },
  "bandas": {
-  "archivo": "bandas.svg",
-  "tipo": "ilustracion"
+  "archivo": "bandas.jpg",
+  "tipo": "foto",
+  "autor": "Corn cheese",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Resistance_Band_(cropped).jpg"
  },
  "fitball": {
   "archivo": "fitball.jpg",
@@ -224,8 +233,11 @@
   "fuente": "https://commons.wikimedia.org/wiki/File:Medicine_Ball_2_2017-01-13.jpg"
  },
  "rueda": {
-  "archivo": "rueda.svg",
-  "tipo": "ilustracion"
+  "archivo": "rueda.jpg",
+  "tipo": "foto",
+  "autor": "Corn cheese",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Dirty_ab_wheel.jpg"
  },
  "cinta": {
   "archivo": "cinta.jpg",
@@ -275,8 +287,11 @@
   "fuente": "https://commons.wikimedia.org/wiki/File:Chest_Incline.jpg"
  },
  "hammer-hombro": {
-  "archivo": "hammer-hombro.svg",
-  "tipo": "ilustracion"
+  "archivo": "hammer-hombro.jpg",
+  "tipo": "foto",
+  "autor": "Aliva Sahoo",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Shoulder_Press.jpg"
  },
  "hammer-jalon": {
   "archivo": "hammer-jalon.svg",
@@ -305,8 +320,11 @@
   "tipo": "ilustracion"
  },
  "cinta-curva": {
-  "archivo": "cinta-curva.svg",
-  "tipo": "ilustracion"
+  "archivo": "cinta-curva.jpg",
+  "tipo": "foto",
+  "autor": "Burkhard Mücke",
+  "licencia": "CC BY-SA 4.0",
+  "fuente": "https://commons.wikimedia.org/wiki/File:Cross_Runner_-_Curved_Treadmill_02.jpg"
  },
  "cuerdas": {
   "archivo": "cuerdas.jpg",
