@@ -134,6 +134,9 @@ function sugerido(e, x, i, k) {
 function consejo(e, x, k) {
   const u = ultimaVez(e.id, x.v, k);
   if (!u) return null;
+  // Tras un parón largo no se sube: primero, volver a coger el ritmo.
+  const parado = Math.round((deClave(k) - deClave(u.k)) / 864e5);
+  if (parado >= 21) return { tipo: "manten", texto: `Hace ${Math.floor(parado / 7)} semanas de la última vez: empieza con el mismo peso o algo menos y ve viendo.` };
   const va = variante(e, x.v), inc = Number(Datos.ajustes.incremento) || 2.5;
   const hechas = u.x.series.filter(s => s.hecho);
   const reps = hechas.map(s => num(s.reps) ?? 0);
@@ -186,6 +189,77 @@ function rachaSemanas() {
   if (semanas[i].gym + semanas[i].soloDeporte < obj) i--;
   for (; i >= 0 && semanas[i].gym + semanas[i].soloDeporte >= obj; i--) r++;
   return r;
+}
+
+/* ---------- Récords, cromos y ánimos ---------- */
+// Cómo se mide la mejor marca: kilos (y a igual peso, repeticiones), menos ayuda en las
+// asistidas, o repeticiones/segundos en los de sin peso.
+const modoMarca = (e, x) => variante(e, x.v).asistido ? "ayuda" : e.sinPeso ? "reps" : "peso";
+// Una serie cuenta para las marcas si tiene lo que se mide (kilos y repeticiones, o repeticiones).
+const valida = (modo, s) => (num(s.reps) || 0) > 0 && (modo === "reps" || num(s.peso) != null);
+function mejorQue(modo, a, b) {
+  const pa = num(a.peso), pb = num(b.peso), ra = num(a.reps) || 0, rb = num(b.reps) || 0;
+  if (modo === "reps") return ra > rb;
+  if (pa == null || ra <= 0) return false;
+  if (pb == null) return true;
+  return (modo === "ayuda" ? pa < pb : pa > pb) || (pa === pb && ra > rb);
+}
+// Mejor serie de un ejercicio y variante en los días que pasen el filtro (sin contar `excluir`).
+function mejorMarca(e, v, filtro = () => true, excluir = null) {
+  const modo = modoMarca(e, { v }); let mejor = null;
+  for (const k of Object.keys(Datos.dias).sort()) {
+    const x = Datos.dias[k].ej?.[e.id];
+    if (!filtro(k) || !x || x.v !== v) continue;
+    for (const s of x.series) if (s.hecho && s !== excluir && valida(modo, s) && (!mejor || mejorQue(modo, s, mejor.s))) mejor = { s, k };
+  }
+  return mejor;
+}
+function textoMarca(e, v, s) {
+  const modo = modoMarca(e, { v });
+  if (modo === "reps") return `${s.reps} ${uRep(e)}${e.porLado ? " por lado" : ""}`;
+  return `${fmt(s.peso)} kg${modo === "ayuda" ? " de ayuda" : ""} × ${s.reps}`;
+}
+// Álbum: un cromo por máquina. Se consigue al entrenar con ella (o al hacerle una foto) y es
+// dorado cuando tiene foto real, la tuya o la del gimnasio.
+function cromos() {
+  const desde = {};
+  for (const k of Object.keys(Datos.dias).sort()) for (const [id, x] of Object.entries(Datos.dias[k].ej || {})) {
+    const e = cat(id), ap = e && variante(e, x.v)?.ap;
+    if (ap && !desde[ap] && x.series.some(s => s.hecho)) desde[ap] = k;
+  }
+  return APARATOS.map(a => ({ a, desde: desde[a.id] || (Fotos.url[a.id] ? "foto" : ""), dorado: !!fotoReal(a.id) }));
+}
+const cromosConseguidos = () => cromos().filter(c => c.desde).length;
+function sesionCompleta(d) {
+  const obligados = huecos(d).filter(h => !h.e.opcional);
+  return obligados.length > 0 && obligados.every(h => d.ej[h.e.id]?.series.slice(0, obligatorias(h.e)).every(s => s.hecho));
+}
+const seriesPendientes = d => huecos(d).filter(h => !h.e.opcional)
+  .reduce((n, h) => n + (d.ej[h.e.id] ? d.ej[h.e.id].series.slice(0, obligatorias(h.e)).filter(s => !s.hecho).length : obligatorias(h.e)), 0);
+// Lo que hay que saber antes de marcar una serie para celebrar lo que cambie al marcarla.
+function antesDeSerie(d, e, x) {
+  const ap = variante(e, x.v)?.ap;
+  return { primera: !hizoGym(d), completa: sesionCompleta(d), apNuevo: ap && AP[ap] && !cromos().find(c => c.a.id === ap)?.desde ? ap : "" };
+}
+function celebrarSerie(d, e, x, s, antes) {
+  const n = nombreVisible(), msgs = [];
+  if (antes.primera) {
+    const ultimo = Object.keys(Datos.dias).filter(k => k < HOY && hizoGym(Datos.dias[k])).sort().pop();
+    const dias = ultimo ? Math.round((deClave(HOY) - deClave(ultimo)) / 864e5) : null;
+    if (dias == null) msgs.push(`💪 ¡Primer entreno apuntado, ${n}! Empieza la cuenta.`);
+    else if (dias >= 7) msgs.push(`💪 ¡De vuelta, ${n}! Lo difícil era volver. Hoy con calma: mejor quedarse corto que pasarse.`);
+  }
+  const hist = mejorMarca(e, x.v, k => k < HOY), todo = mejorMarca(e, x.v, () => true, s);
+  if (hist && todo && mejorQue(modoMarca(e, x), s, todo.s)) msgs.push(`🏆 ¡Nuevo récord! ${nombreCompleto(e, x.v)}: ${textoMarca(e, x.v, s)}`);
+  if (antes.apNuevo) msgs.push(`🃏 Nuevo cromo: ${AP[antes.apNuevo].nombre} (${cromosConseguidos()} de ${APARATOS.length})`);
+  if (!antes.completa && sesionCompleta(d)) {
+    const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal, sem = resumenSemanas(1)[0], hechos = sem.gym + sem.soloDeporte, racha = rachaSemanas();
+    msgs.push(hechos === obj ? `🎉 ¡Semana cumplida, ${n}! ${hechos} de ${obj}${racha > 1 ? ` · ${racha} semanas seguidas` : ""}`
+      : hechos > obj ? `🎉 ¡Sesión completa! Y van ${hechos} esta semana: de sobresaliente.` : `🎉 ¡Sesión completa! Llevas ${hechos} de ${obj} esta semana.`);
+    confeti();
+  } else if (seriesPendientes(d) === 1) msgs.push(`🔥 Última serie del día, ${n}. ¡A por ella!`);
+  if (msgs.length) vibrar();
+  msgs.forEach(t => aviso(t, "celebra"));
 }
 
 /* ---------- Temporizador de descanso ---------- */
@@ -439,6 +513,9 @@ function pintarProgreso() {
     h += `<p class="muted small" style="margin:0">${usaReps ? `Mejor marca: <b>${fmt(mejor.v)} ${uRep(o.e)}</b>` : asistido ? `Menos ayuda: <b>${fmt(mejor.v)} kg</b> × ${mejorSerie.reps} (menos ayuda = más fuerza)` : `Mejor serie: <b>${fmt(mejor.v)} kg</b> × ${mejorSerie.reps}`} · ${fechaCorta(deClave(mejor.k))}. ${serie.length} sesión${serie.length > 1 ? "es" : ""}.</p>`;
   } else h += `<p class="muted">Aún no hay series apuntadas.</p>`;
   h += `</section>`;
+  // Mejores marcas, las más recientes primero.
+  const records = opciones.map(o => ({ o, m: mejorMarca(o.e, o.v) })).filter(x => x.m).sort((a, b) => b.m.k.localeCompare(a.m.k)).slice(0, 8);
+  if (records.length) h += `<section class="card"><h2>Tus récords</h2><div class="historial">${records.map(({ o, m }) => `<div class="hist"><span>🏆 ${esc(nombreCompleto(o.e, o.v))}</span><span class="num">${esc(textoMarca(o.e, o.v, m.s))} <span class="muted small">${fechaCorta(deClave(m.k))}</span></span></div>`).join("")}</div></section>`;
 
   if (semanas.some(w => w.volumen)) h += `<section class="card"><h2>Kilos movidos por semana</h2>
     ${graficoBarras(semanas.map((w, i) => ({ etiqueta: fechaCorta(w.inicio), partes: [{ v: Math.round(w.volumen), color: i === semanas.length - 1 ? "var(--accent)" : "var(--accent-soft)" }] })), { etiquetaAria: "Kilos movidos por semana" })}
@@ -578,9 +655,7 @@ function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaP
 // Estadísticas: primer registro del día y sesión completa (todas las series obligatorias hechas).
 function contarEntreno(d) {
   eventoDelDia("gim-entreno-empezado");
-  const obligados = huecos(d).filter(h => !h.e.opcional);
-  const completa = obligados.length && obligados.every(h => d.ej[h.e.id]?.series.slice(0, obligatorias(h.e)).every(s => s.hecho));
-  if (completa) eventoDelDia("gim-entreno-completo");
+  if (sesionCompleta(d)) eventoDelDia("gim-entreno-completo");
 }
 
 /* ---------- Hoja: ficha de un ejercicio ---------- */
@@ -616,6 +691,7 @@ function hojaAparato(ap) {
   return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(TIPO_AP[a.tipo])}</span><h2>${esc(a.nombre)}</h2></div>${botonCerrar}</div>
     ${htmlFoto(ap, a.nombre)}
     ${a.nota ? `<p class="nota">${esc(a.nota)}</p>` : ""}
+    ${(c => c?.desde ? `<p class="small" style="margin:0">🃏 Cromo conseguido${c.desde !== "foto" ? ` el ${fechaCorta(deClave(c.desde))}` : ""}${c.dorado ? " · dorado ★" : " · con una foto real será dorado"}.</p>` : `<p class="small muted" style="margin:0">🃏 Cromo sin conseguir: entrena con esta máquina para llevártelo.</p>`)(cromos().find(c => c.a.id === ap))}
     <p class="small muted" style="margin:0">Archivo en el repositorio: <code>fotos/${slugGym()}/${ap}.jpg</code></p>
     <label class="campo" for="notaAp"><b style="color:var(--ink)">Notas de la máquina</b><span class="small muted">Dónde está en la sala, número, peculiaridades…</span>
       <textarea id="notaAp" data-notaap="${ap}" rows="2" class="area">${esc(Datos.ajustes.notasAp?.[ap] || "")}</textarea></label>
@@ -625,12 +701,30 @@ function hojaAparato(ap) {
 HOJAS.ayuda = hojaAyuda;
 HOJAS.aparato = hojaAparato;
 
+/* ---------- Álbum de cromos ---------- */
+function htmlAlbum() {
+  const cs = cromos(), con = cs.filter(c => c.desde).length, oro = cs.filter(c => c.desde && c.dorado).length;
+  return `<section class="card" aria-labelledby="t-album">
+      <div class="top"><h2 id="t-album">Álbum de máquinas</h2><span class="num" style="font-size:1.4rem">${con}/${cs.length}</span></div>
+      <div class="progreso-dia" aria-hidden="true"><i style="width:${Math.round(100 * con / cs.length)}%"></i></div>
+      <p class="small muted" style="margin:0">Cada máquina es un cromo: se consigue al entrenar con ella. Se vuelve <b>dorado ★</b> cuando tiene foto real: haz la de ${esc(gimnasio() || "tu gimnasio")} y compártela. Llevas <b>${oro}</b> dorado${oro === 1 ? "" : "s"}.</p>
+    </section>
+    <section class="card">${TIPOS_APARATO.map(([t, nombre]) => `<div><p class="eyebrow" style="margin:6px 0 8px">${nombre}</p><div class="album">${cs.filter(c => c.a.tipo === t).map(c => {
+      const u = urlFoto(c.a.id), estado = !c.desde ? "bloqueado" : c.dorado ? "dorado" : "";
+      return `<button class="cromo ${estado}" data-aparato="${c.a.id}" aria-label="${esc(c.a.nombre)}${!c.desde ? ", sin conseguir" : c.dorado ? ", dorado" : ""}">
+        <span class="cromo-img">${u ? `<img src="${u}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : iconoAparato(c.a.tipo)}${!c.desde ? `<b class="cromo-candado">?</b>` : ""}</span>
+        <span class="cromo-nombre">${esc(c.a.nombre)}</span>${c.dorado && c.desde ? `<span class="cromo-oro">★</span>` : ""}</button>`;
+    }).join("")}</div></div>`).join("")}</section>`;
+}
+
 /* ---------- Vista: Ejercicios y máquinas ---------- */
 const Lib = { vista: "ejercicios", q: "", musc: "", mat: "" };
 function pintarEjercicios() {
   const seg = `<div class="seg" role="tablist" aria-label="Ver">
     <button role="tab" data-libvista="ejercicios" aria-selected="${Lib.vista === "ejercicios"}">Ejercicios</button>
-    <button role="tab" data-libvista="maquinas" aria-selected="${Lib.vista === "maquinas"}">Máquinas</button></div>`;
+    <button role="tab" data-libvista="maquinas" aria-selected="${Lib.vista === "maquinas"}">Máquinas</button>
+    <button role="tab" data-libvista="album" aria-selected="${Lib.vista === "album"}">Álbum</button></div>`;
+  if (Lib.vista === "album") { $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}${htmlAlbum()}</div>`; return; }
   if (Lib.vista === "maquinas") {
     const delGym = APARATOS.filter(a => FotosGym.url[a.id]).length, propias = Compartir.pendientes(), mias = propias.filter(ap => !FotosGym.url[ap]).length;
     $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}
@@ -724,9 +818,14 @@ function motivacion() {
   const sinEntrenar = ultimo ? Math.round((deClave(HOY) - deClave(ultimo)) / 864e5) : 0;
   const racha = rachaSemanas();
   if (diaActivo(d)) return hechos >= obj ? `¡Hecho, ${n}! Objetivo de la semana cumplido. Ahora toca descansar.` : `¡Sesión hecha, ${n}! Agua, buena comida y a descansar.`;
+  if (sinEntrenar >= 14) return `${n}, han pasado ${Math.floor(sinEntrenar / 7)} semanas. No hay nada que recuperar: con ir hoy, ya ganas.`;
   if (sinEntrenar >= 4) return `${n}, llevas ${sinEntrenar} días sin entrenar. Hoy es un buen día para volver.`;
   if (hechos >= obj) return `${n}, ya has cumplido el objetivo de la semana. Lo que hagas hoy es extra.`;
   if (racha >= 2 && new Date().getDay() === 1) return `${n}, ${racha} semanas seguidas cumpliendo. ¡A por otra!`;
+  if (new Date().getDay() === 1) {
+    const pasada = resumenSemanas(2)[0], hp = pasada.gym + pasada.soloDeporte;
+    if (hp) return hp >= obj ? `${n}, la semana pasada, ${hp} de ${obj}: cumplida. Esta, igual.` : `${n}, la semana pasada, ${hp} de ${obj}. Esta semana, a por ${obj}.`;
+  }
   if (DIA[d?.diaPlan]?.rodilla) return fraseDelDia([`${n}, hoy toca pierna. Ni se te ocurra saltártela.`, `Día de pierna, ${n}: control, recorrido cómodo y a por ello.`]);
   return fraseDelDia(FRASES);
 }
@@ -794,6 +893,7 @@ window.App = {
       const [id, i] = ds.ok.split("|"), hs = huecos(d), h = hs.find(x => x.e.id === id);
       if (!h) return false;
       const e = h.e, x = d.ej[id], s = x.series[Number(i)];
+      const antes = s.hecho ? null : antesDeSerie(d, e, x);
       s.hecho = !s.hecho;
       if (s.hecho) {
         // Lo que no se ha escrito se toma de lo sugerido (la última vez o el rango).
@@ -802,6 +902,7 @@ window.App = {
         if (s.reps === "") s.reps = Number(ph.reps);
         actividad(d);
         contarEntreno(d);
+        celebrarSerie(d, e, x, s, antes);
         const grupo = e.superserie ? hs.filter(g => g.e.superserie === e.superserie) : [h];
         const pos = grupo.findIndex(g => g.e.id === id);
         if (pos < grupo.length - 1) { pararDescanso(); tocar(HOY); repintar(); msgFlotante(`Sin descanso: ahora ${grupo[pos + 1].e.nombre}`); return false; }

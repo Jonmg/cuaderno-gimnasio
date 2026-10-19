@@ -58,10 +58,6 @@ function cargarQR() {
   history.replaceState(null, "", location.pathname + location.search);
   if (t && puedeProponer()) { GH.guardarToken(t); window.addEventListener("DOMContentLoaded", () => aviso("GitHub conectado: este móvil ya puede proponer fotos.")); }
 })();
-function aviso(texto) {
-  const el = document.createElement("div"); el.className = "toast"; el.setAttribute("role", "status"); el.textContent = texto;
-  document.body.appendChild(el); setTimeout(() => el.remove(), 6000);
-}
 const blobABase64 = b => new Promise((ok, mal) => { const f = new FileReader(); f.onload = () => ok(String(f.result)); f.onerror = () => mal(f.error); f.readAsDataURL(b); });
 async function blobDeFoto(ap) { const u = Fotos.url[ap]; return u ? (await fetch(u)).blob() : null; }
 

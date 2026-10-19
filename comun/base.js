@@ -267,6 +267,32 @@ function abrirHoja(html) {
 function cerrarHoja() { const h = $("#hoja"); h.hidden = true; h.innerHTML = ""; document.body.classList.remove("sin-scroll"); App.alCerrarHoja?.(); }
 const botonCerrar = `<button class="cerrar" data-cerrar aria-label="Cerrar">×</button>`;
 
+/* ---------- Avisos y celebraciones ---------- */
+// Aviso breve. Con clase "celebra" sale arriba y en naranja (no tapa el temporizador); si llegan
+// varios seguidos, salen uno detrás de otro.
+let finCelebra = 0;
+function aviso(texto, clase = "") {
+  const espera = clase ? Math.max(0, finCelebra - Date.now()) : 0;
+  if (clase) finCelebra = Date.now() + espera + 3000;
+  setTimeout(() => {
+    const el = document.createElement("div"); el.className = `toast ${clase}`; el.setAttribute("role", "status"); el.textContent = texto;
+    document.body.appendChild(el); setTimeout(() => el.remove(), clase ? 2900 : 6000);
+  }, espera);
+}
+// Lluvia de confeti con los colores de la app. Nada si el móvil pide menos animaciones.
+function confeti() {
+  try { if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (e) {}
+  const caja = document.createElement("div"); caja.className = "confeti"; caja.setAttribute("aria-hidden", "true");
+  const colores = ["#FD5000", "#FFB27A", "#6799AB", "#254957", "#F5C542"];
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement("i");
+    p.style.cssText = `left:${Math.random() * 100}%;background:${colores[i % colores.length]};animation-delay:${Math.random() * .6}s;animation-duration:${2.2 + Math.random() * 1.6}s;--giro:${Math.random() * 720 - 360}deg;--deriva:${Math.random() * 80 - 40}px`;
+    caja.appendChild(p);
+  }
+  document.body.appendChild(caja); setTimeout(() => caja.remove(), 4800);
+}
+function vibrar(patron = [60, 40, 60]) { try { navigator.vibrate?.(patron); } catch (e) {} }
+
 /* ---------- Fotos ----------
    Las fotos de las máquinas van en IndexedDB (cabe mucho más que en localStorage), una base
    por persona. Se reducen en el móvil antes de guardar. No entran en la copia de seguridad. */

@@ -41,6 +41,14 @@ libreta desde el mismo sitio (mejor, desde el icono).
 
 ### Aita (motor de recuperación, `comun/recuperacion.js`)
 
+- **Cinco estrellas al día:** en gimnasio, una por bloque de la sesión (calentar, piernas,
+  brazos, equilibrio, estirar); en paseo, una cada 5 minutos andando. El descanso cuenta como
+  día cumplido. Se ve la semana entera (por ejemplo, 12 de 30) y avisa de cada estrella nueva.
+- **Sesión paso a paso** (botón *Empezar la sesión*): un ejercicio en pantalla con la foto de la
+  máquina, las cifras ya puestas y un botón grande *Hecho*; pregunta cómo ha ido y pasa al
+  siguiente. Al terminar, celebración con confeti, lo que ha mejorado y la cuenta de la semana.
+- **Enviar mi semana:** imagen con las estrellas, días de gimnasio y paseos para mandarla por
+  WhatsApp a la familia (desde Progreso o al terminar).
 - **Hoy:** cómo se encuentra (1–5; un día flojo propone bajar el ritmo), botón *Tengo alguna
   molestia* con las señales para parar y el 112, y el tipo de día.
 - **Semana tipo:** lunes, miércoles y viernes gimnasio; martes, jueves y sábado paseo; domingo
@@ -55,7 +63,8 @@ libreta desde el mismo sitio (mejor, desde el icono).
   cómo ajustarla (se ven en la sesión), historial y vídeos.
 - **Ejercicios:** los 21 por grupos, con la foto de su máquina, para mirarlos antes de ir.
 - **Paseo:** minutos y kilómetros, con la referencia de la última vez.
-- **Progreso:** racha de días, minutos andando por semana, peso en cada máquina e historial.
+- **Progreso:** racha de días, estrellas y minutos andando por semana, peso en cada máquina e
+  historial.
 - **Ajustes:** quitar los ejercicios que el médico o el entrenador desaconsejen, y compartir sus
   fotos de máquinas.
 
@@ -78,8 +87,14 @@ libreta desde el mismo sitio (mejor, desde el icono).
   qué ejercicio molestó; si se repite, avisa de consultarlo con el fisio.
 - **Otro deporte** (pádel, correr…) cuenta para el objetivo semanal.
 - **Constancia:** entrenos por semana frente al objetivo (3) y racha de semanas cumplidas.
-- **Progreso:** entrenos por semana, evolución por ejercicio y variante, kilos movidos, rodilla,
-  deporte e historial.
+- **Progreso:** entrenos por semana, evolución por ejercicio y variante, récords, kilos movidos,
+  rodilla, deporte e historial.
+- **Ánimos con contexto:** récord personal al superar la mejor marca (más kilos, o más
+  repeticiones con los mismos), bienvenida tras una semana o más sin ir, aviso de la última serie
+  del día, sesión completa y semana cumplida. Tras tres semanas sin hacer un ejercicio, propone
+  repetir peso en vez de subir.
+- **Álbum de cromos:** cada máquina es un cromo que se consigue al entrenar con ella y se vuelve
+  dorado con foto real (Ejercicios → Álbum).
 - **Ejercicios:** catálogo con buscador y filtros por músculo y material, ficha de cada
   ejercicio (músculos, cómo se hace, errores típicos, historial, vídeos) y vista de máquinas.
 
@@ -140,7 +155,7 @@ esta app queda bajo `/cuaderno-gimnasio/` y sus eventos empiezan por `gim-`.
 (`Cuaderno de Fuerza · jon`). Si la app se abre desde el icono de la pantalla de inicio, la
 procedencia aparece como `app-instalada` (en *Referrers*).
 
-**Eventos** (10 nombres fijos):
+**Eventos** (nombres fijos):
 
 | Evento | Cuándo |
 |---|---|
@@ -151,6 +166,8 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-ficha-abierta` | Abrir la ficha de un ejercicio o de una máquina |
 | `gim-foto-hecha` | Guardar una foto de una máquina |
 | `gim-foto-compartida` | Enviar el archivo de fotos o crear la propuesta en GitHub |
+| `gim-paso-a-paso-aita` | Empezar la sesión paso a paso; una vez al día |
+| `gim-semana-enviada` | Enviar (o descargar) la imagen de *Mi semana* |
 
 **Lo que no se mide nunca:** nada que escriba o elija el usuario (pesos, repeticiones, minutos,
 notas, nombre, gimnasio, búsquedas, qué ejercicio o máquina, fotos, ajustes de máquina, el token
@@ -180,6 +197,7 @@ comun/recuperacion.js     motor de Aita (sus 21 ejercicios, con su máquina y c�
 comun/rutina.js           motor de rutina (Jon y Mikel)
 comun/catalogo.js         músculos, máquinas y ejercicios del catálogo
 comun/fichas.js           común a las tres libretas: foto de cada máquina y sus botones
+IDEAS.md                  mejoras pensadas y pendientes, para que no se pierdan
 comun/compartir.js        compartir fotos: enviar, importar, pull request, pasar el acceso
 comun/estadisticas.js     estadísticas de uso (GoatCounter)
 comun/iconos.js           figura de músculos e iconos (SVG dibujado en código)
@@ -235,6 +253,14 @@ crear además sus propios ejercicios desde la app.
 
 Los ejercicios de Manolo están aparte, en `CATALOGO` y `FICHAS` de `comun/recuperacion.js`:
 cada uno con su máquina (`ap`, un `id` de `APARATOS`), pasos y errores.
+
+### Mensajes de la familia (Manolo)
+
+En `ANIMOS_FAMILIA` de `comun/recuperacion.js`, una línea por mensaje:
+`{ de: "Jon", texto: "¡Vamos, aita!" }`. En cada celebración sale uno. Como el repositorio es
+público, nada personal.
+
+Las mejoras pensadas y aún sin hacer están en [`IDEAS.md`](IDEAS.md).
 
 ### Estilo
 

@@ -172,13 +172,249 @@ function diaActivo(d) {
   return (d.ejercicios || []).some(e => e.hecho) || Number(d.paseo?.min) > 0;
 }
 
+/* ---------- Estrellas del día ----------
+   Gimnasio: una por bloque de la sesión (los cinco de ESTRUCTURA), cuando están hechos todos
+   sus ejercicios. Paseo: una cada 5 minutos andando, hasta cinco. Descanso: el día cuenta como
+   cumplido y no entra en la cuenta de la semana. */
+const MIN_ESTRELLA = 5;
+const NOMBRE_BLOQUE = { Calentamiento: "Calentar", Piernas: "Piernas", "Espalda y brazos": "Brazos", Equilibrio: "Equilibrio", "Vuelta a la calma": "Estirar" };
+const tipoDe = k => Datos.dias[k]?.tipo || PLAN_SEMANA[deClave(k).getDay()];
+function estrellas(k) {
+  const d = Datos.dias[k], tipo = tipoDe(k);
+  if (tipo === "descanso") return null;
+  if (tipo === "paseo") { const min = Number(d?.paseo?.min) || 0; return [1, 2, 3, 4, 5].map(i => ({ n: `${i * MIN_ESTRELLA} min`, ok: min >= i * MIN_ESTRELLA })); }
+  const ejs = d?.ejercicios || [], todo = ejs.length > 0 && ejs.every(e => e.hecho);
+  return ESTRUCTURA.map(([g]) => {
+    const del = ejs.filter(e => POR_ID[e.id]?.grupo === g);
+    return { n: NOMBRE_BLOQUE[g], ok: del.length ? del.every(e => e.hecho) : todo };
+  });
+}
+const cuantas = k => (estrellas(k) || []).filter(s => s.ok).length;
+// Nombre de la estrella que se acaba de ganar (comparando antes y después), o "".
+const estrellaNueva = (antes, despues) => (despues || []).find((s, i) => s.ok && !antes?.[i]?.ok)?.n || "";
+// Una semana de lunes a domingo: estrellas ganadas y posibles (los días de descanso no cuentan).
+function semanaEstrellas(lunes = lunesDe(new Date())) {
+  const dias = [];
+  for (let i = 0; i < 7; i++) { const f = new Date(lunes); f.setDate(f.getDate() + i); const k = claveFecha(f); dias.push({ k, f, tipo: tipoDe(k), n: cuantas(k) }); }
+  const activos = dias.filter(x => x.tipo !== "descanso");
+  return { dias, ganadas: activos.reduce((s, x) => s + x.n, 0), posibles: activos.length * 5 };
+}
+const SVG_ESTRELLA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.4l2.95 6.1 6.65.8-4.9 4.6 1.25 6.6L12 17.3l-5.95 3.2 1.25-6.6-4.9-4.6 6.65-.8z"/></svg>';
+const estrella = ok => `<span class="estrella ${ok ? "si" : ""}">${SVG_ESTRELLA}</span>`;
+const LETRA_DIA = ["D", "L", "M", "X", "J", "V", "S"];
+
+function htmlEstrellas(d) {
+  const est = estrellas(HOY), sem = semanaEstrellas(), n = cuantas(HOY);
+  const ejs = d.ejercicios || [], pendiente = d.tipo === "gym" && ejs.some(e => !e.hecho);
+  let h = `<section class="card" aria-labelledby="t-estrellas">
+    <div class="top"><h2 id="t-estrellas">Tus estrellas de hoy</h2>${est ? `<span class="num" style="font-size:1.5rem">${n}/5</span>` : ""}</div>`;
+  h += est ? `<div class="estrellas" role="img" aria-label="${n} de 5 estrellas">${est.map(s => `<div>${estrella(s.ok)}<span>${esc(s.n)}</span></div>`).join("")}</div>`
+    : `<p class="muted" style="margin:0">Hoy descansas: el día cuenta como cumplido ✓</p>`;
+  if (pendiente) h += `<button class="btn grande" data-empezar>${ejs.some(e => e.hecho) ? "▶ Seguir con la sesión" : "▶ Empezar la sesión"}</button>`;
+  else if (d.tipo === "gym" && n === 5) h += `<p style="margin:0"><b>¡Las cinco!</b> Sesión completa.</p>`;
+  if (d.tipo === "paseo") h += `<p class="small muted" style="margin:0">Una estrella por cada ${MIN_ESTRELLA} minutos andando. Apúntalo abajo, en <b>Paseo</b>.</p>`;
+  h += `<div class="semana-dias" role="img" aria-label="Esta semana: ${sem.ganadas} de ${sem.posibles} estrellas">${sem.dias.map(x => `<div class="${x.k === HOY ? "hoy" : ""}"><span>${LETRA_DIA[x.f.getDay()]}</span>${x.tipo === "descanso" ? `<b>–</b>` : `<b class="num">${x.k > HOY ? "·" : x.n}</b>`}</div>`).join("")}</div>
+    <p class="small muted" style="margin:0">Esta semana: <b>${sem.ganadas} de ${sem.posibles}</b> estrellas${sem.ganadas ? "" : ". ¡A por la primera!"}</p>
+  </section>`;
+  return h;
+}
+
+/* ---------- Sesión paso a paso ----------
+   Un ejercicio cada vez: foto de la máquina, qué hacer, las cifras ya puestas y un botón grande.
+   Al marcarlo pregunta cómo ha ido y pasa al siguiente; al terminar, celebración. */
+const Paso = { i: 0, fase: "hacer", nueva: "" };
+function siguientePendiente(ejs, desde) {
+  for (let j = 1; j <= ejs.length; j++) { const i = (desde + j) % ejs.length; if (!ejs[i].hecho) return i; }
+  return -1;
+}
+function empezarPaso() {
+  const ejs = Datos.dias[HOY].ejercicios;
+  Paso.i = Math.max(0, ejs.findIndex(e => !e.hecho)); Paso.fase = "hacer"; Paso.nueva = "";
+  abrirFicha("paso"); eventoDelDia("gim-paso-a-paso");
+}
+function irAPaso(i) {
+  if (i < 0) { abrirFiesta(); return; }
+  Paso.i = i; Paso.fase = "hacer"; Paso.nueva = "";
+  abrirFicha("paso"); $("#hoja .hoja").scrollTop = 0;
+}
+function hojaPaso() {
+  const ejs = Datos.dias[HOY]?.ejercicios || [], i = Paso.i, e = ejs[i], c = POR_ID[e?.id];
+  if (!c) return "";
+  const a = AP[c.ap], foto = a && urlFoto(c.ap), ajuste = Datos.ajustes.notasEj?.[c.id];
+  let h = `<div class="hoja-cab"><div><span class="ej-grupo">${i + 1} de ${ejs.length} · ${esc(c.grupo)}</span><h2 class="paso-nombre">${esc(c.nombre)}</h2></div>${botonCerrar}</div>
+    <div class="estrellas mini" role="img" aria-label="${cuantas(HOY)} de 5 estrellas">${estrellas(HOY).map(s => estrella(s.ok)).join("")}</div>`;
+  if (Paso.nueva) h += `<p class="estrella-nueva">${estrella(true)} ¡Estrella de ${esc(Paso.nueva)}!</p>`;
+  h += foto ? `<div class="paso-foto"><img src="${foto}" alt="${esc(a.nombre)}"></div>`
+    : `<div class="paso-foto icono">${iconoMusculo(MUSCULOS_EJ[c.id] || ["cuerpo"], { clase: "musculo grande" })}</div>`;
+  h += `<p class="paso-pauta">${esc(c.pauta)}</p>`;
+  if (ajuste) h += `<p class="ajuste-maq">⚙ ${esc(ajuste)}</p>`;
+  if (Paso.fase === "como") {
+    return h + `<p class="paso-hecho">✓ ¡Hecho!</p><h3 style="margin:0;text-align:center">¿Cómo ha ido?</h3>
+      <div class="paso-sens">${Object.entries(SENSACION).map(([v, t]) => `<button class="btn ${v === "bien" ? "" : "sec"}" data-pasosens="${v}">${t}</button>`).join("")}</div>`;
+  }
+  h += `<div class="campos paso-campos">${c.tipo === "tiempo" ? campo(i, "min", "Minutos", e.min, "1", "p")
+    : campo(i, "series", "Series", e.series, "1", "p") + campo(i, "reps", "Repeticiones", e.reps, "1", "p") + campo(i, "peso", "Kilos", e.peso, "0.5", "p")}</div>
+    <p class="small muted" style="margin:0">Vienen puestas las cifras de la última vez: cámbialas solo si hace falta.</p>`;
+  const sube = !e.hecho ? sugerenciaSubir(c.id, HOY) : "";
+  if (sube) h += `<span class="sube">${sube}</span>`;
+  h += e.hecho ? `<button class="btn grande" data-pasoir="sig">Ya está hecho · Siguiente →</button>` : `<button class="btn grande verde" data-pasohecho>✓ Hecho</button>`;
+  if (c.pasos?.length) h += `<details><summary><b>Cómo se hace</b></summary><ol class="pasos" style="margin-top:8px">${c.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></details>`;
+  return h + `<div class="paso-nav"><button class="btn sec peq" data-pasoir="ant" ${i === 0 ? "disabled" : ""}>← Anterior</button><button class="btn sec peq" data-pasoir="sig">${e.hecho ? "Siguiente" : "Saltar"} →</button></div>`;
+}
+
+/* ---------- Celebración ---------- */
+const FIESTA = [
+  "¡Sesión completa, {n}! Cada día que entrenas, ganas fuerza.", "¡Bien hecho, {n}! Hoy has vuelto a sumar.",
+  "¡Cinco estrellas, {n}! Así se recupera la fuerza.", "¡Lo has conseguido, {n}! Ahora agua y a descansar.",
+  "¡Hecho, {n}! Paso a paso se llega lejos.", "¡Qué máquina, {n}! Otro día más al bote.",
+  "¡Enhorabuena, {n}! Tu entrenador estaría orgulloso.", "¡Bravo, {n}! Hoy eres un poco más fuerte que ayer.",
+];
+// Mensajes de la familia: { de: "Jon", texto: "…" }. Si hay, sale uno en cada celebración.
+// Van en el código, que es público: nada personal.
+const ANIMOS_FAMILIA = [];
+// Ejercicios de un día con más peso que la primera vez que se hicieron.
+function mejorasDe(k) {
+  const out = [];
+  for (const e of Datos.dias[k]?.ejercicios || []) {
+    const c = POR_ID[e.id];
+    if (!e.hecho || c?.tipo !== "fuerza" || !(Number(e.peso) > 0)) continue;
+    const primera = historialEj(e.id, k).pop()?.e;
+    if (primera && Number(e.peso) > Number(primera.peso)) out.push(`${c.nombre}: ${fmt(e.peso)} kg, ${fmt(e.peso - primera.peso)} más que la primera vez`);
+  }
+  return out;
+}
+function abrirFiesta() { abrirFicha("fiesta"); confeti(); vibrar([80, 60, 80, 60, 180]); }
+function hojaFiesta() {
+  const d = Datos.dias[HOY], sem = semanaEstrellas(), mejoras = mejorasDe(HOY).slice(0, 2);
+  const fam = ANIMOS_FAMILIA.length ? ANIMOS_FAMILIA[Math.floor(azar(HOY + "familia")() * ANIMOS_FAMILIA.length)] : null;
+  const frase = d?.tipo === "paseo" ? `¡Paseo de cinco estrellas, ${nombreVisible()}! ${d.paseo.min} minutos andando.` : fraseDelDia(FIESTA, "fiesta");
+  return `<div class="hoja-cab"><span></span>${botonCerrar}</div>
+    <div class="fiesta">
+      <div class="estrellas grandes">${(estrellas(HOY) || []).map(s => estrella(s.ok)).join("")}</div>
+      <h2>${esc(frase)}</h2>
+      ${fam ? `<blockquote class="familia">«${esc(fam.texto)}»<span>— ${esc(fam.de)}</span></blockquote>` : ""}
+      ${mejoras.map(m => `<p class="mejora">↑ ${esc(m)}</p>`).join("")}
+      <p class="muted" style="margin:0">Esta semana llevas <b>${sem.ganadas} de ${sem.posibles}</b> estrellas.</p>
+    </div>
+    <button class="btn grande" data-semana>Enviar mi semana a la familia</button>
+    <button class="btn sec" data-cerrar>Cerrar</button>`;
+}
+
+/* ---------- Enviar mi semana ----------
+   Imagen con las estrellas, el gimnasio y los paseos de la semana para mandarla por WhatsApp a la
+   familia. Se prepara al abrir la hoja (así el botón de compartir funciona a la primera también
+   en iPhone) y no sale del móvil hasta que se envía. */
+const Semana = { url: "", file: null, estado: "" };
+function rachaDias() {
+  // Días seguidos (hasta hoy o ayer) con algo hecho, contando los días de descanso planificados.
+  let racha = 0; const cur = new Date();
+  if (!diaActivo(Datos.dias[HOY])) cur.setDate(cur.getDate() - 1);
+  while (racha < 3650) {
+    const d = Datos.dias[claveFecha(cur)];
+    if (diaActivo(d)) racha++;
+    else if (!(d?.tipo === "descanso" || (!d && PLAN_SEMANA[cur.getDay()] === "descanso"))) break;
+    cur.setDate(cur.getDate() - 1);
+  }
+  return racha;
+}
+function datosSemana() {
+  const s = semanaEstrellas(); let gym = 0, min = 0, km = 0; const mejoras = {};
+  for (const x of s.dias) {
+    const d = Datos.dias[x.k]; if (!d || d.nuevo) continue;
+    if ((d.ejercicios || []).some(e => e.hecho)) gym++;
+    min += Number(d.paseo?.min) || 0; km += Number(d.paseo?.km) || 0;
+    for (const m of mejorasDe(x.k)) mejoras[m.split(":")[0]] = m;
+  }
+  return { ...s, gym, min, km, mejora: Object.values(mejoras).pop() || "", racha: rachaDias() };
+}
+async function dibujarSemana() {
+  const s = datosSemana(), W = 1080, H = 1350;
+  const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+  const g = cv.getContext("2d");
+  try { await Promise.all(["800 90px Anybody", "700 40px 'Open Sans'", "400 36px 'Open Sans'"].map(f => document.fonts.load(f))); } catch (e) {}
+  const TIT = "Anybody, 'Arial Black', sans-serif", TXT = "'Open Sans', Arial, sans-serif";
+  const caja = (x, y, w, h, r, color) => { g.fillStyle = color; g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); g.fill(); };
+  const estrellaC = (cx, cy, r, color) => { g.fillStyle = color; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; g.lineTo(cx + rr * Math.cos(a), cy + rr * Math.sin(a)); } g.closePath(); g.fill(); };
+  const texto = (t, x, y, fuente, color, max = W - 160, alinear = "left") => {
+    g.textAlign = alinear; g.fillStyle = color; let [peso, tam, ...fam] = fuente.split(" "); tam = parseInt(tam);
+    do { g.font = `${peso} ${tam}px ${fam.join(" ")}`; tam -= 2; } while (g.measureText(t).width > max && tam > 16);
+    g.fillText(t, x, y);
+  };
+  g.fillStyle = "#F2F5F6"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "#254957"; g.fillRect(0, 0, W, 380);
+  g.fillStyle = "#FD5000"; g.fillRect(0, 380, W, 10);
+  const ini = s.dias[0].f, fin = s.dias[6].f;
+  texto("CUADERNO DE FUERZA", 80, 110, `700 30px ${TXT}`, "#B8D2DB");
+  texto(`La semana de ${nombreVisible()}`, 80, 230, `800 92px ${TIT}`, "#FFFFFF");
+  texto(`Del ${ini.getDate()}${ini.getMonth() !== fin.getMonth() ? ` de ${MESES[ini.getMonth()]}` : ""} al ${fin.getDate()} de ${MESES[fin.getMonth()]}`, 80, 310, `400 40px ${TXT}`, "#B8D2DB");
+  estrellaC(160, 525, 78, "#FD5000");
+  texto(String(s.ganadas), 270, 572, `800 130px ${TIT}`, "#0C0E0D");
+  g.font = `800 130px ${TIT}`; const ancho = g.measureText(String(s.ganadas)).width;
+  texto(`de ${s.posibles} estrellas`, 290 + ancho, 568, `600 50px ${TXT}`, "#383838", W - 370 - ancho);
+  const cw = (W - 160 - 6 * 14) / 7;
+  s.dias.forEach((x, i) => {
+    const x0 = 80 + i * (cw + 14), cx = x0 + cw / 2, hoy = x.k === HOY;
+    caja(x0, 650, cw, 210, 22, hoy ? "#FFF1E8" : "#FFFFFF");
+    texto(LETRA_DIA[x.f.getDay()], cx, 705, `700 34px ${TXT}`, hoy ? "#C24000" : "#666E70", cw, "center");
+    if (x.tipo === "descanso") { texto("–", cx, 800, `800 60px ${TIT}`, "#B7CBD2", cw, "center"); texto("descanso", cx, 840, `400 20px ${TXT}`, "#666E70", cw - 8, "center"); return; }
+    estrellaC(cx, 755, 26, x.n ? "#FD5000" : "#DCE3E5");
+    texto(x.k > HOY ? "" : String(x.n), cx, 838, `800 56px ${TIT}`, "#0C0E0D", cw, "center");
+  });
+  const tiles = [[s.gym, s.gym === 1 ? "día de gimnasio" : "días de gimnasio"], [s.min, "minutos andando"], s.km ? [fmt(s.km), "km andados"] : [s.racha, s.racha === 1 ? "día de racha" : "días de racha"]];
+  const tw = (W - 160 - 2 * 24) / 3;
+  tiles.forEach(([v, t], i) => {
+    const x0 = 80 + i * (tw + 24);
+    caja(x0, 900, tw, 200, 22, "#FFFFFF");
+    texto(String(v), x0 + 30, 1010, `800 88px ${TIT}`, "#C24000", tw - 60);
+    texto(t, x0 + 30, 1062, `600 28px ${TXT}`, "#666E70", tw - 60);
+  });
+  if (s.mejora) texto(`↑ ${s.mejora}`, 80, 1175, `700 34px ${TXT}`, "#287D3C");
+  else if (s.racha > 1) texto(`${s.racha} días seguidos cumpliendo el plan`, 80, 1175, `700 34px ${TXT}`, "#287D3C");
+  texto(`${gimnasio() || "Gimnasio"} · Cuaderno de Fuerza`, 80, 1285, `400 28px ${TXT}`, "#666E70");
+  return cv;
+}
+async function abrirSemana() {
+  if (Semana.url) URL.revokeObjectURL(Semana.url);
+  Object.assign(Semana, { url: "", file: null, estado: "Preparando la imagen…" });
+  abrirFicha("semana");
+  try {
+    const cv = await dibujarSemana();
+    const blob = await new Promise((ok, mal) => cv.toBlob(b => b ? ok(b) : mal(new Error("el navegador no la generó")), "image/png"));
+    Semana.file = new File([blob], `semana-${sinAcentos(nombreVisible()).replace(/[^a-z0-9]+/g, "-")}-${HOY}.png`, { type: "image/png" });
+    Semana.url = URL.createObjectURL(blob); Semana.estado = "";
+  } catch (e) { Semana.estado = `No se pudo preparar la imagen: ${e.message}`; }
+  if (Hoja?.tipo === "semana") refrescarHoja();
+}
+function hojaSemana() {
+  return `<div class="hoja-cab"><div><span class="ej-grupo">Para la familia</span><h2>Mi semana</h2></div>${botonCerrar}</div>
+    ${Semana.url ? `<img class="semana-img" src="${Semana.url}" alt="Resumen de la semana">` : ""}
+    <p class="small" id="msgSemana" role="status" style="margin:0">${esc(Semana.estado)}</p>
+    <button class="btn grande" data-enviarsemana ${Semana.file ? "" : "disabled"}>Enviar por WhatsApp…</button>
+    <p class="small muted" style="margin:0">Se abre el menú de compartir del móvil: elige WhatsApp y el grupo de la familia.</p>`;
+}
+async function enviarSemana() {
+  const f = Semana.file; if (!f) return;
+  const s = semanaEstrellas(), msg = t => { Semana.estado = t; const m = $("#msgSemana"); if (m) m.textContent = t; };
+  if (navigator.canShare?.({ files: [f] })) {
+    try { await navigator.share({ files: [f], text: `Mi semana en el gimnasio: ${s.ganadas} de ${s.posibles} estrellas ⭐` }); msg("¡Enviada!"); evento("gim-semana-enviada"); }
+    catch (e) { if (e.name !== "AbortError") msg(`No se pudo compartir: ${e.message}`); }
+    return;
+  }
+  const a = document.createElement("a"); a.href = Semana.url; a.download = f.name;
+  document.body.appendChild(a); a.click(); a.remove();
+  msg("Imagen guardada en Descargas: mándala por WhatsApp desde allí."); evento("gim-semana-enviada");
+}
+HOJAS.paso = hojaPaso;
+HOJAS.fiesta = hojaFiesta;
+HOJAS.semana = hojaSemana;
+
 /* ---------- Vista: Hoy ---------- */
 const ENERGIA = [["1", "Muy flojo"], ["2", "Flojo"], ["3", "Normal"], ["4", "Bien"], ["5", "Muy bien"]];
 
 function pintarHoy() {
   const d = diaDe(HOY);
   const nombre = `, ${esc(nombreVisible())}`;
-  let h = `<div class="wrap" style="padding:0">`;
+  let h = `<div class="wrap" style="padding:0">${htmlEstrellas(d)}`;
   h += `<section class="card" aria-labelledby="t-energia">
     <h2 id="t-energia">¿Cómo te encuentras hoy${nombre}?</h2>
     <div class="escala" role="group" aria-label="Energía de hoy">${ENERGIA.map(([v, t]) => `<button class="chip" data-energia="${v}" aria-pressed="${String(d.energia) === v}"><b>${v}</b>${t}</button>`).join("")}</div>
@@ -248,8 +484,8 @@ function pintarGym(d) {
   </section>`;
   return h;
 }
-function campo(i, k, etiqueta, v, paso = "1") {
-  return `<label class="campo">${etiqueta}<input class="num" type="number" inputmode="decimal" min="0" step="${paso}" id="c-${i}-${k}" data-campo="${i}" data-k="${k}" value="${esc(v)}"></label>`;
+function campo(i, k, etiqueta, v, paso = "1", pre = "c") {
+  return `<label class="campo">${etiqueta}<input class="num" type="number" inputmode="decimal" min="0" step="${paso}" id="${pre}-${i}-${k}" data-campo="${i}" data-k="${k}" value="${esc(v)}"></label>`;
 }
 
 function pintarPaseo(d) {
@@ -346,15 +582,7 @@ function pintarProgreso() {
     if ((d.ejercicios || []).some(e => e.hecho)) s.gym++;
   }
   const estaSemana = semanas[semanas.length - 1];
-  // Racha: días seguidos (hasta hoy o ayer) con algo hecho, contando los días de descanso planificados.
-  let racha = 0; const cur = new Date();
-  if (!diaActivo(Datos.dias[HOY])) cur.setDate(cur.getDate() - 1);
-  while (racha < 3650) {
-    const d = Datos.dias[claveFecha(cur)];
-    if (diaActivo(d)) racha++;
-    else if (!(d?.tipo === "descanso" || (!d && PLAN_SEMANA[cur.getDay()] === "descanso"))) break;
-    cur.setDate(cur.getDate() - 1);
-  }
+  const racha = rachaDias();
 
   const fuerza = CATALOGO.filter(e => e.tipo === "fuerza" && claves.some(k => (Datos.dias[k].ejercicios || []).some(x => x.id === e.id && x.hecho && Number(x.peso) > 0)));
   const sel = fuerza.some(e => e.id === maquinaSel) ? maquinaSel : fuerza[0]?.id;
@@ -365,6 +593,10 @@ function pintarProgreso() {
       <div class="tile"><span class="eyebrow">Gimnasio</span><span class="num">${estaSemana.gym}</span><span>sesiones esta semana</span></div>
       <div class="tile"><span class="eyebrow">Paseo</span><span class="num">${estaSemana.minPaseo}</span><span>min esta semana</span></div>
     </div>`;
+  const sem = semanaEstrellas();
+  h += `<section class="card"><div class="top"><h2>Estrellas por semana</h2><span class="num" style="font-size:1.4rem">${sem.ganadas}/${sem.posibles}</span></div>
+    ${graficoBarras(semanas.map((w, i) => ({ etiqueta: fechaCorta(w.inicio), partes: [{ v: semanaEstrellas(w.inicio).ganadas, color: i === semanas.length - 1 ? "var(--accent)" : "var(--accent-soft)" }] })), { etiquetaAria: "Estrellas en las últimas 8 semanas" })}
+    <button class="btn grande" data-semana>Enviar mi semana a la familia</button></section>`;
   if (!claves.length) {
     h += `<section class="card"><h2>Aquí verás cómo mejoras</h2><p class="muted">Cuando marques ejercicios o apuntes un paseo en la pestaña <b>Hoy</b>, aparecerán aquí los minutos andados por semana, cómo sube el peso en cada máquina y el historial de días.</p></section></div>`;
     $("#vista").innerHTML = h; return;
@@ -400,6 +632,7 @@ const FRASES = [
   "Sin prisa pero sin pausa, {n}.", "{n}, que el día empiece con energía: un vaso de agua y a por ello.",
   "El mejor momento para moverse es hoy, {n}.", "{n}, tu entrenador estaría orgulloso. Sigue con el plan.",
   "{n}, cada día que te mueves es un día que ganas.", "Hoy toca sumar, {n}. Lo que sea, pero sumar.",
+  "{n}, hoy hay cinco estrellas esperándote.", "A por las estrellas de hoy, {n}. Una a una.",
 ];
 function motivacion() {
   const n = nombreVisible(), d = Datos.dias[HOY];
@@ -417,11 +650,30 @@ window.App = {
   ajustesIniciales: { nombre: "", desactivados: [], notasEj: {} },
   vistas: { hoy: pintarHoy, progreso: pintarProgreso, ejercicios: pintarEjercicios, ajustes: pintarAjustes },
   motivacion,
-  alCerrarHoja() { Hoja = null; },
+  // Al cerrar el paso a paso se repinta la lista, por si se cambiaron cifras.
+  alCerrarHoja() { const t = Hoja?.tipo; Hoja = null; if (t === "paso" || t === "fiesta") repintar(); },
   click(b) {
     const c = Compartir.click(b) ?? FotoFicha.click(b); if (c !== undefined) return c;
     if (b.dataset.ayuda) { abrirFicha("ayuda", b.dataset.ayuda); evento("gim-ficha-abierta"); return false; }
+    if ("semana" in b.dataset) { abrirSemana(); return false; }
+    if ("enviarsemana" in b.dataset) { enviarSemana(); return false; }
     const d = Datos.dias[HOY];
+    /* Paso a paso */
+    if ("empezar" in b.dataset) { empezarPaso(); return false; }
+    if ("pasohecho" in b.dataset) {
+      const antes = estrellas(HOY), e = d.ejercicios[Paso.i];
+      e.hecho = true; tocar(HOY); vibrar();
+      eventoDelDia("gim-entreno-empezado"); if (d.ejercicios.every(x => x.hecho)) eventoDelDia("gim-entreno-completo");
+      Paso.nueva = estrellaNueva(antes, estrellas(HOY)); Paso.fase = "como";
+      abrirHoja(hojaPaso()); $("#hoja .hoja").scrollTop = 0; return;
+    }
+    if (b.dataset.pasosens) { d.ejercicios[Paso.i].sensacion = b.dataset.pasosens; tocar(HOY); irAPaso(siguientePendiente(d.ejercicios, Paso.i)); return; }
+    if (b.dataset.pasoir) {
+      const ejs = d.ejercicios, i = Paso.i;
+      if (b.dataset.pasoir === "ant") irAPaso(Math.max(0, i - 1));
+      else irAPaso(i + 1 < ejs.length ? i + 1 : siguientePendiente(ejs, i));
+      return false;
+    }
     if (b.dataset.energia) { d.energia = Number(b.dataset.energia); tocar(HOY); }
     else if ("alerta" in b.dataset) { d.alerta = !d.alerta; tocar(HOY); }
     else if (b.dataset.tipo) {
@@ -430,8 +682,12 @@ window.App = {
       tocar(HOY);
     }
     else if (b.dataset.check) {
-      const e = d.ejercicios[Number(b.dataset.check)]; e.hecho = !e.hecho; tocar(HOY);
-      if (e.hecho) { eventoDelDia("gim-entreno-empezado"); if (d.ejercicios.every(x => x.hecho)) eventoDelDia("gim-entreno-completo"); }
+      const antes = estrellas(HOY), e = d.ejercicios[Number(b.dataset.check)]; e.hecho = !e.hecho; tocar(HOY);
+      if (e.hecho) {
+        eventoDelDia("gim-entreno-empezado");
+        if (d.ejercicios.every(x => x.hecho)) { eventoDelDia("gim-entreno-completo"); abrirFiesta(); }
+        else { const n = estrellaNueva(antes, estrellas(HOY)); if (n) { aviso(`⭐ ¡Estrella de ${n}!`, "celebra"); vibrar(); } }
+      }
     }
     else if (b.dataset.sens) { const e = d.ejercicios[Number(b.dataset.sens)]; e.sensacion = e.sensacion === b.dataset.v ? "" : b.dataset.v; tocar(HOY); }
     else if (b.dataset.cambiar) {
@@ -457,8 +713,13 @@ window.App = {
     if (t.dataset.notaej) { Datos.ajustes.notasEj = { ...Datos.ajustes.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
     else if (t.dataset.campo) { d.ejercicios[Number(t.dataset.campo)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
     else if (t.dataset.paseo) {
+      const antes = cuantas(HOY);
       d.paseo = d.paseo || {}; d.paseo[t.dataset.paseo] = t.value === "" ? "" : Number(t.value); tocar(HOY);
       if (t.dataset.paseo === "min" && Number(t.value) > 0) eventoDelDia("gim-entreno-empezado");
+      const ahora = cuantas(HOY);
+      if (ahora > antes) { if (ahora === 5) abrirFiesta(); else { aviso(`⭐ ${ahora} de 5 estrellas: ${t.value} minutos andando`, "celebra"); vibrar(); } }
+      // Después del cambio, no durante: el campo aún tiene el foco.
+      setTimeout(repintar, 0);
     }
     else if (t.id === "nota") { d.nota = t.value; tocar(HOY); }
     else if (t.id === "nombre") { Datos.ajustes.nombre = t.value.trim(); Datos.guardarAjustes(); pintar(); }
