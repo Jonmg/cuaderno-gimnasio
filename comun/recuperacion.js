@@ -1,6 +1,8 @@
 "use strict";
 /* Motor "recuperación": sesión de gimnasio variada cada día con máquinas guiadas, paseos
-   y señales de alarma. Pensado para volver a coger fuerza poco a poco tras una operación. */
+   y señales de alarma. Pensado para volver a coger fuerza poco a poco tras una operación.
+   Cada ejercicio tiene su ficha con la foto de la máquina (compartida con las otras libretas,
+   ver fichas.js) y cómo se hace. */
 
 /* ---------- Catálogo de ejercicios ----------
    Pensados para recuperar fuerza con máquinas guiadas y poco riesgo.
@@ -33,6 +35,76 @@ const CATALOGO = [
   // Vuelta a la calma
   { id: "estiramientos", nombre: "Estiramientos suaves", grupo: "Vuelta a la calma", tipo: "tiempo", min: 5, pauta: "Piernas, espalda y hombros. Sin rebotes, sin dolor." },
 ];
+/* ---------- Fichas ----------
+   Máquina de cada ejercicio (ap: id de APARATOS en catalogo.js; la foto va por máquina) y cómo
+   se hace, con el cuidado de quien vuelve a entrenar tras una operación. Sin ap: no hace falta
+   máquina. */
+const FICHAS = {
+  bici: { ap: "bici",
+    pasos: ["Ajusta el sillín: con el pedal abajo, la rodilla queda casi estirada.", "Empieza sin resistencia y súbela poco a poco hasta un nivel cómodo.", "Pedalea a ritmo constante: tienes que poder hablar sin ahogarte."],
+    errores: ["Sillín demasiado bajo: carga las rodillas.", "Subir la resistencia en los primeros minutos."] },
+  cinta: { ap: "cinta",
+    pasos: ["Súbete con la cinta parada y agárrate a las barras de los lados.", "Si tiene pinza de seguridad, engánchala a la ropa.", "Arranca muy lenta (2–3 km/h) y ve subiendo hasta un paso cómodo.", "Para bajar, ve frenando hasta que pare del todo antes de soltarte."],
+    errores: ["Bajarse con la cinta en marcha.", "Poner inclinación los primeros días."] },
+  eliptica: { ap: "eliptica",
+    pasos: ["Sube agarrado a las asas fijas, con los pies enteros sobre los pedales.", "Empieza con resistencia baja y movimiento lento.", "Espalda recta y mirada al frente."],
+    errores: ["Apoyarse solo en las puntas de los pies.", "Ir tan rápido que cueste hablar."] },
+  bicirec: { ap: "bici-reclinada",
+    pasos: ["Mueve el asiento hasta que, con el pedal más lejos, la rodilla quede casi estirada.", "Espalda apoyada en el respaldo y manos en los agarres.", "Pedaleo suave y continuo."],
+    errores: ["Asiento muy cerca: las rodillas van demasiado dobladas.", "Resistencia alta desde el principio."] },
+  prensa: { ap: "prensa-horizontal",
+    pasos: ["Siéntate con la espalda y la cadera bien apoyadas en el respaldo.", "Pies en la plataforma a la anchura de la cadera, rodillas en línea con los pies.", "Empuja con todo el pie soltando el aire, sin llegar a bloquear las rodillas.", "Vuelve despacio, sin bajar tanto que se despegue la zona lumbar."],
+    errores: ["Bloquear las rodillas al estirar.", "Rodillas que se van hacia dentro.", "Aguantar la respiración."] },
+  extension: { ap: "maq-extension",
+    pasos: ["Ajusta el respaldo para que la rodilla quede a la altura del eje de la máquina.", "El rodillo, apoyado justo encima del tobillo.", "Estira las piernas en 2 segundos y baja en 3."],
+    errores: ["Dar golpes arriba o dejar caer el peso.", "Subir el peso si molesta la rodilla."] },
+  femoral: { ap: "maq-femoral-sentado",
+    pasos: ["Rodilla alineada con el eje de la máquina y el rodillo encima del tobillo.", "Baja la sujeción hasta que quede firme sobre los muslos.", "Dobla las rodillas llevando los talones hacia abajo y atrás; vuelve despacio."],
+    errores: ["Tirones al empezar.", "Dejar que el peso vuelva de golpe."] },
+  abductor: { ap: "maq-abd-add",
+    pasos: ["Pon los apoyos por fuera de las rodillas (posición de abrir).", "Espalda pegada al respaldo y manos en los agarres.", "Abre las piernas despacio hasta donde sea cómodo y vuelve sin rebote."],
+    errores: ["Abrir más de lo cómodo.", "Separar la espalda del respaldo."] },
+  aductor: { ap: "maq-abd-add",
+    pasos: ["Pon los apoyos por dentro de las rodillas (posición de cerrar), abiertos solo lo que sea cómodo.", "Espalda pegada al respaldo.", "Cierra las piernas despacio y vuelve controlando."],
+    errores: ["Empezar con las piernas muy abiertas.", "Rebotar al volver."] },
+  silla: {
+    pasos: ["Silla o banco firme. Siéntate en el borde, pies apoyados a la anchura de la cadera.", "Échate un poco hacia delante y levántate empujando con las piernas.", "Siéntate despacio, sin dejarte caer.", "Si hace falta, ayúdate con las manos en los muslos o en los reposabrazos."],
+    errores: ["Dejarse caer al sentarse.", "Usar una silla con ruedas o que se mueva."] },
+  talones: {
+    pasos: ["De pie, agarrado a una barra o al respaldo de una silla firme.", "Sube despacio sobre las puntas de los pies.", "Aguanta un segundo arriba y baja despacio."],
+    errores: ["Soltarse del apoyo.", "Subir y bajar con rebote."] },
+  remo: { ap: "maq-remo",
+    pasos: ["Ajusta el asiento para que las asas queden a la altura del pecho.", "Pecho apoyado en el cojín, espalda recta.", "Tira llevando los codos hacia atrás y junta los omóplatos.", "Vuelve despacio estirando los brazos."],
+    errores: ["Tirar a tirones o balanceando el cuerpo.", "Subir los hombros hacia las orejas."] },
+  jalon: { ap: "polea-alta",
+    pasos: ["Ajusta el rodillo para que sujete los muslos.", "Agarra la barra algo más abierta que los hombros, espalda recta.", "Tira hacia la parte alta del pecho soltando el aire.", "Sube la barra despacio hasta estirar los brazos."],
+    errores: ["Tirar por detrás de la nuca.", "Echarse hacia atrás para ayudarse con el cuerpo."] },
+  pecho: { ap: "maq-press-pecho",
+    pasos: ["Ajusta el asiento para que las asas queden a la altura del centro del pecho.", "Espalda apoyada y pies en el suelo.", "Empuja soltando el aire, sin bloquear los codos.", "Vuelve despacio hasta notar un estiramiento suave."],
+    errores: ["Aguantar la respiración.", "Despegar la espalda del respaldo."] },
+  biceps: { ap: "maq-curl",
+    pasos: ["Ajusta el asiento para que las axilas queden en el borde del cojín.", "Agarra las asas con las palmas hacia arriba.", "Sube doblando los codos y baja despacio hasta casi estirar."],
+    errores: ["Levantar los codos del cojín.", "Bajar de golpe."] },
+  triceps: { ap: "polea-doble",
+    pasos: ["Polea arriba, con la barra corta o la cuerda.", "De pie y cerca de la polea, codos pegados al cuerpo.", "Estira los brazos hacia abajo y vuelve despacio sin despegar los codos."],
+    errores: ["Separar los codos del cuerpo.", "Inclinarse para empujar con el cuerpo."] },
+  hombro: { ap: "maq-press-hombro",
+    pasos: ["Ajusta el asiento para que las asas queden a la altura de los hombros.", "Espalda bien apoyada.", "Empuja hacia arriba soltando el aire, sin bloquear los codos, y baja despacio."],
+    errores: ["Arquear la espalda.", "Seguir si molesta el hombro."] },
+  equilibrio: {
+    pasos: ["De pie junto a una barra, una pared o un respaldo, con la mano apoyada o muy cerca.", "Levanta un pie del suelo y aguanta unos 20 segundos.", "Cambia de pierna. Cuando sea fácil, apóyate solo con un dedo."],
+    errores: ["Hacerlo lejos de un apoyo.", "Bloquear la rodilla de la pierna de apoyo."] },
+  puente: { ap: "suelo",
+    pasos: ["Para bajar a la colchoneta y para levantarte, hazlo de lado y con calma.", "Boca arriba, rodillas dobladas y pies apoyados.", "Aprieta el glúteo y sube la cadera hasta formar una línea recta.", "Aguanta un segundo y baja despacio."],
+    errores: ["Arquear la zona lumbar al subir.", "Subir a tirones."] },
+  marcha: {
+    pasos: ["De pie, junto a un apoyo.", "Levanta una rodilla a una altura cómoda y bájala; luego la otra.", "Mueve los brazos a la vez, a ritmo tranquilo."],
+    errores: ["Subir las rodillas más de lo cómodo.", "Echarse hacia atrás."] },
+  estiramientos: { ap: "suelo",
+    pasos: ["Piernas, espalda y hombros, de pie o sentado.", "Mantén cada postura 20–30 segundos respirando con calma.", "Tiene que notarse una tensión suave, nunca dolor."],
+    errores: ["Rebotar.", "Forzar la zona de la operación."] },
+};
+for (const e of CATALOGO) Object.assign(e, FICHAS[e.id]);
 const POR_ID = Object.fromEntries(CATALOGO.map(e => [e.id, e]));
 // Músculos de cada ejercicio, para el icono (el primero es el principal).
 const MUSCULOS_EJ = {
@@ -152,12 +224,15 @@ function pintarGym(d) {
   ejs.forEach((e, i) => {
     const c = POR_ID[e.id]; if (!c) return;
     const sube = !e.hecho ? sugerenciaSubir(e.id, HOY) : "";
+    const a = AP[c.ap], ajuste = Datos.ajustes.notasEj?.[c.id];
     h += `<div class="ej ${e.hecho ? "hecho" : ""}">
       <button class="check" data-check="${i}" aria-pressed="${e.hecho}" aria-label="Marcar ${esc(c.nombre)} como hecho">${SVG_CHECK}</button>
       <div class="ej-cuerpo">
         <div class="ej-cab"><div class="ej-tit"><span class="ej-grupo">${esc(c.grupo)}</span>
-        <span class="ej-nombre">${esc(c.nombre)}</span></div>${iconoMusculo(MUSCULOS_EJ[c.id] || ["cuerpo"])}</div>
+        <span class="ej-nombre">${esc(c.nombre)}</span></div><button class="musculo-btn peq" data-ayuda="${c.id}" aria-label="Ficha de ${esc(c.nombre)}">${iconoMusculo(MUSCULOS_EJ[c.id] || ["cuerpo"])}</button></div>
         <span class="ej-pauta">${esc(c.pauta)}</span>
+        <button class="ap-linea" data-ayuda="${c.id}">${a ? fotoAp(c.ap) : `<span class="ap-chip sin-foto"><b>?</b></span>`}<span>${a ? esc(a.nombre) : "Cómo se hace"}</span></button>
+        ${ajuste ? `<p class="ajuste-maq small">⚙ ${esc(ajuste)}</p>` : ""}
         <div class="campos">${c.tipo === "tiempo"
           ? campo(i, "min", "Minutos", e.min)
           : campo(i, "series", "Series", e.series) + campo(i, "reps", "Repeticiones", e.reps) + campo(i, "peso", "Peso (kg)", e.peso, "0.5")}
@@ -192,6 +267,53 @@ function pintarPaseo(d) {
   </section>`;
 }
 
+/* ---------- Ficha de un ejercicio ---------- */
+const nombreMusculos = id => (MUSCULOS_EJ[id] || ["cuerpo"]).map(x => MUSCULOS[x]?.n).filter(Boolean).join(", ");
+const SENSACION = { facil: "Fácil", bien: "Bien", duro: "Duro" };
+function textoEntrada(c, e) {
+  if (c.tipo === "tiempo") return `${fmt(e.min)} min`;
+  return `${e.series} × ${e.reps}${Number(e.peso) > 0 ? ` · ${fmt(e.peso)} kg` : ""}`;
+}
+function hojaFicha(id) {
+  const c = POR_ID[id]; if (!c) return "";
+  const a = AP[c.ap], m = MUSCULOS_EJ[id] || ["cuerpo"];
+  const hoy = (Datos.dias[HOY]?.ejercicios || []).find(x => x.id === id);
+  const hist = historialEj(id, "9999").slice(0, 6);
+  const maquina = a && a.tipo !== "banco";
+  return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(c.grupo)}</span><h2>${esc(c.nombre)}</h2></div>${botonCerrar}</div>
+    <div class="ficha-top">${iconoMusculo(m, { clase: "musculo grande" })}
+      <div class="ficha-txt"><p style="margin:0"><b>Trabaja:</b> ${esc(nombreMusculos(id))}</p>
+      <p class="small muted" style="margin:0">${hoy ? "Hoy" : "Pauta"}: ${textoEntrada(c, hoy || nuevaEntrada(c, HOY))}${c.tipo === "fuerza" ? " · descanso 1–2 min entre series" : ""}</p></div></div>
+    <p class="nota">${esc(c.pauta)}</p>
+    ${a ? `<div><h3>${esc(a.nombre)}</h3></div>${htmlFoto(c.ap, a.nombre)}
+    <p class="small muted" style="margin:0">La foto es de la máquina: sale en todos los ejercicios que la usan.</p>` : ""}
+    <label class="campo" for="notaEj"><b style="color:var(--ink)">${maquina ? "Cómo ajusto la máquina" : "Mis notas"}</b><span class="small muted">${maquina ? "Asiento, respaldo, número de máquina, lo que te dijo el entrenador…" : "Lo que te dijo el entrenador o el fisio…"} Se ve en la sesión.</span>
+      <textarea id="notaEj" data-notaej="${id}" rows="2" class="area">${esc(Datos.ajustes.notasEj?.[id] || "")}</textarea></label>
+    ${c.pasos?.length ? `<div><h3>Cómo se hace</h3><ol class="pasos">${c.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>` : ""}
+    ${c.errores?.length ? `<div><h3>Ojo con</h3><ul class="pasos">${c.errores.map(p => `<li>${esc(p)}</li>`).join("")}</ul></div>` : ""}
+    <p class="small muted" style="margin:0">Respira con normalidad. Si algo duele, déjalo y márcalo como "Duro".</p>
+    <div><h3>Tu historial</h3>${hist.length ? `<div class="historial">${hist.map(({ k, e }) => `<div class="hist"><span>${fechaCorta(deClave(k))}${e.sensacion ? ` · ${SENSACION[e.sensacion]}` : ""}</span><span class="num">${esc(textoEntrada(c, e))}</span></div>`).join("")}</div>` : `<p class="muted small" style="margin:0">Aún no lo has hecho.</p>`}</div>
+    <a class="enlace" href="https://www.youtube.com/results?search_query=${encodeURIComponent(c.nombre + " técnica gimnasio")}" target="_blank" rel="noopener">Ver vídeos de cómo se hace en YouTube ↗</a>`;
+}
+HOJAS.ayuda = hojaFicha;
+
+/* ---------- Vista: Ejercicios ---------- */
+function pintarEjercicios() {
+  const grupos = [...new Set(CATALOGO.map(e => e.grupo))];
+  let h = `<div class="wrap" style="padding:0"><section class="card"><h2>Ejercicios y máquinas</h2>
+    <p class="small muted" style="margin:0">Toca uno para ver la foto de la máquina, cómo se hace y lo que has hecho.</p>`;
+  for (const g of grupos) {
+    h += `<div><p class="eyebrow" style="margin:10px 0 0">${esc(g)}</p><div class="lista">${CATALOGO.filter(e => e.grupo === g).map(e => {
+      const a = AP[e.ap], n = historialEj(e.id, "9999").length;
+      const det = [a ? a.nombre : "Sin máquina"];
+      if (Fotos.url[e.ap]) det.push("tu foto"); else if (a && !FotosGym.url[e.ap]) det.push("sin foto real");
+      if (Datos.ajustes.desactivados.includes(e.id)) det.push("quitado en Ajustes");
+      if (n) det.push(`${n} ${n > 1 ? "veces" : "vez"}`);
+      return `<button class="item" data-ayuda="${e.id}">${a ? fotoAp(e.ap, "item-foto") : iconoMusculo(MUSCULOS_EJ[e.id] || ["cuerpo"], { clase: "musculo item-ico" })}<span class="item-txt"><b>${esc(e.nombre)}</b><span class="small muted">${esc(det.join(" · "))}</span></span></button>`;
+    }).join("")}</div></div>`;
+  }
+  $("#vista").innerHTML = h + `</section></div>`;
+}
 
 /* ---------- Vista: Ajustes ---------- */
 function pintarAjustes() {
@@ -205,6 +327,7 @@ function pintarAjustes() {
   }
   h += `</section>
     <section class="card"><h2>Semana tipo</h2><p class="muted small" style="margin:0">Lunes, miércoles y viernes: gimnasio. Martes, jueves y sábado: paseo. Domingo: descanso. Cada día puedes cambiarlo arriba en <b>Hoy</b>.</p></section>
+    ${Compartir.htmlAjustes()}
     ${htmlCopia()}
     <section class="card"><h2>Importante</h2><p class="muted small" style="margin:0">App personal, sin relación oficial con el gimnasio. Esta libreta te ayuda a ser constante, pero no sustituye al médico ni al entrenador. Los pesos y tiempos iniciales son orientativos: ajústalos a lo que hacías con el entrenador. Ante cualquier síntoma raro, para.</p></section>
   </div>`;
@@ -290,10 +413,14 @@ function motivacion() {
 
 /* ---------- Eventos ---------- */
 window.App = {
-  ajustesIniciales: { nombre: "", desactivados: [] },
-  vistas: { hoy: pintarHoy, progreso: pintarProgreso, ajustes: pintarAjustes },
+  pestañas: [["hoy", "Hoy"], ["progreso", "Progreso"], ["ejercicios", "Ejercicios"], ["ajustes", "Ajustes"]],
+  ajustesIniciales: { nombre: "", desactivados: [], notasEj: {} },
+  vistas: { hoy: pintarHoy, progreso: pintarProgreso, ejercicios: pintarEjercicios, ajustes: pintarAjustes },
   motivacion,
+  alCerrarHoja() { Hoja = null; },
   click(b) {
+    const c = Compartir.click(b) ?? FotoFicha.click(b); if (c !== undefined) return c;
+    if (b.dataset.ayuda) { abrirFicha("ayuda", b.dataset.ayuda); evento("gim-ficha-abierta"); return false; }
     const d = Datos.dias[HOY];
     if (b.dataset.energia) { d.energia = Number(b.dataset.energia); tocar(HOY); }
     else if ("alerta" in b.dataset) { d.alerta = !d.alerta; tocar(HOY); }
@@ -325,8 +452,10 @@ window.App = {
     else return false;
   },
   cambio(t) {
+    if (Compartir.cambio(t) || FotoFicha.cambio(t)) return;
     const d = Datos.dias[HOY];
-    if (t.dataset.campo) { d.ejercicios[Number(t.dataset.campo)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
+    if (t.dataset.notaej) { Datos.ajustes.notasEj = { ...Datos.ajustes.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
+    else if (t.dataset.campo) { d.ejercicios[Number(t.dataset.campo)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
     else if (t.dataset.paseo) {
       d.paseo = d.paseo || {}; d.paseo[t.dataset.paseo] = t.value === "" ? "" : Number(t.value); tocar(HOY);
       if (t.dataset.paseo === "min" && Number(t.value) > 0) eventoDelDia("gim-entreno-empezado");

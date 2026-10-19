@@ -11,7 +11,7 @@ médico, al fisio ni al entrenador.
 
 | Libreta | Para | Qué hace |
 |---|---|---|
-| **[Aita](https://jonmg.github.io/cuaderno-gimnasio/aita/)** | Manolo | Recuperar fuerza tras una operación: sesión suave y variada cada día, paseos, señales de alarma |
+| **[Aita](https://jonmg.github.io/cuaderno-gimnasio/aita/)** | Manolo | Recuperar fuerza tras una operación: sesión suave y variada cada día, paseos, señales de alarma, ficha y foto de cada máquina |
 | **[Jon](https://jonmg.github.io/cuaderno-gimnasio/jon/)** | Jon | Rutina de 3 días con progresión, descansos, fotos de máquinas |
 | **[Mikel](https://jonmg.github.io/cuaderno-gimnasio/mikel/)** | Mikel | La misma rutina de 3 días, con sus propios datos |
 
@@ -50,9 +50,14 @@ libreta desde el mismo sitio (mejor, desde el icono).
   sesión anterior, se puede cambiar un ejercicio o pedir otra sesión. Peso, series y
   repeticiones se rellenan con lo de la última vez; si dos veces seguidas fue *fácil*, sugiere
   subir un poco.
+- **Ficha de cada ejercicio** (tocando el músculo o la máquina): foto de la máquina, músculos
+  que trabaja, cómo se hace y con qué tener cuidado (pensado para la recuperación), notas de
+  cómo ajustarla (se ven en la sesión), historial y vídeos.
+- **Ejercicios:** los 21 por grupos, con la foto de su máquina, para mirarlos antes de ir.
 - **Paseo:** minutos y kilómetros, con la referencia de la última vez.
 - **Progreso:** racha de días, minutos andando por semana, peso en cada máquina e historial.
-- **Ajustes:** quitar los ejercicios que el médico o el entrenador desaconsejen.
+- **Ajustes:** quitar los ejercicios que el médico o el entrenador desaconsejen, y compartir sus
+  fotos de máquinas.
 
 ### Jon y Mikel (motor de rutina, `comun/rutina.js`)
 
@@ -78,11 +83,13 @@ libreta desde el mismo sitio (mejor, desde el icono).
 - **Ejercicios:** catálogo con buscador y filtros por músculo y material, ficha de cada
   ejercicio (músculos, cómo se hace, errores típicos, historial, vídeos) y vista de máquinas.
 
-### En las dos
+### En las tres
 
 - Saludo según la hora y una **frase del día** con el nombre, que cambia según el contexto
   (sesión hecha, objetivo cumplido, varios días sin entrenar, día de pierna…).
-- Icono con el **músculo** trabajado resaltado en cada ejercicio.
+- Icono con el **músculo** trabajado resaltado en cada ejercicio, que abre su ficha.
+- **Fotos de las máquinas** compartidas: la que haga cualquiera de los tres sale en las tres
+  libretas una vez subida al gimnasio.
 - Modo claro y oscuro según el móvil.
 
 ## Fotos de las máquinas
@@ -90,7 +97,7 @@ libreta desde el mismo sitio (mejor, desde el icono).
 Una foto por **máquina** (no por ejercicio): la de las mancuernas sirve para todos los
 ejercicios con mancuernas. En cada móvil se ve, por este orden:
 
-1. **La foto propia** hecha en ese móvil (ficha ? de un ejercicio o Ejercicios → Máquinas).
+1. **La foto propia** hecha en ese móvil (desde la ficha de un ejercicio o de una máquina).
 2. **La foto del gimnasio**, compartida: `fotos/vivagym-miribilla/<máquina>.jpg`.
 3. **Una foto genérica** con licencia libre (22 máquinas, `fotos/general/`, créditos en
    [`fotos/general/CREDITOS.md`](fotos/general/CREDITOS.md)).
@@ -102,14 +109,15 @@ vez por hora y con copia en el móvil). Los nombres de archivo de cada máquina 
 
 ### Compartir fotos con el gimnasio
 
-En Ejercicios → Máquinas → *Compartir mis fotos*:
+Desde la ficha, *Compartir con el gimnasio*, o en Ajustes → Fotos del gimnasio → *Compartir mis
+fotos* (en Jon y Mikel, también en Ejercicios → Máquinas):
 
 - **Proponer en GitHub:** sube las fotos a una rama y abre un *pull request*; al aceptarlo, en un
   par de minutos las ve todo el mundo. Solo aparece en los perfiles con `proponeFotos: true`
   (Jon y Mikel) y con GitHub conectado en ese móvil.
 - **Enviar a quien gestiona la app:** genera un archivo con las fotos para mandarlo por WhatsApp
-  (como documento) o por correo. Quien tiene GitHub lo importa (*Importar fotos recibidas*) y lo
-  propone.
+  (como documento) o por correo. Es lo que ve Manolo. Quien tiene GitHub lo importa (*Importar
+  fotos recibidas*) y lo propone.
 - **A mano:** subir el archivo en GitHub, en la carpeta del gimnasio, con el nombre de la tabla.
 
 **Conectar un móvil con GitHub:** Ajustes → Fotos del gimnasio → pegar un token *fine-grained*
@@ -168,9 +176,10 @@ La marca se guarda para todo `jonmg.github.io`, así que también excluye tus ot
 index.html                portada con los enlaces
 aita/ jon/ mikel/         una carpeta por persona: index.html (define window.PERFIL) y manifest
 comun/base.js             núcleo: datos por persona, pestañas, hoja inferior, fotos, copia, gráficos
-comun/recuperacion.js     motor de Aita
+comun/recuperacion.js     motor de Aita (sus 21 ejercicios, con su máquina y cómo se hacen)
 comun/rutina.js           motor de rutina (Jon y Mikel)
 comun/catalogo.js         músculos, máquinas y ejercicios del catálogo
+comun/fichas.js           común a las tres libretas: foto de cada máquina y sus botones
 comun/compartir.js        compartir fotos: enviar, importar, pull request, pasar el acceso
 comun/estadisticas.js     estadísticas de uso (GoatCounter)
 comun/iconos.js           figura de músculos e iconos (SVG dibujado en código)
@@ -223,6 +232,9 @@ node herramientas/ilustraciones.mjs
 
 para dibujar la ilustración de las máquinas nuevas (si no, se ve su icono). Cada persona puede
 crear además sus propios ejercicios desde la app.
+
+Los ejercicios de Manolo están aparte, en `CATALOGO` y `FICHAS` de `comun/recuperacion.js`:
+cada uno con su máquina (`ap`, un `id` de `APARATOS`), pasos y errores.
 
 ### Estilo
 

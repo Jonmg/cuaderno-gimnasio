@@ -34,16 +34,12 @@ const cat = id => CAT_FIJO[id] || normalizar(propios().find(p => p.id === id));
 const todos = () => [...Object.values(CAT_FIJO), ...propios().map(normalizar)].filter(e => !e.oculto);
 
 /* ---------- Músculos y aparatos ---------- */
-const AP = Object.fromEntries(APARATOS.map(a => [a.id, a]));
-const TIPO_AP = Object.fromEntries(TIPOS_APARATO);
 const TIPO_CORTO = { maquina: "Máquina", discos: "Discos", polea: "Polea", mancuernas: "Mancuernas", barra: "Barra", banco: "Banco y suelo", funcional: "Funcional", cardio: "Cardio" };
 const nombreMusculos = e => (e.m || []).map(x => MUSCULOS[x]?.n).filter(Boolean).join(", ");
 const zonaDe = e => MUSCULOS[e.m?.[0]]?.n || e.zona || "";
 const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === ap));
 // Clave de la foto de una variante: la del aparato (compartida); si no tiene, la del ejercicio.
 const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
-// Miniatura de un aparato: su foto si la hay; si no, el icono de su tipo.
-const fotoAp = (ap, clase = "ap-chip") => urlFoto(ap) ? `<img class="${clase}" src="${urlFoto(ap)}" alt="" onerror="this.style.visibility='hidden'">` : `<span class="${clase} sin-foto">${iconoAparato(AP[ap]?.tipo)}</span>`;
 const enElPlan = new Set(P.dias.flatMap(d => d.ejercicios.map(e => e.id)));
 
 /* ---------- Pauta ---------- */
@@ -511,14 +507,8 @@ function htmlFiltros(st, para) {
 
 /* ---------- Hojas ---------- */
 let Sel = null;          // cambiar / añadir / crear ejercicio
-let Hoja = null;         // qué ficha está abierta, para refrescarla tras una foto
-function abrirAyuda(id) { Hoja = { tipo: "ayuda", id }; abrirHoja(hojaAyuda(id)); evento("gim-ficha-abierta"); }
-function abrirAparato(ap) { Hoja = { tipo: "aparato", id: ap }; abrirHoja(hojaAparato(ap)); evento("gim-ficha-abierta"); }
-function refrescarHoja() {
-  if (Hoja?.tipo === "ayuda") abrirHoja(hojaAyuda(Hoja.id));
-  else if (Hoja?.tipo === "aparato") abrirHoja(hojaAparato(Hoja.id));
-  else if (Hoja?.tipo === "compartir") abrirHoja(Compartir.html());
-}
+function abrirAyuda(id) { abrirFicha("ayuda", id); evento("gim-ficha-abierta"); }
+function abrirAparato(ap) { abrirFicha("aparato", ap); evento("gim-ficha-abierta"); }
 
 function hojaSelector() {
   const d = Datos.dias[HOY];
@@ -593,24 +583,6 @@ function contarEntreno(d) {
   if (completa) eventoDelDia("gim-entreno-completo");
 }
 
-// Bloque de foto con sus botones (cámara y galería). La clave es el aparato o el ejercicio.
-// La foto que se ve es la propia si la hay; si no, la del gimnasio; si no, la genérica.
-function htmlFoto(clave, titulo) {
-  const propia = Fotos.url[clave], comp = FotosGym.url[clave], gen = FotosGen.info[clave], foto = propia || comp || gen?.url;
-  const credito = gen?.tipo === "foto" ? `Foto genérica · ${esc(gen.autor || "")}${gen.licencia ? `, ${esc(gen.licencia)}` : ""}` : "Ilustración · aún sin foto real";
-  const origen = propia ? (comp ? "Tu foto (hay otra del gimnasio)" : "Tu foto · solo en este móvil") : comp ? `Foto del gimnasio · ${esc(gimnasio())}` : gen ? credito : "";
-  const generica = !propia && !comp && gen;
-  return `<div class="foto-grande ${generica ? "generica" : ""}">${foto ? `<img src="${foto}" alt="${generica ? "Imagen genérica" : "Foto"} de ${esc(titulo)}">${origen ? `<span class="foto-origen">${origen}</span>` : ""}` : `<p>${iconoUI("camara", "ui-icono grande")}<br>Haz una foto de ${esc(titulo)} para reconocerla a la primera.</p>`}</div>
-    ${generica ? `<p class="small muted" style="margin:0">Es una imagen de referencia. Haz la foto de la de ${esc(gimnasio() || "tu gimnasio")} y compártela para que todos la reconozcan.${gen.fuente ? ` <a href="${esc(gen.fuente)}" target="_blank" rel="noopener">Fuente ↗</a>` : ""}</p>` : ""}
-    <div class="fila">
-      <label class="btn peq">${iconoUI("camara")}${comp && !propia ? "Hacer otra foto" : "Hacer foto"}<input type="file" accept="image/*" capture="environment" data-foto="${clave}" hidden></label>
-      <label class="btn sec peq">Elegir de la galería<input type="file" accept="image/*" data-foto="${clave}" hidden></label>
-      ${propia ? `<button class="enlace" data-borrarfoto="${clave}">${comp ? "Quitar la mía" : "Quitar foto"}</button>` : ""}
-    </div>
-    ${propia && AP[clave] ? `<button class="btn sec peq" data-compartir="${clave}" style="justify-self:start">Compartir con el gimnasio</button>` : ""}
-    <p class="small" id="msgFoto" role="status" style="margin:0"></p>`;
-}
-
 /* ---------- Hoja: ficha de un ejercicio ---------- */
 function hojaAyuda(id) {
   const e = cat(id); if (!e) return "";
@@ -649,6 +621,9 @@ function hojaAparato(ap) {
       <textarea id="notaAp" data-notaap="${ap}" rows="2" class="area">${esc(Datos.ajustes.notasAp?.[ap] || "")}</textarea></label>
     <div><h3>Ejercicios con ${lista.length === 1 ? "esta máquina" : `esta máquina (${lista.length})`}</h3><div class="lista">${htmlLista(lista, "ayuda")}</div></div>`;
 }
+
+HOJAS.ayuda = hojaAyuda;
+HOJAS.aparato = hojaAparato;
 
 /* ---------- Vista: Ejercicios y máquinas ---------- */
 const Lib = { vista: "ejercicios", q: "", musc: "", mat: "" };
@@ -775,7 +750,7 @@ window.App = {
   },
   click(b) {
     const d = diaDe(HOY), a = Datos.ajustes, ds = b.dataset;
-    const c = Compartir.click(b); if (c !== undefined) return c;
+    const c = Compartir.click(b) ?? FotoFicha.click(b); if (c !== undefined) return c;
     /* Hojas: no repintan la vista de detrás salvo que cambien datos. */
     if (ds.ayuda) { abrirAyuda(ds.ayuda); return false; }
     if (ds.aparato) { abrirAparato(ds.aparato); return false; }
@@ -805,7 +780,6 @@ window.App = {
       if (Sel.modo === "anadir") { añadirExtra(d, id); cerrarHoja(); return; }
       evento("gim-plan-adaptado"); Sel = null; abrirAyuda(id); return;
     }
-    if (ds.borrarfoto) { Fotos.borrar(ds.borrarfoto).then(() => { refrescarHoja(); repintar(); }); return false; }
     if (ds.borrarpropio) { a.propios = propios().filter(e => e.id !== ds.borrarpropio); Datos.guardarAjustes(); cerrarHoja(); return; }
     if (ds.deshacersust) { delete a.sustituciones[ds.deshacersust]; Datos.guardarAjustes(); return; }
 
@@ -850,14 +824,8 @@ window.App = {
   },
   cambio(t) {
     const d = diaDe(HOY), a = Datos.ajustes;
-    if (Compartir.cambio(t)) return;
-    if (t.dataset.foto) {
-      const clave = t.dataset.foto, f = t.files[0]; if (!f) return;
-      $("#msgFoto").textContent = "Guardando foto…";
-      reducirFoto(f).then(b => Fotos.guardar(clave, b)).then(() => { evento("gim-foto-hecha"); refrescarHoja(); repintar(); })
-        .catch(err => { const m = $("#msgFoto"); if (m) { m.textContent = `No se pudo guardar la foto: ${err.message}`; m.style.color = "var(--warn)"; } });
-    }
-    else if (t.dataset.notaej) { a.notasEj = { ...a.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
+    if (Compartir.cambio(t) || FotoFicha.cambio(t)) return;
+    if (t.dataset.notaej) { a.notasEj = { ...a.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
     else if (t.dataset.notaap) { a.notasAp = { ...a.notasAp, [t.dataset.notaap]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
     else if (t.dataset.serie) { const [id, i] = t.dataset.serie.split("|"); d.ej[id].series[Number(i)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
     else if (t.dataset.calent) { d.calent = d.calent || []; d.calent[Number(t.dataset.calent)] = t.checked; if (t.checked) actividad(d); tocar(HOY); repintar(); }

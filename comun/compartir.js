@@ -10,7 +10,8 @@
       documento) o por correo a quien gestiona el repositorio, que lo importa en su app y lo
       propone desde allí.
    El token nunca sale de este móvil salvo hacia api.github.com, y no va en la copia de seguridad.
-   Solo los perfiles con PERFIL.proponeFotos ven el botón de proponer y la conexión con GitHub.
+   Solo los perfiles con PERFIL.proponeFotos ven el botón de proponer, la conexión con GitHub y
+   la importación de fotos recibidas; los demás pueden enviar las suyas.
    Un mismo token puede usarse en varios móviles: el que ya lo tiene genera un QR o enlace
    (…/#gh=<token>) y el otro móvil lo guarda al abrirlo. Nunca va escrito en el código: el
    repositorio es público y GitHub revoca los tokens que encuentra publicados. */
@@ -87,7 +88,7 @@ const Compartir = {
           ${fotoAp(ap, "item-foto")}
           <span class="item-txt"><b>${esc(AP[ap].nombre)}</b><span class="small muted">${FotosGym.url[ap] ? "Ya hay foto del gimnasio: la tuya la sustituiría" : "Nueva para el gimnasio"}</span></span>
         </label>`).join("")}</div>`
-      : `<p class="muted" style="margin:0">Aún no tienes fotos propias. Hazlas desde la ficha de cualquier máquina (Ejercicios → Máquinas).</p>`}
+      : `<p class="muted" style="margin:0">Aún no tienes fotos propias. Hazlas desde la ficha de cualquier máquina, en la pestaña Ejercicios.</p>`}
       <div class="grid-botones">
         ${gh ? `<button class="btn" data-ghpr ${!n || this.ocupado ? "disabled" : ""}>Proponer en GitHub (${n})</button>` : ""}
         <button class="btn ${gh ? "sec" : ""}" data-enviarfotos ${!n || this.ocupado ? "disabled" : ""}>Enviar a quien gestiona la app (${n})</button>
@@ -101,8 +102,8 @@ const Compartir = {
           <li>Quien lo recibe lo importa aquí abajo, revisa las fotos y las propone en GitHub.</li>
         </ol>
       </details>
-      <label class="campo" for="importarFotos"><b style="color:var(--ink)">Importar fotos recibidas</b><span class="small muted">El archivo que te ha mandado otra persona. Solo se añaden las máquinas que aún no tienen foto tuya.</span>
-        <input type="file" id="importarFotos" accept=".json,.txt,application/json,text/plain" style="font-size:1rem"></label>`;
+      ${puedeProponer() ? `<label class="campo" for="importarFotos"><b style="color:var(--ink)">Importar fotos recibidas</b><span class="small muted">El archivo que te ha mandado otra persona. Solo se añaden las máquinas que aún no tienen foto tuya.</span>
+        <input type="file" id="importarFotos" accept=".json,.txt,application/json,text/plain" style="font-size:1rem"></label>` : ""}`;
   },
 
   htmlAjustes() {
@@ -272,3 +273,4 @@ const Compartir = {
     } finally { this.ocupado = false; refrescarHoja(); }
   },
 };
+HOJAS.compartir = () => Compartir.html();
