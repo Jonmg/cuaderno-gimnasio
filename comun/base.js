@@ -53,11 +53,16 @@ const Datos = {
 const nombreVisible = () => Datos.ajustes.nombre || PERFIL.nombre || "crack";
 
 /* ---------- Lugar de entrenamiento ----------
-   Con PERFIL.lugares (ids de LUGARES, en catalogo.js) la persona elige dónde entrena. El lugar
+   PERFIL.lugares (ids de LUGARES, en catalogo.js) son los sitios que ofrece la libreta; la
+   persona marca en Ajustes en cuáles entrena (ajustes.misLugares: uno o varios). El lugar
    decide el nombre del gimnasio, la carpeta de fotos compartidas, el tema de colores y, si tiene
    lista de aparatos, qué propone la app. Se guarda en cada día (d.lugar) y el último elegido,
    en ajustes. Sin PERFIL.lugares, el gimnasio es el texto de Ajustes, como siempre. */
-const lugares = () => (PERFIL.lugares || []).filter(id => window.LUGARES?.[id]);
+const lugaresLibreta = () => (PERFIL.lugares || []).filter(id => window.LUGARES?.[id]);
+function lugares() {
+  const todos = lugaresLibreta(), mios = (Datos.ajustes.misLugares || []).filter(id => todos.includes(id));
+  return mios.length ? mios : todos;
+}
 function lugarId() {
   const ls = lugares(), id = Datos.dias[HOY]?.lugar || Datos.ajustes.lugar;
   return ls.includes(id) ? id : ls[0] || "";
@@ -80,6 +85,14 @@ function elegirLugar(id) {
   if (!lugares().includes(id)) return;
   Datos.ajustes.lugar = id;
   if (Datos.dias[HOY]) Datos.dias[HOY].lugar = id;
+  Datos.guardar(); aplicarLugar();
+  FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
+}
+// Marca o desmarca un sitio donde entrena la persona (siempre queda al menos uno).
+function alternarMiLugar(id) {
+  const mios = lugares(), quedan = mios.includes(id) ? mios.filter(x => x !== id) : [...mios, id];
+  if (!quedan.length) return;
+  Datos.ajustes.misLugares = lugaresLibreta().filter(x => quedan.includes(x));
   Datos.guardar(); aplicarLugar();
   FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
 }
@@ -112,6 +125,9 @@ function montar() {
     <div id="hoja" hidden></div>
     <nav class="tabs" role="tablist" aria-label="Secciones" style="grid-template-columns:repeat(${PESTAÑAS.length},1fr)">${PESTAÑAS.map(([id, t]) => `<button role="tab" id="tab-${id}" data-tab="${id}">${iconoUI(id)}<span>${t}</span></button>`).join("")}</nav>`);
   $("#fechaHoy").textContent = fechaLarga(new Date());
+  const antes = libretasAnteriores();
+  if (antes.length > 1) { elegirLibreta(antes); return; }
+  const traida = antes[0] ? traer(antes[0]) : elegidaAntes();
 
   document.querySelector("nav.tabs").addEventListener("click", ev => {
     const b = ev.target.closest("button[data-tab]"); if (!b) return;
@@ -125,6 +141,7 @@ function montar() {
     const b = ev.target.closest("button"); if (!b || b.closest("nav.tabs") || b.dataset.t || b.dataset.ir) return;
     if (clickCopia(b)) return;
     if (b.dataset.lugar) { elegirLugar(b.dataset.lugar); evento("gim-lugar-cambiado"); repintar(); return; }
+    if (b.dataset.milugar) { alternarMiLugar(b.dataset.milugar); evento("gim-lugares-elegidos"); repintar(); return; }
     if (App.click(b) !== false) repintar();
   });
   document.addEventListener("change", ev => {
@@ -135,15 +152,79 @@ function montar() {
   });
   document.addEventListener("input", ev => App.entrada?.(ev.target));
   document.addEventListener("keydown", ev => { if (ev.key === "Escape" && !$("#hoja").hidden) cerrarHoja(); });
-  Fotos.cargar().then(async n => { if (App.alCargarFotos) n += await App.alCargarFotos(); if (n) repintar(); });
+  (traida ? copiarFotos(traida.fotos) : Promise.resolve()).then(() => Fotos.cargar())
+    .then(async n => { if (App.alCargarFotos) n += await App.alCargarFotos(); if (n) repintar(); });
 
   Datos.cargar(App.ajustesIniciales);
+  // Sitios de la libreta: al estrenarla, el del enlace con el que se abre. Si se entrena en
+  // varios, el enlace decide dónde se está hoy mientras no se haya empezado el día.
+  if (lugaresLibreta().length) {
+    const inicial = lugaresLibreta().includes(PERFIL.lugarInicial) ? PERFIL.lugarInicial : lugaresLibreta()[0];
+    if (!Datos.ajustes.misLugares) Datos.ajustes.misLugares = [inicial];
+    if (lugares().includes(inicial) && (!Datos.dias[HOY] || Datos.dias[HOY].nuevo)) Datos.ajustes.lugar = inicial;
+  }
   App.alCargar?.();
   aplicarLugar();
   FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
   FotosGen.cargar().then(ok => { if (ok) repintar(); });
   try { const t = localStorage.getItem(PERFIL.clave + "-tab"); if (PESTAÑAS.some(p => p[0] === t)) pestaña = t; } catch (e) {}
   pintar();
+  if (traida) { evento("gim-libreta-traida"); aviso(`Tus datos de antes ya están aquí: ${traida.dias} día${traida.dias === 1 ? "" : "s"} de entreno${traida.nombre ? ` de ${traida.nombre}` : ""}.`); }
+}
+
+/* ---------- Libretas de antes ----------
+   App.traer = [{ clave, fotos, nombre, lugares }]: libretas viejas de este mismo tipo. La
+   primera vez que se abre la libreta en un móvil (aún sin datos en PERFIL.clave), copia la que
+   encuentre con datos, fotos incluidas, sin borrar la vieja. Si hay más de una, pregunta. */
+function libretasAnteriores() {
+  try {
+    if (!App.traer || localStorage.getItem(PERFIL.clave)) return [];
+    return App.traer.map(t => {
+      const j = JSON.parse(localStorage.getItem(t.clave) || "null");
+      if (!j || typeof j !== "object" || (!Object.keys(j.dias || {}).length && !Object.keys(j.ajustes || {}).length)) return null;
+      return { ...t, j, dias: Object.values(j.dias || {}).filter(d => d && !d.nuevo).length };
+    }).filter(Boolean);
+  } catch (e) { return []; }
+}
+function traer(t) {
+  const j = { dias: t.j.dias || {}, ajustes: { ...t.j.ajustes } }, a = j.ajustes;
+  if (!a.nombre && t.nombre) a.nombre = t.nombre;
+  if (!a.misLugares && t.lugares) a.misLugares = t.lugares;
+  try { localStorage.setItem(PERFIL.clave, JSON.stringify(j)); } catch (e) { return null; }
+  return t;
+}
+// Copia las fotos propias de la libreta vieja a la nueva (solo las máquinas que aún no tienen).
+async function copiarFotos(de) {
+  if (!de) return;
+  try {
+    const vieja = await new Promise((ok, mal) => { const r = indexedDB.open(`cuaderno-fotos-${de}`, 1); r.onupgradeneeded = () => r.result.createObjectStore("fotos"); r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error); });
+    const fotos = await new Promise(ok => {
+      const out = [], c = vieja.transaction("fotos").objectStore("fotos").openCursor();
+      c.onsuccess = () => { const cur = c.result; if (!cur) return ok(out); out.push([cur.key, cur.value]); cur.continue(); };
+      c.onerror = () => ok(out);
+    });
+    vieja.close();
+    if (fotos.length) await Fotos.op("readwrite", st => { for (const [k, b] of fotos) st.add(b, k).onerror = ev => ev.preventDefault(); });
+  } catch (e) {}
+}
+// La elegida en la pregunta de abajo, tras recargar la página.
+function elegidaAntes() {
+  try { const t = JSON.parse(sessionStorage.getItem("cuaderno-traida") || "null"); sessionStorage.removeItem("cuaderno-traida"); return t; } catch (e) { return null; }
+}
+// Hay datos de varias libretas en este móvil: se pregunta de quién es esta antes de seguir.
+function elegirLibreta(antes) {
+  document.querySelector("nav.tabs").hidden = true;
+  $("#saludo").textContent = "¿De quién es esta libreta?";
+  $("#vista").innerHTML = `<section class="card"><h2>Hay datos de antes en este móvil</h2>
+    <p class="small muted" style="margin:0">La app ahora es la misma para todos. Elige qué datos quieres traer a esta libreta: se copian (las libretas de antes no se borran).</p>
+    <div class="grid-botones">${antes.map((t, i) => `<button class="btn ${i ? "sec" : ""}" data-elegir="${i}">${esc(t.nombre || "Otra persona")} · ${t.dias} día${t.dias === 1 ? "" : "s"}</button>`).join("")}
+      <button class="btn sec" data-elegir="cero">Ninguno: empezar de cero</button></div></section>`;
+  $("#vista").addEventListener("click", ev => {
+    const b = ev.target.closest("[data-elegir]"); if (!b) return;
+    const t = antes[Number(b.dataset.elegir)];
+    try { if (!t) localStorage.setItem(PERFIL.clave, JSON.stringify({ dias: {}, ajustes: {} })); else { traer(t); sessionStorage.setItem("cuaderno-traida", JSON.stringify({ fotos: t.fotos, dias: t.dias, nombre: t.nombre })); } } catch (e) {}
+    location.reload();
+  });
 }
 function pintar() {
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === pestaña)));
@@ -165,8 +246,9 @@ function fraseDelDia(lista, extra = "") {
 // Bloque de Ajustes común: nombre y gimnasio.
 function htmlPerfil() {
   return `<section class="card"><h2>Perfil</h2>
-    <label class="campo" for="nombre">Nombre<input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre)}" class="texto"></label>
-    ${lugares().length > 1 ? `<div class="campo">Dónde entrenas${htmlLugares()}</div>`
+    <label class="campo" for="nombre">Nombre<input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre || "Cómo te llamas")}" class="texto"></label>
+    ${lugaresLibreta().length > 1 ? `<div class="campo">Dónde entrenas <span class="muted small">Marca uno o los dos: con los dos, en Hoy eliges dónde estás.</span>
+        <div class="chips lugares" role="group" aria-label="Dónde entrenas">${lugaresLibreta().map(id => `<button class="chip" data-milugar="${id}" aria-pressed="${lugares().includes(id)}">${iconoUI("ubicacion")}${esc(LUGARES[id].nombre)}</button>`).join("")}</div></div>`
       : `<label class="campo" for="gimnasio">Gimnasio<input id="gimnasio" value="${esc(gimnasio())}" placeholder="Nombre del gimnasio" class="texto"></label>`}
   </section>`;
 }
@@ -339,12 +421,12 @@ function vibrar(patron = [60, 40, 60]) { try { navigator.vibrate?.(patron); } ca
 
 /* ---------- Fotos ----------
    Las fotos de las máquinas van en IndexedDB (cabe mucho más que en localStorage), una base
-   por persona. Se reducen en el móvil antes de guardar. No entran en la copia de seguridad. */
+   por libreta (PERFIL.baseFotos, o su id). Se reducen en el móvil antes de guardar. No entran en la copia de seguridad. */
 const Fotos = {
   url: {}, _db: null,
   abrir() {
     return this._db ??= new Promise((ok, mal) => {
-      const r = indexedDB.open(`cuaderno-fotos-${PERFIL.id}`, 1);
+      const r = indexedDB.open(`cuaderno-fotos-${PERFIL.baseFotos || PERFIL.id}`, 1);
       r.onupgradeneeded = () => r.result.createObjectStore("fotos");
       r.onsuccess = () => ok(r.result); r.onerror = () => mal(r.error);
     });

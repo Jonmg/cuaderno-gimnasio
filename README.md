@@ -12,9 +12,16 @@ médico, al fisio ni al entrenador.
 | Libreta | Para | Qué hace |
 |---|---|---|
 | **[Aita](https://jonmg.github.io/cuaderno-gimnasio/aita/)** | Manolo | Recuperar fuerza tras una operación: sesión suave y variada cada día, paseos, señales de alarma, ficha y foto de cada máquina |
-| **[Jon](https://jonmg.github.io/cuaderno-gimnasio/jon/)** | Jon | Plan a medida (días de fuerza y de cardio, favoritos) con progresión, descansos, fotos de máquinas; en VivaGym o en el gimnasio de Tekniker |
-| **[Mikel](https://jonmg.github.io/cuaderno-gimnasio/mikel/)** | Mikel | Lo mismo, con sus propios datos |
-| **[Otra persona](https://jonmg.github.io/cuaderno-gimnasio/tu/)** | Quien sea | Libreta sin dueño: pone su nombre, sus días y sus favoritos al abrirla |
+| **[VivaGym](https://jonmg.github.io/cuaderno-gimnasio/vivagym/)** | Cualquiera | Libreta de rutina: su nombre, sus días de fuerza y de cardio, sus favoritos, progresión, descansos y fotos de máquinas |
+| **[Tekniker](https://jonmg.github.io/cuaderno-gimnasio/tekniker/)** | Cualquiera | La misma libreta, que empieza en el gimnasio de Tekniker (sus colores y sus máquinas) |
+
+Los dos enlaces son **la misma libreta**: en un móvil, los dos leen los mismos datos. El enlace
+solo decide el gimnasio con el que se estrena y dónde se está hoy al abrirla; en Ajustes cada
+uno marca dónde entrena (uno o los dos). Quien entrena en los dos (Jon) tiene un solo historial.
+
+Los enlaces antiguos `jon/`, `mikel/` y `tu/` siguen funcionando y son también esa libreta, para
+que los iconos ya instalados no se rompan. La primera vez que se abre la libreta en un móvil
+trae sola los datos de la libreta vieja que haya (ver *Libretas de antes*).
 
 Portada con los enlaces: <https://jonmg.github.io/cuaderno-gimnasio/>. Si un móvil tenía
 datos de la primera versión de la app de Manolo (que vivía en la portada), salta solo a `aita/`
@@ -69,7 +76,7 @@ libreta desde el mismo sitio (mejor, desde el icono).
 - **Ajustes:** quitar los ejercicios que el médico o el entrenador desaconsejen, y compartir sus
   fotos de máquinas.
 
-### Jon, Mikel y Otra persona (motor de rutina, `comun/rutina.js`)
+### Libreta de rutina: VivaGym y Tekniker (motor de rutina, `comun/rutina.js`)
 
 - **Plan a medida** (tarjeta en *Hoy* la primera vez y siempre en Ajustes → Tu plan): nombre,
   **días de fuerza** (1–6) y **días de cardio** (0–5) a la semana, y **favoritos**. Con 3 días
@@ -111,19 +118,19 @@ libreta desde el mismo sitio (mejor, desde el icono).
   repeticiones con los mismos), bienvenida tras una semana o más sin ir, aviso de la última serie
   del día, sesión completa y semana cumplida. Tras tres semanas sin hacer un ejercicio, propone
   repetir peso en vez de subir.
-- **Dónde entrenas** (Jon): VivaGym Miribilla o el gimnasio de Tekniker, con un botón en *Hoy*
+- **Dónde entrenas** (Ajustes → Perfil): VivaGym, Tekniker o los dos; con los dos, un botón en *Hoy*
   (ver *Lugares de entrenamiento*).
 - **Álbum de cromos:** cada máquina es un cromo que se consigue al entrenar con ella y se vuelve
   dorado con foto real (Ejercicios → Álbum).
 - **Ejercicios:** catálogo con buscador y filtros por músculo y material, ficha de cada
   ejercicio (músculos, cómo se hace, errores típicos, historial, vídeos) y vista de máquinas.
 
-### En las tres
+### En todas
 
 - Saludo según la hora y una **frase del día** con el nombre, que cambia según el contexto
   (sesión hecha, objetivo cumplido, varios días sin entrenar, día de pierna…).
 - Icono con el **músculo** trabajado resaltado en cada ejercicio, que abre su ficha.
-- **Fotos de las máquinas** compartidas: la que haga cualquiera de los tres sale en las tres
+- **Fotos de las máquinas** compartidas: la que haga cualquiera sale en todas las
   libretas una vez subida al gimnasio.
 - Modo claro y oscuro según el móvil.
 
@@ -145,11 +152,11 @@ vez por hora y con copia en el móvil). Los nombres de archivo de cada máquina 
 ### Compartir fotos con el gimnasio
 
 Desde la ficha, *Compartir con el gimnasio*, o en Ajustes → Fotos del gimnasio → *Compartir mis
-fotos* (en Jon y Mikel, también en Ejercicios → Máquinas):
+fotos* (en la libreta de rutina, también en Ejercicios → Máquinas):
 
 - **Proponer en GitHub:** sube las fotos a una rama y abre un *pull request*; al aceptarlo, en un
-  par de minutos las ve todo el mundo. Solo aparece en los perfiles con `proponeFotos: true`
-  (Jon y Mikel) y con GitHub conectado en ese móvil.
+  par de minutos las ve todo el mundo. Solo aparece en los móviles con GitHub conectado (el
+  token guardado, por el enlace o el QR de acceso; el enlace `jon/` deja además pegarlo a mano).
 - **Enviar a quien gestiona la app:** genera un archivo con las fotos para mandarlo por WhatsApp
   (como documento) o por correo. Es lo que ve Manolo. Quien tiene GitHub lo importa (*Importar
   fotos recibidas*) y lo propone.
@@ -180,8 +187,8 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | Evento | Cuándo |
 |---|---|
 | `gim-vista-hoy`, `gim-vista-progreso`, `gim-vista-ejercicios`, `gim-vista-ajustes` | Al cambiar a esa pestaña |
-| `gim-entreno-empezado-{aita,jon,mikel}` | Primera actividad del día (serie, ejercicio, paseo o deporte); una vez al día |
-| `gim-entreno-completo-{aita,jon,mikel}` | Todas las series obligatorias (o todos los ejercicios) hechas; una vez al día |
+| `gim-entreno-empezado-{aita,vivagym,tekniker,jon,mikel}` | Primera actividad del día (serie, ejercicio, paseo o deporte); una vez al día |
+| `gim-entreno-completo-{aita,vivagym,tekniker,jon,mikel}` | Todas las series obligatorias (o todos los ejercicios) hechas; una vez al día |
 | `gim-plan-adaptado` | Cambiar, añadir o crear un ejercicio, o elegir Entreno libre |
 | `gim-ficha-abierta` | Abrir la ficha de un ejercicio o de una máquina |
 | `gim-foto-hecha` | Guardar una foto de una máquina |
@@ -189,6 +196,8 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-paso-a-paso-aita` | Empezar la sesión paso a paso; una vez al día |
 | `gim-semana-enviada` | Enviar (o descargar) la imagen de *Mi semana* |
 | `gim-lugar-cambiado` | Cambiar el lugar de entrenamiento (sin decir cuál) |
+| `gim-libreta-traida` | La libreta nueva trae los datos de una libreta vieja (sin decir de quién) |
+| `gim-lugares-elegidos` | Marcar o desmarcar un gimnasio en Ajustes (sin decir cuál) |
 | `gim-plan-personalizado` | Cambiar los días de fuerza o de cardio (sin decir cuántos) |
 | `gim-favoritos-abiertos` | Abrir la lista de favoritos |
 | `gim-favorito-marcado` | Marcar un favorito (sin decir cuál) |
@@ -215,13 +224,14 @@ La marca se guarda para todo `jonmg.github.io`, así que también excluye tus ot
 
 ```
 index.html                portada con los enlaces
-aita/ jon/ mikel/         una carpeta por persona: index.html (define window.PERFIL) y manifest
-tu/                       libreta sin dueño (PERFIL.nombre vacío: el nombre lo pone quien la usa)
+aita/                     libreta de Manolo: index.html (define window.PERFIL) y manifest
+vivagym/ tekniker/        libreta de rutina para cualquiera, con el gimnasio con que se estrena
+jon/ mikel/ tu/           enlaces antiguos: la misma libreta de rutina (iconos ya instalados)
 comun/base.js             núcleo: datos por persona, pestañas, hoja inferior, fotos, copia, gráficos
 comun/recuperacion.js     motor de Aita (sus 21 ejercicios, con su máquina y cómo se hacen)
-comun/rutina.js           motor de rutina (Jon y Mikel)
+comun/rutina.js           motor de rutina (VivaGym y Tekniker)
 comun/catalogo.js         músculos, máquinas y ejercicios del catálogo
-comun/fichas.js           común a las tres libretas: foto de cada máquina y sus botones
+comun/fichas.js           común a todas las libretas: foto de cada máquina y sus botones
 IDEAS.md                  mejoras pensadas y pendientes, para que no se pierdan
 comun/compartir.js        compartir fotos: enviar, importar, pull request, pasar el acceso
 comun/estadisticas.js     estadísticas de uso (GoatCounter)
@@ -248,15 +258,30 @@ herramientas/ilustraciones.mjs   dibuja fotos/general/<máquina>.svg
 
 ### Añadir una persona
 
-1. Copia la carpeta `jon/` con otro nombre, por ejemplo `ane/`.
-2. En `ane/index.html`, en `window.PERFIL`, cambia `id` (`"ane"`), `nombre` y `clave`
-   (`"cuaderno-ane"`; debe ser única, porque todas las páginas de jonmg.github.io comparten el
-   almacenamiento del navegador). `proponeFotos: true` solo si debe poder proponer fotos.
-3. En `ane/manifest.webmanifest`, cambia el nombre. Añade el enlace en `index.html`.
-4. Para la libreta de recuperación, copia `aita/` en vez de `jon/`.
+Para la rutina no hace falta nada: se le pasa el enlace de su gimnasio (`vivagym/` o
+`tekniker/`) y pone su nombre al abrirla. Cada móvil tiene su libreta.
 
-Las estadísticas la recogen sola: su página será `/cuaderno-gimnasio/ane/` y sus eventos de
-entreno, `gim-entreno-empezado-ane` y `gim-entreno-completo-ane`.
+Para otra libreta de recuperación como la de Manolo: copia `aita/` (por ejemplo, en `ane/`) y en
+su `window.PERFIL` cambia `id` (`"ane"`), `nombre` y `clave` (`"cuaderno-ane"`; debe ser única,
+porque todas las páginas de jonmg.github.io comparten el almacenamiento del navegador). Cambia el
+nombre en su `manifest.webmanifest` y añade el enlace en `index.html`.
+
+### Libretas de antes
+
+Antes había una libreta de rutina por persona (`cuaderno-jon`, `cuaderno-mikel`, `cuaderno-tu`,
+con sus fotos en `cuaderno-fotos-<id>`). Ahora todas las páginas de rutina usan la clave
+`cuaderno-rutina` y la base de fotos `cuaderno-fotos-rutina`. La primera vez que se abre la
+libreta en un móvil (`LIBRETAS_ANTES` en `comun/rutina.js`, lógica en `comun/base.js`):
+
+- Si hay una libreta vieja con datos, la copia (días, ajustes y fotos propias), pone su nombre
+  y sus gimnasios, y avisa. La vieja no se borra.
+- Si hay varias, pregunta de quién es (o empezar de cero).
+- Si no hay ninguna, empieza vacía con el gimnasio del enlace.
+
+**Ojo con el iPhone:** una web añadida a la pantalla de inicio guarda sus datos aparte de
+Safari. Quien la usaba desde el icono debe seguir abriéndola desde ese icono (`jon/` y `mikel/`
+ya son la libreta nueva). Si hiciera falta pasar datos entre Safari y el icono, *Copia de
+seguridad* → descargar en uno y restaurar en el otro.
 
 ### Cambiar el plan de entrenamiento
 
@@ -285,8 +310,9 @@ cada uno con su máquina (`ap`, un `id` de `APARATOS`), pasos y errores.
 
 ### Lugares de entrenamiento
 
-Un perfil puede entrenar en varios sitios: en su `window.PERFIL`, `"lugares": ["vivagym-miribilla",
-"tekniker"]` (ahora solo Jon). Cada lugar está en `LUGARES` de `comun/catalogo.js`:
+La libreta de rutina ofrece los sitios de su `window.PERFIL` (`"lugares": ["vivagym-miribilla",
+"tekniker"]`, y `lugarInicial` según el enlace); cada persona marca en Ajustes en cuáles entrena
+(`misLugares`). Cada lugar está en `LUGARES` de `comun/catalogo.js`:
 
 - **Nombre y carpeta de fotos:** el `id` es la carpeta (`fotos/tekniker/`).
 - **Tema:** `tema: "tekniker"` activa `:root[data-marca="tekniker"]` en `comun/estilos.css`
@@ -304,8 +330,9 @@ Un perfil puede entrenar en varios sitios: en su `window.PERFIL`, `"lugares": ["
   igual en los dos. Cada día guarda dónde se entrenó (se ve en *Últimos días*) y, al volver a un
   sitio, se propone la variante que se usó allí la última vez.
 
-Para añadir un lugar: una entrada en `LUGARES`, su id en el `PERFIL` de quien lo use, la carpeta
-`fotos/<id>/` y, si se quiere otro aspecto, un bloque `data-marca` en los estilos.
+Para añadir un lugar: una entrada en `LUGARES`, su id en `lugares` de los `PERFIL` de rutina (y,
+si se quiere, una carpeta con su enlace, como `tekniker/`), la carpeta `fotos/<id>/` y, si se
+quiere otro aspecto, un bloque `data-marca` en los estilos.
 
 ### Mensajes de la familia (Manolo)
 

@@ -1015,7 +1015,14 @@ function motivacion() {
 }
 
 /* ---------- Eventos ---------- */
+// Libretas de antes de que la de rutina fuera una para todos: se traen la primera vez (base.js).
+const LIBRETAS_ANTES = [
+  { clave: "cuaderno-jon", fotos: "jon", nombre: "Jon", lugares: ["vivagym-miribilla", "tekniker"] },
+  { clave: "cuaderno-mikel", fotos: "mikel", nombre: "Mikel", lugares: ["vivagym-miribilla"] },
+  { clave: "cuaderno-tu", fotos: "tu", nombre: "" },
+];
 window.App = {
+  traer: LIBRETAS_ANTES,
   pestañas: [["hoy", "Hoy"], ["progreso", "Progreso"], ["ejercicios", "Ejercicios"], ["ajustes", "Ajustes"]],
   ajustesIniciales: { nombre: "", objetivo: BASE.objetivoSemanal, favoritos: { ej: [], ap: [] }, incremento: 2.5, descansos: { ...BASE.descansos }, sonido: true, vibracion: true, propios: [], sustituciones: {}, notasEj: {}, notasAp: {} },
   vistas: { hoy: pintarHoy, progreso: pintarProgreso, ejercicios: pintarEjercicios, ajustes: pintarAjustes },

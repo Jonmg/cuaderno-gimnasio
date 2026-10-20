@@ -26,7 +26,7 @@ Mejoras pensadas y aún sin hacer, para que no se pierdan. Cuando se haga una, s
 - **Letra grande** como ajuste, y aún menos texto en pantalla.
 - **Álbum de cromos también para Manolo** (ya existe en Jon y Mikel).
 
-### Jon y Mikel
+### Libreta de rutina (Jon, Mikel y quien sea)
 
 - **Pique sano entre los dos:** tarjeta semanal para compartir por WhatsApp, como la de Manolo.
   Aparcado a propósito: de momento, sin comparaciones.
@@ -41,6 +41,10 @@ Mejoras pensadas y aún sin hacer, para que no se pierdan. Cuando se haga una, s
   `gim-paso-a-paso-aita`, `gim-entreno-completo-aita`, `gim-semana-enviada`.
 
 ## Hecho
+
+- **20/10/2026 · Todas:** la libreta de rutina es una para todos, con enlace de VivaGym y de
+  Tekniker; cada uno marca dónde entrena. Trae sola los datos y fotos de las libretas de Jon,
+  Mikel u Otra persona. En la portada: Manolo, VivaGym y Tekniker.
 
 - **20/10/2026 · Jon, Mikel y Otra persona:** plan a medida (nombre, días de fuerza y de
   cardio, semana orientativa, día de cardio) y favoritos que salen más a menudo. Fotos reales de

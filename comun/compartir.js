@@ -10,8 +10,9 @@
       documento) o por correo a quien gestiona el repositorio, que lo importa en su app y lo
       propone desde allí.
    El token nunca sale de este móvil salvo hacia api.github.com, y no va en la copia de seguridad.
-   Solo los perfiles con PERFIL.proponeFotos ven el botón de proponer, la conexión con GitHub y
-   la importación de fotos recibidas; los demás pueden enviar las suyas.
+   Solo las libretas con PERFIL.proponeFotos, o los móviles que ya tienen el acceso guardado (por
+   el enlace o el QR), ven el botón de proponer, la conexión con GitHub y la importación de fotos
+   recibidas; los demás pueden enviar las suyas.
    Un mismo token puede usarse en varios móviles: el que ya lo tiene genera un QR o enlace
    (…/#gh=<token>) y el otro móvil lo guarda al abrirlo. Nunca va escrito en el código: el
    repositorio es público y GitHub revoca los tokens que encuentra publicados. */
@@ -34,7 +35,8 @@ const GH = {
     return r.status === 204 ? null : r.json();
   },
 };
-const puedeProponer = () => !!PERFIL.proponeFotos;
+// Proponen fotos las libretas que lo tienen marcado y cualquier móvil con el acceso ya guardado.
+const puedeProponer = () => !!PERFIL.proponeFotos || !!GH.token();
 const conGH = () => puedeProponer() && !!GH.token();
 // Acepta el token tal cual o el enlace de acceso que lo contiene.
 function extraerToken(v) {
@@ -56,7 +58,7 @@ function cargarQR() {
   if (!location.hash.startsWith("#gh=")) return;
   const t = extraerToken(location.hash);
   history.replaceState(null, "", location.pathname + location.search);
-  if (t && puedeProponer()) { GH.guardarToken(t); window.addEventListener("DOMContentLoaded", () => aviso("GitHub conectado: este móvil ya puede proponer fotos.")); }
+  if (t) { GH.guardarToken(t); window.addEventListener("DOMContentLoaded", () => aviso("GitHub conectado: este móvil ya puede proponer fotos.")); }
 })();
 const blobABase64 = b => new Promise((ok, mal) => { const f = new FileReader(); f.onload = () => ok(String(f.result)); f.onerror = () => mal(f.error); f.readAsDataURL(b); });
 async function blobDeFoto(ap) { const u = Fotos.url[ap]; return u ? (await fetch(u)).blob() : null; }
