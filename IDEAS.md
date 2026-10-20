@@ -31,12 +31,20 @@ Mejoras pensadas y aún sin hacer, para que no se pierdan. Cuando se haga una, s
 - **Pique sano entre los dos:** tarjeta semanal para compartir por WhatsApp, como la de Manolo.
   Aparcado a propósito: de momento, sin comparaciones.
 
+- **Cardio con más datos:** km, ritmo o nivel de la máquina, y progresión propia (más minutos o
+  más intensidad) en vez de la de series.
+- **Plan a medida con preferencias de tiempo:** sesiones de 30, 45 o 60 min (menos o más huecos).
+
 ### Todas
 
 - Revisar con las estadísticas (panel de GoatCounter) si el paso a paso y las estrellas se usan:
   `gim-paso-a-paso-aita`, `gim-entreno-completo-aita`, `gim-semana-enviada`.
 
 ## Hecho
+
+- **20/10/2026 · Jon, Mikel y Otra persona:** plan a medida (nombre, días de fuerza y de
+  cardio, semana orientativa, día de cardio) y favoritos que salen más a menudo. Fotos reales de
+  Tekniker: espalderas, bici de ciclo indoor, elíptica y extensión de cuádriceps.
 
 - **19/10/2026 · Manolo:** sesión paso a paso, cinco estrellas al día, celebración al terminar
   y *Enviar mi semana* (imagen para WhatsApp).

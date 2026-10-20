@@ -208,6 +208,9 @@ details summary { cursor: pointer; min-height: 32px; }
 .puntos i { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--accent); }
 .puntos i.lleno { background: var(--accent); }
 .puntos i.dep { background: var(--sec); border-color: var(--sec); }
+.puntos i.fuerza.hecho { background: var(--accent); }
+.puntos i.cardio { border-color: var(--sec); border-style: dashed; }
+.puntos i.cardio.hecho { background: var(--sec); border-style: solid; }
 .grande { font-size: 1.7rem; }
 .progreso-dia { height: 10px; background: var(--accent-soft); border-radius: 6px; overflow: hidden; }
 .progreso-dia i { display: block; height: 100%; background: var(--accent); width: 0; transition: width .3s; border-radius: 6px; }
@@ -428,3 +431,18 @@ code { font-size: .85em; background: var(--bg); border-radius: 5px; padding: 1px
 .chips.lugares { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 .chips.lugares .chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .chips.lugares .ui-icono { width: 18px; height: 18px; }
+
+/* Plan a medida y favoritos */
+.chips.dias-sem { grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.chips.dias-sem .chip { min-height: 42px; font-family: var(--f-num); font-size: 1.15rem; }
+.semana-tipo { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.semana-tipo span { display: grid; gap: 2px; text-align: center; padding: 6px 2px; border-radius: 10px; background: var(--bg); color: var(--muted); font-size: .68rem; }
+.semana-tipo b { font-family: var(--f-tit); font-size: 1rem; color: var(--ink); }
+.semana-tipo .f { background: var(--accent-soft); color: var(--accent-texto, var(--accent)); font-weight: 700; }
+.semana-tipo .c { background: var(--sec-claro); color: var(--sec-oscuro); font-weight: 700; }
+.chips-fav { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip.fav { justify-self: start; }
+.chips-fav .chip[aria-pressed="true"] { border-color: var(--dorado, #E2A400); background: #FFF6D6; color: #5C4300; }
+.chips-fav .chip[aria-pressed="true"]::after { content: " ★"; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chips-fav .chip[aria-pressed="true"] { background: #3A3010; color: #FFD666; } }
+:root[data-theme="dark"] .chips-fav .chip[aria-pressed="true"] { background: #3A3010; color: #FFD666; }

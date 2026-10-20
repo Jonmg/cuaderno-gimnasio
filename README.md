@@ -12,10 +12,11 @@ médico, al fisio ni al entrenador.
 | Libreta | Para | Qué hace |
 |---|---|---|
 | **[Aita](https://jonmg.github.io/cuaderno-gimnasio/aita/)** | Manolo | Recuperar fuerza tras una operación: sesión suave y variada cada día, paseos, señales de alarma, ficha y foto de cada máquina |
-| **[Jon](https://jonmg.github.io/cuaderno-gimnasio/jon/)** | Jon | Rutina de 3 días con progresión, descansos, fotos de máquinas; en VivaGym o en el gimnasio de Tekniker |
-| **[Mikel](https://jonmg.github.io/cuaderno-gimnasio/mikel/)** | Mikel | La misma rutina de 3 días, con sus propios datos |
+| **[Jon](https://jonmg.github.io/cuaderno-gimnasio/jon/)** | Jon | Plan a medida (días de fuerza y de cardio, favoritos) con progresión, descansos, fotos de máquinas; en VivaGym o en el gimnasio de Tekniker |
+| **[Mikel](https://jonmg.github.io/cuaderno-gimnasio/mikel/)** | Mikel | Lo mismo, con sus propios datos |
+| **[Otra persona](https://jonmg.github.io/cuaderno-gimnasio/tu/)** | Quien sea | Libreta sin dueño: pone su nombre, sus días y sus favoritos al abrirla |
 
-Portada con los tres enlaces: <https://jonmg.github.io/cuaderno-gimnasio/>. Si un móvil tenía
+Portada con los enlaces: <https://jonmg.github.io/cuaderno-gimnasio/>. Si un móvil tenía
 datos de la primera versión de la app de Manolo (que vivía en la portada), salta solo a `aita/`
 y los recupera (`?portada` al final de la dirección evita el salto).
 
@@ -68,10 +69,25 @@ libreta desde el mismo sitio (mejor, desde el icono).
 - **Ajustes:** quitar los ejercicios que el médico o el entrenador desaconsejen, y compartir sus
   fotos de máquinas.
 
-### Jon y Mikel (motor de rutina, `comun/rutina.js`)
+### Jon, Mikel y Otra persona (motor de rutina, `comun/rutina.js`)
 
-- **Qué día toca:** el siguiente al último entrenado (Día 1 → 2 → 3 → 1), no el día de la
-  semana. También *Entreno libre* (empezar de cero) y *Solo deporte*.
+- **Plan a medida** (tarjeta en *Hoy* la primera vez y siempre en Ajustes → Tu plan): nombre,
+  **días de fuerza** (1–6) y **días de cardio** (0–5) a la semana, y **favoritos**. Con 3 días
+  de fuerza el plan es el de siempre (`planes/rutina-3dias.js`); con otros números se arma con
+  `planes/plantillas.js`: 1 = cuerpo entero, 2 = cuerpo entero A/B, 4 = torso/pierna ×2,
+  5 = los 3 días + torso B + pierna B, 6 = los 3 días + hombro/pecho, espalda/bíceps y pierna B.
+  Enseña una semana orientativa (L Fuerza, M Cardio…).
+- **Qué día toca:** el siguiente día de fuerza al último entrenado (Día 1 → 2 → 3 → 1), no el
+  día de la semana; y **cardio** cuando falta para la semana (alterna con la fuerza mientras
+  falten los dos). El día de cardio propone cinta, bici o elíptica en minutos, más core y
+  estiramientos opcionales. También *Entreno libre* y *Solo deporte*.
+- **Favoritos** (★ en la ficha de un ejercicio o máquina, o Tu plan → Favoritos): un ejercicio
+  favorito ocupa el hueco del plan que le corresponde (mismo grupo muscular y tipo); si no tiene
+  hueco, entra como extra opcional en el día más parecido (dos como mucho por día). Una máquina
+  favorita hace que los ejercicios se propongan en ella cuando se pueda; si ningún ejercicio del
+  plan la usa, entra uno suyo como extra. Salen también primero en las listas y en los cambios
+  automáticos de Tekniker. Sin azar: los mismos ajustes dan el mismo plan, para que la
+  progresión tenga hilo. Los cambios fijos que haga la persona siguen mandando.
 - **Cada serie por separado,** con lo de la última vez como sugerencia. Al marcarla arranca el
   **descanso** (90 s principales, 60 s aislamientos; pitido y vibración al terminar) y corre el
   **cronómetro de sesión**.
@@ -85,8 +101,10 @@ libreta desde el mismo sitio (mejor, desde el icono).
   ejercicio que de verdad se hizo.
 - **Superseries, calentamiento, rodilla:** el día de pierna pregunta por la rodilla (0–10) y
   qué ejercicio molestó; si se repite, avisa de consultarlo con el fisio.
-- **Otro deporte** (pádel, correr…) cuenta para el objetivo semanal.
-- **Constancia:** entrenos por semana frente al objetivo (3) y racha de semanas cumplidas.
+- **Otro deporte** (pádel, correr…) cuenta como día de cardio.
+- **Constancia:** entrenos por semana frente al objetivo (fuerza + cardio, con los dos por
+  separado) y racha de semanas cumplidas. Las libretas de antes conservan su objetivo: 3 días de
+  fuerza y el resto, de cardio.
 - **Progreso:** entrenos por semana, evolución por ejercicio y variante, récords, kilos movidos,
   rodilla, deporte e historial.
 - **Ánimos con contexto:** récord personal al superar la mejor marca (más kilos, o más
@@ -171,6 +189,9 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-paso-a-paso-aita` | Empezar la sesión paso a paso; una vez al día |
 | `gim-semana-enviada` | Enviar (o descargar) la imagen de *Mi semana* |
 | `gim-lugar-cambiado` | Cambiar el lugar de entrenamiento (sin decir cuál) |
+| `gim-plan-personalizado` | Cambiar los días de fuerza o de cardio (sin decir cuántos) |
+| `gim-favoritos-abiertos` | Abrir la lista de favoritos |
+| `gim-favorito-marcado` | Marcar un favorito (sin decir cuál) |
 
 **Lo que no se mide nunca:** nada que escriba o elija el usuario (pesos, repeticiones, minutos,
 notas, nombre, gimnasio, búsquedas, qué ejercicio o máquina, fotos, ajustes de máquina, el token
@@ -195,6 +216,7 @@ La marca se guarda para todo `jonmg.github.io`, así que también excluye tus ot
 ```
 index.html                portada con los enlaces
 aita/ jon/ mikel/         una carpeta por persona: index.html (define window.PERFIL) y manifest
+tu/                       libreta sin dueño (PERFIL.nombre vacío: el nombre lo pone quien la usa)
 comun/base.js             núcleo: datos por persona, pestañas, hoja inferior, fotos, copia, gráficos
 comun/recuperacion.js     motor de Aita (sus 21 ejercicios, con su máquina y cómo se hacen)
 comun/rutina.js           motor de rutina (Jon y Mikel)
@@ -206,9 +228,10 @@ comun/estadisticas.js     estadísticas de uso (GoatCounter)
 comun/iconos.js           figura de músculos e iconos (SVG dibujado en código)
 comun/estilos.css         estilos y paleta (tokens al principio)
 comun/vendor/qrcode.js    generador de QR (qrcode-generator 1.4.4, MIT), solo al pasar el acceso
-planes/rutina-3dias.js    el plan de Jon y Mikel, editable como datos
+planes/rutina-3dias.js    el plan de 3 días, editable como datos
+planes/plantillas.js      días para el plan a medida (huecos con candidatos) y el día de cardio
 fotos/general/            imágenes genéricas: ilustraciones .svg y fotos libres, indice.json, créditos
-fotos/vivagym-miribilla/  fotos compartidas del gimnasio
+fotos/vivagym-miribilla/  fotos compartidas de cada gimnasio (también fotos/tekniker/)
 herramientas/ilustraciones.mjs   dibuja fotos/general/<máquina>.svg
 ```
 
@@ -217,7 +240,7 @@ herramientas/ilustraciones.mjs   dibuja fotos/general/<máquina>.svg
 - Código, comentarios y textos en castellano. Sin frameworks ni dependencias nuevas: HTML, CSS y
   JS sin compilar; fuentes de Google Fonts (Anybody y Open Sans).
 - **Al cambiar algo de `comun/` o `planes/`**, sube el `?v=` de los `<script>` y `<link>` en los
-  cuatro HTML para que los móviles no usen la versión en caché.
+  HTML (portada y libretas) para que los móviles no usen la versión en caché.
 - **Los `id` no se cambian** (ejercicios, máquinas, días del plan): el historial va por `id`.
 - **Las variantes de un ejercicio solo se añaden al final**: el historial guarda su posición. Si
   un ejercicio pasa a ser variante de otro, se deja con `oculto: true` para no perder su historial.
@@ -238,9 +261,12 @@ entreno, `gim-entreno-empezado-ane` y `gim-entreno-completo-ane`.
 ### Cambiar el plan de entrenamiento
 
 Edita `planes/rutina-3dias.js`: días, ejercicios (por `id` del catálogo), series, rango,
-descanso, superseries, notas y objetivo semanal. Los campos están explicados al principio del
-archivo. Para un plan distinto para otra persona, copia el archivo y apunta a él desde su
-`index.html`.
+descanso, superseries y notas. Los campos están explicados al principio del archivo.
+
+Los demás planes salen de `planes/plantillas.js`: cada día es una lista de huecos con sus
+candidatos (`ej`, por orden de preferencia) y su pauta; en `semanas`, qué días forman el plan
+según los días de fuerza; en `cardio`, el día de cardio. Los `id` de los días no se cambian (el
+historial guarda qué día se hizo). Cada persona elige días y favoritos en la app.
 
 ### Añadir máquinas o ejercicios
 

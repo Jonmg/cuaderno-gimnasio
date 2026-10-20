@@ -2,7 +2,8 @@
 /* Núcleo común de todas las libretas: almacenamiento por persona, esqueleto de la página,
    copia de seguridad y gráficos. Cada persona tiene su carpeta con un index.html que define
    window.PERFIL y carga este fichero más un motor (recuperacion.js o rutina.js). El motor
-   registra window.App = { ajustesIniciales, vistas: {hoy, progreso, ajustes}, click(b), cambio(t) }. */
+   registra window.App = { ajustesIniciales, vistas: {hoy, progreso, ajustes}, click(b), cambio(t) } y,
+   si lo necesita, alCargar() para preparar lo que dependa de los ajustes recién cargados. */
 
 const PERFIL = window.PERFIL;
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -48,7 +49,8 @@ const Datos = {
   guardarDia(k) { delete this.dias[k].nuevo; this.dias[k].actualizado = Date.now(); this.guardar(); },
   guardarAjustes() { this.guardar(); },
 };
-const nombreVisible = () => Datos.ajustes.nombre || PERFIL.nombre;
+// Una libreta sin dueño (PERFIL.nombre vacío) usa el nombre que ponga la persona; hasta entonces, "crack".
+const nombreVisible = () => Datos.ajustes.nombre || PERFIL.nombre || "crack";
 
 /* ---------- Lugar de entrenamiento ----------
    Con PERFIL.lugares (ids de LUGARES, en catalogo.js) la persona elige dónde entrena. El lugar
@@ -136,6 +138,7 @@ function montar() {
   Fotos.cargar().then(async n => { if (App.alCargarFotos) n += await App.alCargarFotos(); if (n) repintar(); });
 
   Datos.cargar(App.ajustesIniciales);
+  App.alCargar?.();
   aplicarLugar();
   FotosGym.cargar().then(cambio => { if (cambio) repintar(); });
   FotosGen.cargar().then(ok => { if (ok) repintar(); });
@@ -144,7 +147,8 @@ function montar() {
 }
 function pintar() {
   document.querySelectorAll("nav.tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === pestaña)));
-  $("#saludo").textContent = `${saludoHora()}, ${nombreVisible()}`;
+  const n = Datos.ajustes.nombre || PERFIL.nombre;
+  $("#saludo").textContent = n ? `${saludoHora()}, ${n}` : saludoHora();
   const g = gimnasio();
   $("#gym").innerHTML = g ? `${iconoUI("ubicacion")}${esc(g)}` : "";
   const m = $("#motivacion");
@@ -188,6 +192,7 @@ function restaurar(texto) {
     if (!actual || actual.nuevo || (d.actualizado || 0) > (actual.actualizado || 0)) { Datos.dias[k] = d; n++; }
   }
   if (j.ajustes && typeof j.ajustes === "object") Object.assign(Datos.ajustes, j.ajustes);
+  App.alCargar?.();
   Datos.guardar();
   pintar();
   msgCopia(`Copia restaurada: ${n} día${n === 1 ? "" : "s"} recuperado${n === 1 ? "" : "s"}.`);

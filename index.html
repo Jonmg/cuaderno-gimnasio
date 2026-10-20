@@ -22,13 +22,13 @@
     if (!window.ghConectado && location.hash !== "#toggle-goatcounter" && !location.search.includes("portada") && localStorage.getItem("cuaderno-fuerza-v1")) location.replace("aita/");
   } catch (e) {}
 </script>
-<script src="comun/estadisticas.js?v=15"></script>
+<script src="comun/estadisticas.js?v=16"></script>
 <script data-goatcounter="https://jon-apps.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:ital,wdth,wght@0,50..150,400..800;1,50..150,400..800&family=Open+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap">
-<link rel="stylesheet" href="comun/estilos.css?v=15">
+<link rel="stylesheet" href="comun/estilos.css?v=16">
 <style>body { padding-bottom: 32px; } [hidden]{display:none!important}</style>
 </head>
 <body>
@@ -42,8 +42,9 @@
 <div class="wrap">
   <p class="aviso" id="ghOk" hidden><b>GitHub conectado en este móvil.</b> Entra en tu libreta y, en Ejercicios → Máquinas → Compartir mis fotos, ya tendrás el botón "Proponer en GitHub".</p>
   <a class="card persona" href="aita/"><span><b>Manolo</b><br><span class="muted small">Aita · Recuperar fuerza: gimnasio suave y paseos</span></span><span class="flecha">›</span></a>
-  <a class="card persona" href="jon/"><span><b>Jon</b><br><span class="muted small">Rutina de 3 días</span></span><span class="flecha">›</span></a>
-  <a class="card persona" href="mikel/"><span><b>Mikel</b><br><span class="muted small">Rutina de 3 días</span></span><span class="flecha">›</span></a>
+  <a class="card persona" href="jon/"><span><b>Jon</b><br><span class="muted small">Plan a medida · VivaGym y Tekniker</span></span><span class="flecha">›</span></a>
+  <a class="card persona" href="mikel/"><span><b>Mikel</b><br><span class="muted small">Plan a medida</span></span><span class="flecha">›</span></a>
+  <a class="card persona" href="tu/"><span><b>Otra persona</b><br><span class="muted small">Tu libreta: pon tu nombre, cuántos días entrenas y tus máquinas favoritas</span></span><span class="flecha">›</span></a>
   <p class="muted small" style="margin:0">Los datos de cada libreta se guardan solo en el móvil donde se usan. App personal, sin relación oficial con VivaGym.</p>
 </div>
 <script>if (window.ghConectado) document.getElementById("ghOk").hidden = false;</script>

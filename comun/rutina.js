@@ -6,8 +6,10 @@
    lleva el descanso y la duración de la sesión, el deporte aparte, la rodilla si el plan lo
    pide, y una ficha de ayuda por ejercicio con foto de la máquina. */
 
-const P = window.PLAN;
-const DIA = Object.fromEntries(P.dias.map(d => [d.id, d]));
+const BASE = window.PLAN;
+// P es el plan en uso (lo arma construirPlan con los días que elige la persona); DIA, todos los
+// días que se conocen, estén o no en la rotación, para el historial.
+let P = BASE, DIA = Object.fromEntries(BASE.dias.map(d => [d.id, d])), enElPlan = new Set();
 const LIBRE = { id: "libre", nombre: "Entreno libre", titulo: "Tú eliges los ejercicios", calentamiento: [], ejercicios: [] };
 const diaDef = d => DIA[d?.diaPlan] || (d?.diaPlan === "libre" ? LIBRE : null);
 const DEPORTES = ["Pádel", "Correr", "Bici", "Natación", "Fútbol", "Caminar", "Montaña", "Otro"];
@@ -18,7 +20,7 @@ const ZONA_A_MUSCULO = { Pecho: "pecho", Espalda: "dorsal", Hombro: "hombro", "B
    diga el plan para ese id (nombre, pauta, nota). Los creados por la persona viven en sus ajustes. */
 const CAT_FIJO = {};
 for (const e of window.CATALOGO_BASE) CAT_FIJO[e.id] = { ...e };
-for (const d of P.dias) for (const e of d.ejercicios) {
+for (const d of BASE.dias) for (const e of d.ejercicios) {
   const { seccion, superserie, opcional, rodilla, ...ficha } = e;
   CAT_FIJO[e.id] = normalizar({ ...CAT_FIJO[e.id], ...ficha });
 }
@@ -40,7 +42,6 @@ const zonaDe = e => MUSCULOS[e.m?.[0]]?.n || e.zona || "";
 const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === ap));
 // Clave de la foto de una variante: la del aparato (compartida); si no tiene, la del ejercicio.
 const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
-const enElPlan = new Set(P.dias.flatMap(d => d.ejercicios.map(e => e.id)));
 
 /* ---------- Lo que hay en el lugar ----------
    Con un lugar de pocas máquinas (LUGARES[…].aparatos) solo se proponen las variantes que se
@@ -52,8 +53,85 @@ const sePuedeAqui = e => !!e && variantes(e).some(disponible);
 const primeraAqui = e => Math.max(0, variantes(e).findIndex(disponible));
 function alternativa(e, evitar) {
   const mismo = c => c.m[0] === e.m[0] ? 2 : c.m.includes(e.m[0]) ? 1 : 0;
-  const puntos = c => mismo(c) * 4 + (c.tipo === e.tipo ? 2 : 0) + ((c.unidad || "") === (e.unidad || "") && !!c.sinPeso === !!e.sinPeso ? 1 : 0);
+  const puntos = c => mismo(c) * 4 + (c.tipo === e.tipo ? 2 : 0) + ((c.unidad || "") === (e.unidad || "") && !!c.sinPeso === !!e.sinPeso ? 1 : 0)
+    + (esFav(c.id) ? 2.5 : 0) + (variantes(c).some(v => apFav(v.ap) && disponible(v)) ? 1 : 0);
   return todos().filter(c => !evitar.has(c.id) && mismo(c) && sePuedeAqui(c)).sort((a, b) => puntos(b) - puntos(a))[0] || null;
+}
+
+/* ---------- Plan a medida ----------
+   La persona elige cuántos días de fuerza y de cardio quiere a la semana y sus favoritos
+   (ejercicios y máquinas). El plan se arma con planes/plantillas.js: cada hueco toma su primer
+   candidato, salvo que un favorito encaje (mismo grupo muscular y tipo) o un candidato se haga
+   en una máquina favorita. Los favoritos que no caben en ningún hueco entran como extra
+   opcional en el día que más se les parece. Sin azar: con los mismos ajustes sale el mismo plan,
+   para que la progresión tenga hilo. Los cambios fijos de cada hueco siguen mandando. */
+const PL = window.PLANTILLAS;
+const favoritos = tipo => Datos.ajustes.favoritos?.[tipo] || [];
+const esFav = id => favoritos("ej").includes(id);
+const apFav = ap => !!ap && favoritos("ap").includes(ap);
+const conApFav = e => variantes(e).some(v => apFav(v.ap));
+const slotDe = pe => pe.slot || pe.id;
+function objetivos() {
+  const a = Datos.ajustes, gym = Number(a.diasGym) || BASE.dias.length, cardio = Number(a.diasCardio) || 0;
+  return { gym, cardio, total: gym + cardio };
+}
+const grupoDe = m => FILTROS_MUSCULO.find(f => f[1].includes(m))?.[1] || [m];
+const ZONA_PIERNA = ["cuadriceps", "isquios", "gluteo", "gluteo-medio", "aductores", "gemelo"], ZONA_CORE = ["abdomen", "oblicuos", "lumbar"];
+const zonaCuerpo = m => ZONA_PIERNA.includes(m) ? "pierna" : ZONA_CORE.includes(m) ? "core" : m === "cardio" || m === "cuerpo" ? m : "torso";
+const mismaMedida = (a, b) => (a.unidad || "") === (b.unidad || "") && !!a.sinPeso === !!b.sinPeso && !!a.porLado === !!b.porLado;
+// El ejercicio de un hueco: el primer candidato, o un favorito o uno con máquina favorita que encaje.
+function elegirHueco(h, enDia) {
+  const base = cat(h.ej[0]); if (!base) return h.ej[0];
+  const g = grupoDe(base.m[0]);
+  const ids = [...new Set([...h.ej.filter(cat), ...todos().filter(e => g.includes(e.m[0]) && e.tipo === h.tipo && (esFav(e.id) || conApFav(e))).map(e => e.id)])];
+  // Un favorito gana siempre; una máquina favorita empata con el candidato preferido (y en el
+  // empate manda el plan): lo normal es que el mismo ejercicio se proponga en esa máquina.
+  const puntos = id => (esFav(id) ? 10 : 0) + (conApFav(cat(id)) ? 4 : 0) + (h.ej.includes(id) ? Math.max(1, 5 - h.ej.indexOf(id)) : 0);
+  return ids.filter(id => !enDia.has(id)).sort((a, b) => puntos(b) - puntos(a))[0] || h.ej[0];
+}
+// Lo que se apunta en el plan: con otro ejercicio de distinta medida, su propia pauta del catálogo.
+function entradaPlan(h, id, slot) {
+  const { ej, nombre, nota, id: _, slot: __, ...pauta } = h;
+  if (id === ej[0] || mismaMedida(pauta, cat(id))) return { ...pauta, id, slot };
+  const { seccion, superserie, opcional, rodilla } = pauta;
+  return JSON.parse(JSON.stringify({ id, slot, seccion, superserie, opcional, rodilla }));
+}
+function construirPlan() {
+  if (!PL) return;
+  const n = Math.min(6, Math.max(1, objetivos().gym));
+  const defs = { ...PL.dias, cardio: PL.cardio };
+  for (const d of BASE.dias) defs[d.id] = { ...d, huecos: d.ejercicios.map(e => ({ ...e, ej: [e.id], slot: e.id })) };
+  const armar = (id, nombre) => {
+    const { huecos: hs, ejercicios: _, ...def } = defs[id], enDia = new Set();
+    const ejercicios = hs.map((h, i) => { const ex = elegirHueco(h, enDia); enDia.add(ex); return entradaPlan(h, ex, h.slot || `${id}-${i + 1}`); });
+    return { ...def, id, nombre, ejercicios };
+  };
+  DIA = Object.fromEntries(Object.keys(defs).map(id => [id, armar(id, id === "cardio" ? defs[id].nombre : defs[id].titulo)]));
+  const rot = PL.semanas[n].map((id, i) => (DIA[id] = armar(id, `Día ${i + 1}`)));
+  // Favoritos sin hueco (y máquinas favoritas que ningún ejercicio del plan usa): extra opcional.
+  const usa = ap => rot.some(d => d.ejercicios.some(pe => variantes(cat(pe.id) || {}).some(v => v.ap === ap)));
+  const quiere = [...favoritos("ej"), ...favoritos("ap").filter(ap => AP[ap] && AP[ap].tipo !== "cardio" && !usa(ap)).map(ap => ejerciciosCon(ap)[0]?.id)];
+  for (const id of new Set(quiere)) {
+    const e = cat(id);
+    if (!e || e.oculto || e.m[0] === "cardio" || rot.some(d => d.ejercicios.some(pe => pe.id === id))) continue;
+    const parecido = d => d.ejercicios.reduce((s, pe) => { const m = cat(pe.id)?.m[0]; return s + (m === e.m[0] ? 3 : zonaCuerpo(m) === zonaCuerpo(e.m[0]) ? 1 : 0); }, 0);
+    const extras = d => d.ejercicios.filter(pe => pe.slot.startsWith("fav-")).length;
+    const dia = rot.filter(d => extras(d) < 2).sort((a, b) => parecido(b) - parecido(a) || extras(a) - extras(b))[0];
+    if (dia) dia.ejercicios.push({ id, slot: `fav-${id}`, seccion: "★ Favorito", opcional: true, rodilla: false });
+  }
+  const o = objetivos();
+  P = { ...BASE, nombre: `Plan de ${n} día${n > 1 ? "s" : ""} de fuerza${o.cardio ? ` y ${o.cardio} de cardio` : ""}`, dias: rot };
+  enElPlan = new Set([...rot, DIA.cardio].flatMap(d => d.ejercicios.map(pe => pe.id)));
+}
+// Semana orientativa: los días de entreno repartidos de lunes a domingo, alternando fuerza y cardio.
+function semanaTipo() {
+  const o = objetivos(), t = Math.min(7, o.total), dias = Array(7).fill("");
+  let f = o.gym, c = o.cardio, ult = "";
+  for (let i = 0; i < t; i++) {
+    const toca = c > 0 && (f <= 0 || c > f || ult === "F") ? "C" : "F";
+    dias[Math.floor(i * 7 / t)] = toca; if (toca === "F") f--; else c--; ult = toca;
+  }
+  return dias;
 }
 
 /* ---------- Pauta ---------- */
@@ -74,11 +152,10 @@ const obligatorias = e => e.series - (e.seriesOpcionales || 0);
    Un hueco es un ejercicio del plan (con el cambio que se haya hecho hoy o para siempre) o un
    ejercicio añadido hoy. Si el cambio es de la misma medida, se respeta la pauta del plan. */
 function prescripcion(pe, exId) {
-  if (exId === pe.id) return { ...cat(pe.id), ...pe };
-  const c = cat(exId);
-  if (!c) return { ...cat(pe.id), ...pe };
-  const misma = (c.unidad || "") === (pe.unidad || "") && !!c.sinPeso === !!pe.sinPeso;
-  const pautaPlan = misma ? { series: pe.series, seriesOpcionales: pe.seriesOpcionales, reps: pe.reps, tipo: pe.tipo } : {};
+  const plan = { ...cat(pe.id), ...pe }, c = cat(exId);
+  if (exId === pe.id || !c) return plan;
+  const misma = (c.unidad || "") === (plan.unidad || "") && !!c.sinPeso === !!plan.sinPeso;
+  const pautaPlan = misma ? { series: plan.series, seriesOpcionales: plan.seriesOpcionales, reps: plan.reps, tipo: plan.tipo } : {};
   return { ...c, ...pautaPlan, seccion: pe.seccion, superserie: pe.superserie, opcional: pe.opcional, rodilla: pe.rodilla };
 }
 function huecos(d) {
@@ -86,17 +163,21 @@ function huecos(d) {
   const out = [], restringido = !!lugar()?.aparatos;
   const evitar = new Set([...dia.ejercicios.map(pe => pe.id), ...Object.values(d.cambios || {}), ...Object.values(Datos.ajustes.sustituciones || {}), ...(d.extras || [])]);
   for (const pe of dia.ejercicios) {
-    if (d.quitados?.includes(pe.id)) continue;
-    const hoy = d.cambios?.[pe.id], siempre = Datos.ajustes.sustituciones?.[pe.id];
+    const slot = slotDe(pe);
+    if (d.quitados?.includes(slot)) continue;
+    const hoy = d.cambios?.[slot], siempre = Datos.ajustes.sustituciones?.[slot];
     let exId = (hoy && cat(hoy)) ? hoy : (siempre && cat(siempre)) ? siempre : pe.id, porLugar = false;
     // Lo elegido hoy a mano se respeta; lo demás, si aquí no se puede hacer, se cambia solo.
     if (restringido && exId !== hoy && !sePuedeAqui(cat(exId))) {
       const alt = alternativa(cat(exId), evitar);
       if (alt) { exId = alt.id; porLugar = true; evitar.add(alt.id); }
     }
-    out.push({ slot: pe.id, e: prescripcion(pe, exId), original: pe, cambiado: exId !== pe.id, cambioHoy: exId === hoy && exId !== pe.id, porLugar, sinAparato: restringido && !sePuedeAqui(cat(exId)) });
+    out.push({ slot, e: prescripcion(pe, exId), original: { ...cat(pe.id), ...pe }, cambiado: exId !== pe.id, cambioHoy: exId === hoy && exId !== pe.id, porLugar, sinAparato: restringido && !sePuedeAqui(cat(exId)) });
   }
   for (const id of d.extras || []) { const c = cat(id); if (c) out.push({ slot: "x:" + id, e: { ...c, seccion: zonaDe(c) }, extra: true }); }
+  // Lo ya apuntado hoy que no está en ningún hueco (se cambió el plan o el día a mitad): se sigue viendo.
+  const vistos = new Set(out.map(h => h.e.id));
+  for (const [id, x] of Object.entries(d.ej || {})) { const c = cat(id); if (c && !vistos.has(id) && x.series.some(s => s.hecho)) out.push({ slot: "x:" + id, e: { ...c, seccion: zonaDe(c) }, extra: true }); }
   return out;
 }
 const enUso = d => new Set(huecos(d).map(h => h.e.id));
@@ -105,17 +186,30 @@ const enUso = d => new Set(huecos(d).map(h => h.e.id));
 const hizoGym = d => !!d && !d.nuevo && Object.values(d.ej || {}).some(x => x.series.some(s => s.hecho));
 const minDeporte = d => (d?.deporte || []).reduce((s, x) => s + (Number(x.min) || 0), 0);
 const diaActivo = d => !!d && !d.nuevo && (hizoGym(d) || minDeporte(d) > 0);
+// Un día cuenta como fuerza si se hizo algo del gimnasio que no fuera la sesión de cardio; el
+// resto de días con actividad (sesión de cardio o deporte por fuera) cuentan como cardio.
+const esFuerza = d => hizoGym(d) && d.diaPlan !== "cardio";
 // El día que toca es el siguiente al último del plan que se entrenó, no depende del día de la semana.
 function siguienteDia(k) {
-  const prev = Object.keys(Datos.dias).filter(x => x < k && hizoGym(Datos.dias[x]) && DIA[Datos.dias[x].diaPlan]).sort().pop();
-  if (!prev) return P.dias[0].id;
-  const i = P.dias.findIndex(d => d.id === Datos.dias[prev].diaPlan);
+  const prev = Object.keys(Datos.dias).filter(x => x < k && esFuerza(Datos.dias[x]) && DIA[Datos.dias[x].diaPlan]).sort().pop();
+  const i = prev ? P.dias.findIndex(d => d.id === Datos.dias[prev].diaPlan) : -1;
   return P.dias[(i + 1) % P.dias.length].id;
+}
+// ¿Toca cardio? Según lo que falte esta semana: alterna fuerza y cardio mientras falten los dos.
+function tocaCardio(k) {
+  const o = objetivos(); if (!o.cardio || !DIA.cardio) return false;
+  const lunes = claveFecha(lunesDe(deClave(k)));
+  const antes = Object.keys(Datos.dias).filter(x => x >= lunes && x < k && diaActivo(Datos.dias[x])).sort();
+  const fuerza = antes.filter(x => esFuerza(Datos.dias[x])).length;
+  const faltaF = o.gym - fuerza, faltaC = o.cardio - (antes.length - fuerza);
+  if (faltaC <= 0) return false;
+  if (faltaF <= 0 || faltaC > faltaF) return true;
+  return !!antes.length && esFuerza(Datos.dias[antes[antes.length - 1]]);
 }
 function diaDe(k) {
   if (!Datos.dias[k]) Datos.dias[k] = { fecha: k, ej: {}, calent: [], deporte: [], rodilla: null, nota: "", nuevo: true, ...(lugares().length ? { lugar: lugarId() } : {}) };
   const d = Datos.dias[k];
-  if (d.nuevo) d.diaPlan = siguienteDia(k);
+  if (d.nuevo) d.diaPlan = tocaCardio(k) ? "cardio" : siguienteDia(k);
   return d;
 }
 const tocar = k => Datos.guardarDia(k);
@@ -135,11 +229,13 @@ function sesionesDe(id) {
 }
 function entrada(d, e) {
   if (!d.ej[e.id]) {
-    // Repite la variante de la última vez que se hizo este ejercicio (mejor, en este mismo lugar).
+    // Repite la variante de la última vez que se hizo este ejercicio (mejor, en este mismo lugar),
+    // salvo que haya otra en una máquina favorita que se pueda usar aquí.
     const antes = Object.keys(Datos.dias).filter(k => k < d.fecha && Datos.dias[k].ej?.[e.id]?.series.some(s => s.hecho)).sort();
     const prev = antes.filter(k => lugarDe(k) === lugarId()).pop() || antes.pop();
-    const v0 = prev ? Datos.dias[prev].ej[e.id].v : 0;
-    d.ej[e.id] = { v: disponible(variante(e, v0)) ? v0 : primeraAqui(e), series: [], rodilla: false };
+    const v0 = prev ? Datos.dias[prev].ej[e.id].v : -1, vs = variantes(e);
+    const vale = i => i >= 0 && i < vs.length && disponible(vs[i]), fav = vs.findIndex(v => apFav(v.ap) && disponible(v));
+    d.ej[e.id] = { v: vale(v0) && (fav < 0 || apFav(vs[v0].ap)) ? v0 : fav >= 0 ? fav : primeraAqui(e), series: [], rodilla: false };
   }
   const x = d.ej[e.id];
   // Si se cambió de lugar antes de empezar, pasa a una variante que haya aquí.
@@ -186,11 +282,11 @@ const textoUltima = (e, u) => `Última vez (${fechaCorta(deClave(u.k))}): ${text
 
 /* ---------- Semanas y constancia ---------- */
 function resumenSemanas(n) {
-  const semanas = ultimasSemanas(n).map(w => ({ ...w, gym: 0, soloDeporte: 0, volumen: 0, minDep: 0 }));
+  const semanas = ultimasSemanas(n).map(w => ({ ...w, gym: 0, cardio: 0, volumen: 0, minDep: 0 }));
   for (const [k, d] of Object.entries(Datos.dias)) {
     const w = semanaDe(semanas, k);
     if (!w || !diaActivo(d)) continue;
-    if (hizoGym(d)) w.gym++; else w.soloDeporte++;
+    if (esFuerza(d)) w.gym++; else w.cardio++;
     w.minDep += minDeporte(d);
     w.volumen += volumenDia(d);
   }
@@ -207,11 +303,11 @@ function volumenDia(d) {
 }
 // Semanas seguidas cumpliendo el objetivo. La actual cuenta si ya se cumplió; si no, no rompe la racha.
 function rachaSemanas() {
-  const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal;
+  const obj = objetivos().total;
   const semanas = resumenSemanas(104);
   let r = 0, i = semanas.length - 1;
-  if (semanas[i].gym + semanas[i].soloDeporte < obj) i--;
-  for (; i >= 0 && semanas[i].gym + semanas[i].soloDeporte >= obj; i--) r++;
+  if (semanas[i].gym + semanas[i].cardio < obj) i--;
+  for (; i >= 0 && semanas[i].gym + semanas[i].cardio >= obj; i--) r++;
   return r;
 }
 
@@ -278,7 +374,7 @@ function celebrarSerie(d, e, x, s, antes) {
   if (hist && todo && mejorQue(modoMarca(e, x), s, todo.s)) msgs.push(`🏆 ¡Nuevo récord! ${nombreCompleto(e, x.v)}: ${textoMarca(e, x.v, s)}`);
   if (antes.apNuevo) { const cs = cromosAqui(); msgs.push(`🃏 Nuevo cromo: ${AP[antes.apNuevo].nombre} (${cs.filter(c => c.desde).length} de ${cs.length})`); }
   if (!antes.completa && sesionCompleta(d)) {
-    const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal, sem = resumenSemanas(1)[0], hechos = sem.gym + sem.soloDeporte, racha = rachaSemanas();
+    const obj = objetivos().total, sem = resumenSemanas(1)[0], hechos = sem.gym + sem.cardio, racha = rachaSemanas();
     msgs.push(hechos === obj ? `🎉 ¡Semana cumplida, ${n}! ${hechos} de ${obj}${racha > 1 ? ` · ${racha} semanas seguidas` : ""}`
       : hechos > obj ? `🎉 ¡Sesión completa! Y van ${hechos} esta semana: de sobresaliente.` : `🎉 ¡Sesión completa! Llevas ${hechos} de ${obj} esta semana.`);
     confeti();
@@ -360,20 +456,25 @@ function siguientePendiente(d, desde) {
 /* ---------- Vista: Hoy ---------- */
 function pintarHoy() {
   const d = diaDe(HOY);
-  const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal;
-  const sem = resumenSemanas(1)[0], hechos = sem.gym + sem.soloDeporte;
+  const o = objetivos();
+  const sem = resumenSemanas(1)[0], hechos = sem.gym + sem.cardio;
   const racha = rachaSemanas();
   const dia = diaDef(d);
+  // Un punto por día: los de fuerza llenos y los de cardio en el otro color.
+  const puntos = (n, hechos, clase) => Array.from({ length: Math.max(n, hechos) }, (_, i) => `<i class="${clase} ${i < hechos ? "hecho" : ""}"></i>`).join("");
   let h = `<div class="wrap" style="padding:0">
+    ${Datos.ajustes.planHecho ? "" : htmlTuPlan(true)}
     <section class="card semana" aria-label="Esta semana">
-      <div class="puntos" aria-hidden="true">${Array.from({ length: Math.max(obj, hechos) }, (_, i) => `<i class="${i < sem.gym ? "lleno" : i < hechos ? "dep" : ""}"></i>`).join("")}</div>
-      <div><b class="num grande">${hechos} de ${obj}</b> <span class="muted">entrenos esta semana</span>
+      <div class="puntos" aria-hidden="true">${puntos(o.gym, sem.gym, "fuerza")}${puntos(o.cardio, sem.cardio, "cardio")}</div>
+      <div><b class="num grande">${hechos} de ${o.total}</b> <span class="muted">entrenos esta semana</span>
+      ${o.cardio ? `<div class="small muted">Fuerza <b>${sem.gym} de ${o.gym}</b> · Cardio <b>${sem.cardio} de ${o.cardio}</b></div>` : ""}
       <div class="small muted">${racha ? `Racha: <b>${racha} semana${racha > 1 ? "s" : ""}</b> cumpliendo` : "Cumple el objetivo esta semana para empezar la racha"}</div></div>
     </section>
     <section class="card" aria-labelledby="t-toca">
       <h2 id="t-toca">Hoy toca</h2>${htmlLugares()}
       <div class="chips cinco" role="group" aria-label="Qué entrenas hoy">
         ${P.dias.map(x => `<button class="chip" data-diaplan="${x.id}" aria-pressed="${d.diaPlan === x.id}"><b>${esc(x.nombre)}</b><span class="small">${esc(x.titulo)}</span></button>`).join("")}
+        ${DIA.cardio ? `<button class="chip cardio" data-diaplan="cardio" aria-pressed="${d.diaPlan === "cardio"}"><b>Cardio</b><span class="small">${esc(cat(DIA.cardio.ejercicios[0].id)?.nombre || DIA.cardio.titulo)}</span></button>` : ""}
         <button class="chip" data-diaplan="libre" aria-pressed="${d.diaPlan === "libre"}"><b>Libre</b><span class="small">Eliges tú</span></button>
         <button class="chip" data-diaplan="" aria-pressed="${!d.diaPlan}"><b>Solo deporte</b><span class="small">Sin gimnasio</span></button>
       </div>
@@ -393,11 +494,11 @@ function pintarSesion(d, dia) {
   let total = 0, hechas = 0;
   for (const { e } of hs) { if (e.opcional) continue; const x = entrada(d, e); total += obligatorias(e); hechas += Math.min(obligatorias(e), x.series.filter(s => s.hecho).length); }
   const pct = total ? Math.round(100 * hechas / total) : 0;
-  const siguiente = DIA[dia.id] ? DIA[P.dias[(P.dias.indexOf(dia) + 1) % P.dias.length].id].nombre : "";
+  const pos = P.dias.findIndex(x => x.id === dia.id), siguiente = pos >= 0 ? P.dias[(pos + 1) % P.dias.length].nombre : "";
   let h = `<section class="card" aria-labelledby="t-sesion">
     <div class="top"><h2 id="t-sesion">${esc(dia.nombre)} · ${esc(dia.titulo)}</h2>${total ? `<span class="num" style="font-size:1.4rem">${hechas}/${total}</span>` : ""}</div>
     ${total ? `<div class="progreso-dia" aria-hidden="true"><i style="width:${pct}%"></i></div>` : ""}
-    <p class="small muted" style="margin:0"><span id="crono">${d.inicio ? "" : "El cronómetro arranca con la primera serie"}</span> · objetivo ~${P.duracionMin} min. Descansos: ${esc(P.textoDescansos)}</p>
+    <p class="small muted" style="margin:0"><span id="crono">${d.inicio ? "" : "El cronómetro arranca con la primera serie"}</span>${dia.id === "cardio" ? "" : ` · objetivo ~${P.duracionMin} min. Descansos: ${esc(P.textoDescansos)}`}</p>
     ${dia.nota ? `<p class="nota">${esc(dia.nota)}</p>` : ""}
     ${hechas === total && total ? `<p class="aviso" style="background:var(--accent-soft)"><b>Sesión completa.</b> Buen trabajo.${siguiente ? ` El próximo día toca ${esc(siguiente)}.` : ""}</p>` : ""}
     ${dia.calentamiento.length ? `<div class="calent"><span class="eyebrow">Calentamiento</span>
@@ -415,9 +516,9 @@ function pintarSesion(d, dia) {
       i += grupo.length;
     } else { h += pintarEjercicio(d, dia, hs[i]); i++; }
   }
-  const quitados = (d.quitados || []).map(id => dia.ejercicios.find(e => e.id === id)).filter(Boolean);
+  const quitados = (d.quitados || []).map(slot => dia.ejercicios.find(pe => slotDe(pe) === slot)).filter(Boolean).map(pe => ({ ...cat(pe.id), slot: slotDe(pe) }));
   h += `<div class="fila"><button class="btn sec" data-anadir>+ Añadir ejercicio</button></div>`;
-  if (quitados.length) h += `<p class="small muted" style="margin:0">Quitados hoy: ${quitados.map(e => `${esc(e.nombre)} <button class="enlace" data-recuperar="${e.id}">recuperar</button>`).join(" · ")}</p>`;
+  if (quitados.length) h += `<p class="small muted" style="margin:0">Quitados hoy: ${quitados.map(e => `${esc(e.nombre)} <button class="enlace" data-recuperar="${e.slot}">recuperar</button>`).join(" · ")}</p>`;
   return h + `</section>`;
 }
 
@@ -486,7 +587,7 @@ function pintarDeporte(d) {
   const lista = d.deporte || [];
   return `<section class="card" aria-labelledby="t-dep">
     <h2 id="t-dep">Otro deporte hoy</h2>
-    ${lista.length ? `<div class="historial">${lista.map((x, i) => `<div class="hist"><span><b>${esc(x.tipo)}</b> · ${esc(x.min)} min</span><button class="enlace" data-deldep="${i}" aria-label="Quitar ${esc(x.tipo)}">Quitar</button></div>`).join("")}</div>` : `<p class="small muted" style="margin:0">Pádel, correr, bici… cuenta para tu objetivo de la semana.</p>`}
+    ${lista.length ? `<div class="historial">${lista.map((x, i) => `<div class="hist"><span><b>${esc(x.tipo)}</b> · ${esc(x.min)} min</span><button class="enlace" data-deldep="${i}" aria-label="Quitar ${esc(x.tipo)}">Quitar</button></div>`).join("")}</div>` : `<p class="small muted" style="margin:0">Pádel, correr, bici… cuenta como día de cardio de la semana.</p>`}
     <div class="campos">
       <label class="campo">Deporte<select id="depTipo">${DEPORTES.map(t => `<option>${t}</option>`).join("")}</select></label>
       <label class="campo">Minutos<input class="num" type="number" inputmode="numeric" min="1" id="depMin" placeholder="60"></label>
@@ -498,14 +599,14 @@ function pintarDeporte(d) {
 /* ---------- Vista: Progreso ---------- */
 let ejSel = null;
 function pintarProgreso() {
-  const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal;
+  const obj = objetivos().total;
   const claves = Object.keys(Datos.dias).filter(k => diaActivo(Datos.dias[k])).sort();
   const semanas = resumenSemanas(8), actual = semanas[semanas.length - 1];
   const sesiones = claves.filter(k => hizoGym(Datos.dias[k])).length;
   let h = `<div class="wrap" style="padding:0">
     <div class="tiles">
       <div class="tile"><span class="eyebrow">Racha</span><span class="num">${rachaSemanas()}</span><span>semanas cumpliendo</span></div>
-      <div class="tile"><span class="eyebrow">Semana</span><span class="num">${actual.gym + actual.soloDeporte}/${obj}</span><span>entrenos</span></div>
+      <div class="tile"><span class="eyebrow">Semana</span><span class="num">${actual.gym + actual.cardio}/${obj}</span><span>entrenos</span></div>
       <div class="tile"><span class="eyebrow">Gimnasio</span><span class="num">${sesiones}</span><span>sesiones en total</span></div>
     </div>`;
   if (!claves.length) {
@@ -513,7 +614,7 @@ function pintarProgreso() {
     return;
   }
   h += `<section class="card"><h2>Entrenos por semana</h2>
-    ${graficoBarras(semanas.map(w => ({ etiqueta: fechaCorta(w.inicio), partes: [{ v: w.gym, color: "var(--accent)" }, { v: w.soloDeporte, color: "var(--sec)" }] })), { meta: obj, etiquetaAria: "Entrenos por semana en las últimas 8 semanas" })}
+    ${graficoBarras(semanas.map(w => ({ etiqueta: fechaCorta(w.inicio), partes: [{ v: w.gym, color: "var(--accent)" }, { v: w.cardio, color: "var(--sec)" }] })), { meta: obj, etiquetaAria: "Entrenos por semana en las últimas 8 semanas" })}
     <p class="leyenda small"><span><i style="background:var(--accent)"></i>Gimnasio</span><span><i style="background:var(--sec)"></i>Solo deporte</span><span><i class="raya"></i>Objetivo (${obj})</span></p></section>`;
 
   // Progreso por ejercicio y variante.
@@ -580,6 +681,8 @@ function pintarProgreso() {
 
 /* ---------- Listas de ejercicios (buscador y filtros) ---------- */
 // El filtro de músculo mira el principal: "Bíceps" da curls, no jalones.
+// Los favoritos (o los que se hacen en una máquina favorita) salen antes en las listas.
+const favorito = e => esFav(e.id) ? 2 : conApFav(e) ? 1 : 0;
 function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [], aqui = false }) {
   const t = sinAcentos(q).trim();
   const grupo = FILTROS_MUSCULO.find(f => f[0] === musc)?.[1];
@@ -589,7 +692,7 @@ function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [
       && (!grupo || grupo.includes(e.m[0]))
       && (!mat || e.variantes.some(v => AP[v.ap]?.tipo === mat && (!aqui || disponible(v))))
       && (!t || sinAcentos(`${e.nombre} ${nombreMusculos(e)} ${e.variantes.map(v => `${v.n} ${AP[v.ap]?.nombre || ""}`).join(" ")}`).includes(t)))
-    .sort((a, b) => primero.includes(b.m[0]) - primero.includes(a.m[0]) || a.nombre.localeCompare(b.nombre, "es"));
+    .sort((a, b) => primero.includes(b.m[0]) - primero.includes(a.m[0]) || favorito(b) - favorito(a) || a.nombre.localeCompare(b.nombre, "es"));
 }
 function htmlLista(lista, accion) {
   if (!lista.length) return `<p class="muted small" style="margin:0">No hay ninguno así. Prueba con otro filtro o créalo abajo.</p>`;
@@ -598,7 +701,7 @@ function htmlLista(lista, accion) {
     const tipos = [...new Set(e.variantes.map(v => AP[v.ap]?.tipo).filter(Boolean))];
     return `<button class="item" data-${accion}="${e.id}">
       ${iconoMusculo(e.m, { clase: "musculo item-ico" })}
-      <span class="item-txt"><b>${esc(e.nombre)}</b><span class="small muted">${esc(nombreMusculos(e))}${enElPlan.has(e.id) ? " · en tu plan" : ""}${e.propio ? " · creado por ti" : ""}${n ? ` · ${n} ${n > 1 ? "sesiones" : "sesión"}` : ""}</span>
+      <span class="item-txt"><b>${esFav(e.id) ? "★ " : ""}${esc(e.nombre)}</b><span class="small muted">${esc(nombreMusculos(e))}${enElPlan.has(e.id) ? " · en tu plan" : ""}${e.propio ? " · creado por ti" : ""}${n ? ` · ${n} ${n > 1 ? "sesiones" : "sesión"}` : ""}</span>
       ${tipos.length ? `<span class="etiquetas">${tipos.map(t => `<span class="etiqueta">${TIPO_CORTO[t]}</span>`).join("")}</span>` : ""}</span>
     </button>`;
   }).join("");
@@ -697,6 +800,7 @@ function hojaAyuda(id) {
   const va = variante(e, vAct), clave = claveFoto(e, vAct);
   const vs = variantes(e);
   return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(nombreMusculos(e))}</span><h2>${esc(e.nombre)}</h2></div>${botonCerrar}</div>
+    ${botonFav("ej", id)}
     <div class="ficha-top">${iconoMusculo(e.m, { clase: "musculo grande" })}
       <div class="ficha-txt"><p style="margin:0"><b>Trabaja:</b> ${esc(nombreMusculos(e))}</p>
       <p class="small muted" style="margin:0">Pauta habitual: ${pauta(e)} · descanso ${descansoDe(e)} s</p></div></div>
@@ -719,6 +823,7 @@ function hojaAparato(ap) {
   const a = AP[ap]; if (!a) return "";
   const lista = ejerciciosCon(ap);
   return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(TIPO_AP[a.tipo])}</span><h2>${esc(a.nombre)}</h2></div>${botonCerrar}</div>
+    ${botonFav("ap", ap)}
     ${htmlFoto(ap, a.nombre)}
     ${a.nota ? `<p class="nota">${esc(a.nota)}</p>` : ""}
     ${(c => c?.desde ? `<p class="small" style="margin:0">🃏 Cromo conseguido${c.desde !== "foto" ? ` el ${fechaCorta(deClave(c.desde))}` : ""}${c.dorado ? " · dorado ★" : " · con una foto real será dorado"}.</p>` : `<p class="small muted" style="margin:0">🃏 Cromo sin conseguir: entrena con esta máquina para llevártelo.</p>`)(cromos().find(c => c.a.id === ap))}
@@ -771,7 +876,7 @@ function pintarEjercicios() {
       <p class="small muted" style="margin:0">Una foto por máquina sirve para todos los ejercicios que la usan.</p>
       ${TIPOS_APARATO.filter(([t]) => apsAqui.some(a => a.tipo === t)).map(([t, n]) => `<div><p class="eyebrow" style="margin:10px 0 0">${n}</p><div class="lista">${apsAqui.filter(a => a.tipo === t).map(a => {
         const k = ejerciciosCon(a.id).length;
-        return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? " · tu foto" : FotosGym.url[a.id] ? "" : " · sin foto real"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
+        return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${apFav(a.id) ? "★ " : ""}${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? " · tu foto" : FotosGym.url[a.id] ? "" : " · sin foto real"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
       }).join("")}</div></div>`).join("")}
     </section></div>`;
     return;
@@ -788,19 +893,64 @@ function pintarEjercicios() {
   verZona();
 }
 
+/* ---------- Tu plan y favoritos ----------
+   La misma tarjeta sale en Hoy la primera vez (con el nombre) y siempre en Ajustes. */
+const LETRAS_SEMANA = ["L", "M", "X", "J", "V", "S", "D"];
+function htmlTuPlan(enHoy) {
+  const o = objetivos(), semana = semanaTipo(), nf = favoritos("ej").length + favoritos("ap").length;
+  const chips = (k, valores, actual, otro) => `<div class="chips dias-sem" role="group">${valores.map(n => `<button class="chip" data-${k}="${n}" aria-pressed="${n === actual}" ${n + otro > 7 ? "disabled" : ""}>${n}</button>`).join("")}</div>`;
+  return `<section class="card tu-plan" aria-labelledby="t-plan">
+    <h2 id="t-plan">${enHoy ? "Haz el plan a tu medida" : "Tu plan"}</h2>
+    ${enHoy ? `<p class="small muted" style="margin:0">Dinos cuántos días quieres entrenar y qué te gusta más: el plan se organiza solo. Se puede cambiar cuando quieras en Ajustes.</p>
+      <label class="campo" for="nombre">Tu nombre<input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre || "Cómo te llamas")}" class="texto" autocomplete="given-name"></label>` : ""}
+    <div class="campo"><span id="t-dg">Días de fuerza a la semana</span>${chips("diasgym", [1, 2, 3, 4, 5, 6], o.gym, o.cardio)}</div>
+    <div class="campo"><span>Días de cardio a la semana <span class="muted small">(cinta, bici, elíptica, o deporte por fuera)</span></span>${chips("diascardio", [0, 1, 2, 3, 4, 5], o.cardio, o.gym)}</div>
+    <div class="semana-tipo" aria-label="Semana orientativa">${semana.map((t, i) => `<span class="${t === "F" ? "f" : t === "C" ? "c" : ""}"><b>${LETRAS_SEMANA[i]}</b>${t === "F" ? "Fuerza" : t === "C" ? "Cardio" : "—"}</span>`).join("")}</div>
+    <p class="small muted" style="margin:0">Semana orientativa: cada día la app propone lo que toca según lo que lleves hecho, entrenes el día que entrenes.</p>
+    <div class="historial">${P.dias.map(d => `<div class="hist"><span><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</span><span class="muted small">${d.ejercicios.filter(pe => !pe.opcional).length} ejercicios</span></div>`).join("")}
+      ${o.cardio && DIA.cardio ? `<div class="hist"><span><b>Cardio</b> · ${esc(cat(DIA.cardio.ejercicios[0].id)?.nombre)}</span><span class="muted small">${pauta({ ...cat(DIA.cardio.ejercicios[0].id), ...DIA.cardio.ejercicios[0] })}</span></div>` : ""}</div>
+    <div class="fila"><button class="btn sec peq" data-favoritos>★ Favoritos${nf ? ` (${nf})` : ""}</button>${enHoy ? `<button class="btn peq" data-planlisto>Listo</button>` : ""}</div>
+    ${nf ? "" : `<p class="small muted" style="margin:0">Marca tus ejercicios y máquinas favoritas: saldrán más a menudo en el plan.</p>`}
+  </section>`;
+}
+const textoFavs = () => { const e = favoritos("ej").length, m = favoritos("ap").length; return e + m ? `Tienes ${e} ejercicio${e === 1 ? "" : "s"} y ${m} máquina${m === 1 ? "" : "s"} como favoritos.` : "Aún no tienes favoritos."; };
+// Máquinas de los sitios donde entrena la persona (sin lugares con lista, todas).
+const apsMios = () => APARATOS.filter(a => !lugares().length || lugares().some(id => !LUGARES[id].aparatos || LUGARES[id].aparatos.includes(a.id)));
+function hojaFavoritos() {
+  const aps = apsMios(), chip = (tipo, id, nombre) => `<button class="chip mini" data-fav="${tipo}|${id}" aria-pressed="${tipo === "ap" ? apFav(id) : esFav(id)}">${esc(nombre)}</button>`;
+  return `<div class="hoja-cab"><h2>Favoritos</h2>${botonCerrar}</div>
+    <p class="small muted" style="margin:0">Lo que marques sale más a menudo: el plan lo pone en el hueco que le corresponde y, si no tiene hueco, como extra opcional en el día que más se le parece. Con una máquina favorita, los ejercicios se proponen en ella.</p>
+    <p class="small" id="cuentaFav" role="status" style="margin:0">${textoFavs()}</p>
+    <h3>Máquinas y material</h3>
+    ${TIPOS_APARATO.filter(([t]) => aps.some(a => a.tipo === t)).map(([t, n]) => `<div><p class="eyebrow" style="margin:4px 0 6px">${esc(n)}</p><div class="chips-fav">${aps.filter(a => a.tipo === t).map(a => chip("ap", a.id, a.nombre)).join("")}</div></div>`).join("")}
+    <h3>Ejercicios</h3>
+    ${FILTROS_MUSCULO.map(([n, ms]) => { const l = todos().filter(e => ms.includes(e.m[0])); return l.length ? `<div><p class="eyebrow" style="margin:4px 0 6px">${esc(n)}</p><div class="chips-fav">${l.map(e => chip("ej", e.id, e.nombre)).join("")}</div></div>` : ""; }).join("")}
+    <button class="btn" data-cerrar>Hecho</button>`;
+}
+HOJAS.favoritos = hojaFavoritos;
+// Marca o desmarca un favorito ("ej|id" o "ap|id") y rehace el plan. Devuelve si queda marcado.
+function alternarFav(clave) {
+  const [tipo, id] = clave.split("|"), a = Datos.ajustes, lista = favoritos(tipo), on = !lista.includes(id);
+  a.favoritos = { ej: favoritos("ej"), ap: favoritos("ap"), [tipo]: on ? [...lista, id] : lista.filter(x => x !== id) };
+  Datos.guardarAjustes(); construirPlan();
+  if (on) evento("gim-favorito-marcado");
+  return on;
+}
+const botonFav = (tipo, id) => { const on = tipo === "ap" ? apFav(id) : esFav(id); return `<button class="chip mini fav" data-fav="${tipo}|${id}" aria-pressed="${on}">${on ? "★ Favorito" : "☆ Marcar como favorito"}</button>`; };
+
 /* ---------- Vista: Ajustes ---------- */
 function opciones(valores, actual, sufijo = "") { return valores.map(v => `<option value="${v}" ${Number(actual) === v ? "selected" : ""}>${fmt(v)}${sufijo}</option>`).join(""); }
 function pintarAjustes() {
   const a = Datos.ajustes;
   const sust = Object.entries(a.sustituciones || {}).map(([slot, id]) => {
-    const dia = P.dias.find(d => d.ejercicios.some(e => e.id === slot)), pe = dia?.ejercicios.find(e => e.id === slot);
-    return pe && cat(id) ? `<div class="hist"><span>${esc(dia.nombre)}: ${esc(pe.nombre)} → <b>${esc(cat(id).nombre)}</b></span><button class="enlace" data-deshacersust="${slot}">Deshacer</button></div>` : "";
+    const dia = [...P.dias, ...Object.values(DIA)].find(d => d.ejercicios.some(pe => slotDe(pe) === slot)), pe = dia?.ejercicios.find(x => slotDe(x) === slot);
+    return pe && cat(id) ? `<div class="hist"><span>${esc(dia.nombre)}: ${esc(cat(pe.id)?.nombre)} → <b>${esc(cat(id).nombre)}</b></span><button class="enlace" data-deshacersust="${slot}">Deshacer</button></div>` : "";
   }).join("");
   $("#vista").innerHTML = `<div class="wrap" style="padding:0">
     ${htmlPerfil()}
+    ${htmlTuPlan(false)}
     <section class="card"><h2>Entrenamiento</h2>
       <div class="campos">
-        <label class="campo">Objetivo semanal<select id="aj-objetivo">${opciones([2, 3, 4, 5, 6], a.objetivo, " días")}</select></label>
         <label class="campo">Subir peso de<select id="aj-incremento">${opciones([1, 1.25, 2, 2.5, 5], a.incremento, " kg")}</select></label>
       </div>
       <div class="campos">
@@ -814,9 +964,9 @@ function pintarAjustes() {
       <p class="muted small" style="margin:0">Mantén la app abierta durante el descanso: con la pantalla bloqueada el móvil no deja pitar.</p>
     </section>
     <section class="card"><h2>${esc(P.nombre)}</h2>
-      ${P.dias.map(d => `<details><summary><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</summary><div class="historial">${d.ejercicios.map(pe => {
-        const sid = a.sustituciones?.[pe.id], e = sid && cat(sid) ? prescripcion(pe, sid) : { ...cat(pe.id), ...pe };
-        return `<div class="hist"><span>${esc(e.nombre)}${sid ? ` <span class="muted small">(en lugar de ${esc(pe.nombre)})</span>` : ""}${e.opcional ? " (opcional)" : ""}</span><span class="muted num">${pauta(e)}</span></div>`;
+      ${[...P.dias, ...(DIA.cardio ? [DIA.cardio] : [])].map(d => `<details><summary><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</summary><div class="historial">${d.ejercicios.map(pe => {
+        const sid = a.sustituciones?.[slotDe(pe)], e = sid && cat(sid) ? prescripcion(pe, sid) : { ...cat(pe.id), ...pe };
+        return `<div class="hist"><span>${esFav(e.id) ? "★ " : ""}${esc(e.nombre)}${sid ? ` <span class="muted small">(en lugar de ${esc(cat(pe.id)?.nombre)})</span>` : ""}${e.opcional ? " (opcional)" : ""}</span><span class="muted num">${pauta(e)}</span></div>`;
       }).join("")}</div></details>`).join("")}
       <p class="muted small" style="margin:0">Duración ~${P.duracionMin} min. Descansos: ${esc(P.textoDescansos)}</p>
     </section>
@@ -845,18 +995,19 @@ const FRASES = [
 ];
 function motivacion() {
   const n = nombreVisible(), d = Datos.dias[HOY];
-  const obj = Number(Datos.ajustes.objetivo) || P.objetivoSemanal;
-  const sem = resumenSemanas(1)[0], hechos = sem.gym + sem.soloDeporte;
+  const obj = objetivos().total;
+  const sem = resumenSemanas(1)[0], hechos = sem.gym + sem.cardio;
   const ultimo = Object.keys(Datos.dias).filter(k => k < HOY && diaActivo(Datos.dias[k])).sort().pop();
   const sinEntrenar = ultimo ? Math.round((deClave(HOY) - deClave(ultimo)) / 864e5) : 0;
   const racha = rachaSemanas();
+  if (!Datos.ajustes.planHecho && !Object.values(Datos.dias).some(diaActivo)) return `${Datos.ajustes.nombre || PERFIL.nombre ? `${n}, primero` : "Primero"}, haz el plan a tu medida: cuántos días entrenas y qué te gusta más.`;
   if (diaActivo(d)) return hechos >= obj ? `¡Hecho, ${n}! Objetivo de la semana cumplido. Ahora toca descansar.` : `¡Sesión hecha, ${n}! Agua, buena comida y a descansar.`;
   if (sinEntrenar >= 14) return `${n}, han pasado ${Math.floor(sinEntrenar / 7)} semanas. No hay nada que recuperar: con ir hoy, ya ganas.`;
   if (sinEntrenar >= 4) return `${n}, llevas ${sinEntrenar} días sin entrenar. Hoy es un buen día para volver.`;
   if (hechos >= obj) return `${n}, ya has cumplido el objetivo de la semana. Lo que hagas hoy es extra.`;
   if (racha >= 2 && new Date().getDay() === 1) return `${n}, ${racha} semanas seguidas cumpliendo. ¡A por otra!`;
   if (new Date().getDay() === 1) {
-    const pasada = resumenSemanas(2)[0], hp = pasada.gym + pasada.soloDeporte;
+    const pasada = resumenSemanas(2)[0], hp = pasada.gym + pasada.cardio;
     if (hp) return hp >= obj ? `${n}, la semana pasada, ${hp} de ${obj}: cumplida. Esta, igual.` : `${n}, la semana pasada, ${hp} de ${obj}. Esta semana, a por ${obj}.`;
   }
   if (DIA[d?.diaPlan]?.rodilla) return fraseDelDia([`${n}, hoy toca pierna. Ni se te ocurra saltártela.`, `Día de pierna, ${n}: control, recorrido cómodo y a por ello.`]);
@@ -866,10 +1017,17 @@ function motivacion() {
 /* ---------- Eventos ---------- */
 window.App = {
   pestañas: [["hoy", "Hoy"], ["progreso", "Progreso"], ["ejercicios", "Ejercicios"], ["ajustes", "Ajustes"]],
-  ajustesIniciales: { nombre: "", objetivo: P.objetivoSemanal, incremento: 2.5, descansos: { ...P.descansos }, sonido: true, vibracion: true, propios: [], sustituciones: {}, notasEj: {}, notasAp: {} },
+  ajustesIniciales: { nombre: "", objetivo: BASE.objetivoSemanal, favoritos: { ej: [], ap: [] }, incremento: 2.5, descansos: { ...BASE.descansos }, sonido: true, vibracion: true, propios: [], sustituciones: {}, notasEj: {}, notasAp: {} },
   vistas: { hoy: pintarHoy, progreso: pintarProgreso, ejercicios: pintarEjercicios, ajustes: pintarAjustes },
   motivacion,
   alCerrarHoja() { Sel = null; Hoja = null; },
+  // Tras cargar los datos (o restaurar una copia): los días de antes del plan a medida salen del
+  // objetivo semanal que hubiera (3 de fuerza y el resto, cardio); luego se arma el plan.
+  alCargar() {
+    const a = Datos.ajustes;
+    if (a.diasGym == null) { a.diasGym = BASE.dias.length; a.diasCardio = Math.max(0, Math.min(5, (Number(a.objetivo) || BASE.objetivoSemanal) - a.diasGym)); }
+    construirPlan();
+  },
   // Las fotos de la versión anterior iban por ejercicio: pasan a la máquina que usa (si no tiene ya).
   async alCargarFotos() {
     let n = 0;
@@ -886,6 +1044,18 @@ window.App = {
     /* Hojas: no repintan la vista de detrás salvo que cambien datos. */
     if (ds.ayuda) { abrirAyuda(ds.ayuda); return false; }
     if (ds.aparato) { abrirAparato(ds.aparato); return false; }
+    if ("favoritos" in ds) { abrirFicha("favoritos"); evento("gim-favoritos-abiertos"); return false; }
+    if (ds.fav) {
+      const on = alternarFav(ds.fav);
+      // En la lista de favoritos se cambia solo el botón, para no perder por dónde se iba.
+      if (Hoja?.tipo === "favoritos") { b.setAttribute("aria-pressed", String(on)); $("#cuentaFav").textContent = textoFavs(); } else refrescarHoja();
+      return;
+    }
+    if (ds.diasgym || ds.diascardio) {
+      if (ds.diasgym) a.diasGym = Number(ds.diasgym); else a.diasCardio = Number(ds.diascardio);
+      a.objetivo = objetivos().total; Datos.guardarAjustes(); construirPlan(); evento("gim-plan-personalizado"); return;
+    }
+    if ("planlisto" in ds) { a.planHecho = true; Datos.guardarAjustes(); return; }
     if (ds.cambiar) { Sel = { modo: "cambiar", slot: ds.cambiar, q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
     if ("anadir" in ds) { Sel = { modo: "anadir", q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
     if ("crearlib" in ds) { Sel = { modo: "explorar", q: "", musc: Lib.musc, mat: Lib.mat, paso: "crear" }; abrirHoja(hojaSelector()); return false; }
@@ -966,7 +1136,6 @@ window.App = {
     else if (t.dataset.calent) { d.calent = d.calent || []; d.calent[Number(t.dataset.calent)] = t.checked; if (t.checked) actividad(d); tocar(HOY); repintar(); }
     else if (t.id === "nota") { d.nota = t.value; tocar(HOY); }
     else if (t.id === "nombre") { a.nombre = t.value.trim(); Datos.guardarAjustes(); pintar(); }
-    else if (t.id === "aj-objetivo") { a.objetivo = Number(t.value); Datos.guardarAjustes(); }
     else if (t.id === "aj-incremento") { a.incremento = Number(t.value); Datos.guardarAjustes(); }
     else if (t.id === "aj-desc-principal") { a.descansos = { ...a.descansos, principal: Number(t.value) }; Datos.guardarAjustes(); }
     else if (t.id === "aj-desc-aislamiento") { a.descansos = { ...a.descansos, aislamiento: Number(t.value) }; Datos.guardarAjustes(); }
