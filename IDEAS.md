@@ -44,7 +44,7 @@ Mejoras pensadas y aún sin hacer, para que no se pierdan. Cuando se haga una, s
 
 - **20/10/2026 · Jon, Mikel y Otra persona:** plan a medida (nombre, días de fuerza y de
   cardio, semana orientativa, día de cardio) y favoritos que salen más a menudo. Fotos reales de
-  Tekniker: espalderas, bici de ciclo indoor, elíptica y extensión de cuádriceps.
+  Tekniker: 13 máquinas (todas salvo banco regulable, esterillas, fitball y kettlebells).
 
 - **19/10/2026 · Manolo:** sesión paso a paso, cinco estrellas al día, celebración al terminar
   y *Enviar mi semana* (imagen para WhatsApp).
