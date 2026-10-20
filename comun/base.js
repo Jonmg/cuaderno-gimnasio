@@ -70,8 +70,17 @@ function lugarId() {
 const lugar = () => window.LUGARES?.[lugarId()] || null;
 // Dónde se entrenó un día (los días de antes de haber lugares, en el primero de la lista).
 const lugarDe = k => { const ls = lugares(), id = Datos.dias[k]?.lugar; return ls.includes(id) ? id : ls[0] || ""; };
-// ¿Hay ese aparato aquí? Sin lista de aparatos, sí.
-const hayAparato = ap => !lugar()?.aparatos || lugar().aparatos.includes(ap);
+// ¿Lo que se propone está limitado a lo que hay en el sitio? (lista de aparatos o solo con foto)
+const lugarLimitado = (id = lugarId()) => { const l = window.LUGARES?.[id]; return !!(l?.aparatos || l?.soloConFoto); };
+// ¿Hay ese aparato aquí (o en el sitio id)? Sin límites, sí. En un sitio con soloConFoto, solo lo
+// que tiene foto del gimnasio en el repositorio; mientras no se ha podido consultar (o en otro
+// sitio que no es el actual), la lista de aparatos del catálogo.
+function hayAparato(ap, id = lugarId()) {
+  const l = window.LUGARES?.[id];
+  if (!lugarLimitado(id)) return true;
+  if (l.soloConFoto && id === lugarId() && FotosGym.conocido) return !!FotosGym.url[ap];
+  return (l.aparatos || []).includes(ap);
+}
 const gimnasio = () => lugar()?.nombre ?? Datos.ajustes.gimnasio ?? PERFIL.gimnasio ?? "";
 // Tema de colores y nombres de las máquinas en el lugar actual.
 function aplicarLugar() {
@@ -467,7 +476,7 @@ const REPO = window.REPO || "Jonmg/cuaderno-gimnasio";
 const slugGym = () => lugarId() || sinAcentos(gimnasio()).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "general";
 const EXT_FOTO = /\.(jpe?g|png|webp)$/i;
 const FotosGym = {
-  url: {}, archivos: {}, actualizado: 0, error: "",
+  url: {}, archivos: {}, actualizado: 0, error: "", conocido: false,
   clave: () => `cuaderno-fotos-gym-${slugGym()}`,
   aplicar(archivos) {
     this.archivos = archivos; this.url = {};
@@ -477,7 +486,7 @@ const FotosGym = {
   async cargar(forzar = false) {
     let cache = null;
     try { cache = JSON.parse(localStorage.getItem(this.clave()) || "null"); } catch (e) {}
-    this.aplicar(cache?.archivos || {}); this.actualizado = cache?.t || 0;
+    this.aplicar(cache?.archivos || {}); this.actualizado = cache?.t || 0; this.conocido = !!cache;
     if (!forzar && cache && Date.now() - cache.t < 60 * 60e3) return false;
     try {
       const r = await fetch(`https://api.github.com/repos/${REPO}/contents/fotos/${slugGym()}`, { headers: { Accept: "application/vnd.github+json" }, cache: "no-store" });
@@ -486,7 +495,7 @@ const FotosGym = {
       const archivos = {};
       for (const f of Array.isArray(lista) ? lista : []) if (f.type === "file" && EXT_FOTO.test(f.name)) archivos[f.name] = f.sha;
       const cambio = JSON.stringify(archivos) !== JSON.stringify(cache?.archivos || {});
-      this.aplicar(archivos); this.actualizado = Date.now(); this.error = "";
+      this.aplicar(archivos); this.actualizado = Date.now(); this.error = ""; this.conocido = true;
       try { localStorage.setItem(this.clave(), JSON.stringify({ t: this.actualizado, archivos })); } catch (e) {}
       return cambio;
     } catch (e) { this.error = e.message || "Sin conexión"; return false; }

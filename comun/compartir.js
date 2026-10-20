@@ -71,7 +71,9 @@ const Compartir = {
 
   abrir(pre) {
     const pend = this.pendientes();
-    this.sel = new Set(pre ? [pre] : pend.filter(ap => !FotosGym.url[ap]));
+    // En un sitio donde solo se propone lo que tiene foto, nada marcado de entrada: una foto de
+    // otro gimnasio haría que se propusiera una máquina que no hay.
+    this.sel = new Set(pre ? [pre] : lugar()?.soloConFoto ? [] : pend.filter(ap => !FotosGym.url[ap]));
     this.estado = ""; this.enlace = ""; this.malo = false;
     Hoja = { tipo: "compartir" };
     abrirHoja(this.html());
@@ -81,6 +83,7 @@ const Compartir = {
     const pend = this.pendientes(), n = [...this.sel].filter(ap => pend.includes(ap)).length, gh = conGH();
     return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(gimnasio())}</span><h2>Compartir fotos</h2></div>${botonCerrar}</div>
       <p class="small muted" style="margin:0">Las fotos compartidas las ve todo el que use la app en este gimnasio. Elige cuáles mandar:</p>
+      ${lugar()?.soloConFoto ? `<p class="aviso small" style="margin:0">Comparte solo fotos hechas en ${esc(lugar().nombre)}: cada máquina con foto pasa a proponerse a todos aquí.</p>` : ""}
       ${pend.length ? `<div class="lista">${pend.map(ap => `<label class="item sel-foto">
           <input type="checkbox" data-selfoto="${ap}" ${this.sel.has(ap) ? "checked" : ""}>
           ${fotoAp(ap, "item-foto")}
@@ -157,6 +160,7 @@ const Compartir = {
     if ("actualizarfotos" in ds) { b.disabled = true; b.textContent = "Actualizando…"; FotosGym.cargar(true).then(() => repintar()); return false; }
     if ("enviarfotos" in ds) { this.enviar(); return false; }
     if ("ghpr" in ds) { this.proponer(); return false; }
+    if (ds.quitarap) { this.quitar(ds.quitarap, b); return false; }
     if ("ghprobar" in ds) { this.probar(); return false; }
     if ("gholvidar" in ds) { GH.guardarToken(""); return true; }
     if ("ghacceso" in ds) { this.abrirAcceso(); return false; }
@@ -231,6 +235,29 @@ const Compartir = {
       const r = await GH.api("");
       pon(r.permissions?.push ? `Conectado a ${r.full_name}: este móvil puede proponer fotos.` : "El token funciona pero no tiene permiso de escritura en el repositorio.", !r.permissions?.push);
     } catch (e) { pon(e.message, true); }
+  },
+
+  // 3. Pull request para quitar una máquina que no está en el gimnasio: borra su foto (en los
+  // sitios con soloConFoto, sin foto no se propone).
+  async quitar(ap, b) {
+    const m = $("#msgQuitar"), pon = (t, malo) => { if (m) { m.innerHTML = t; m.style.color = malo ? "var(--warn)" : ""; } };
+    if (!conGH() || !confirm(`¿Proponer quitar "${AP[ap].nombre}" de ${gimnasio()}? Al aceptarlo en GitHub, deja de proponerse a todos aquí.`)) return;
+    b.disabled = true;
+    try {
+      pon("Conectando con GitHub…");
+      const base = (await GH.api("")).default_branch, ref = await GH.api(`/git/ref/heads/${base}`), carpeta = `fotos/${slugGym()}`;
+      const f = (await GH.api(`/contents/${carpeta}?ref=${base}`)).find(x => x.name.replace(EXT_FOTO, "") === ap);
+      if (!f) { pon("Esa máquina ya no tiene foto en el repositorio."); return; }
+      const rama = `quitar/${slugGym()}-${ap}-${Date.now().toString(36)}`;
+      await GH.api("/git/refs", { metodo: "POST", datos: { ref: `refs/heads/${rama}`, sha: ref.object.sha } });
+      await GH.api(`/contents/${carpeta}/${f.name}`, { metodo: "DELETE", datos: { message: `Quitar ${AP[ap].nombre} de ${gimnasio()}`, sha: f.sha, branch: rama } });
+      const pr = await GH.api("/pulls", { metodo: "POST", datos: {
+        title: `Quitar ${AP[ap].nombre} de ${gimnasio()}`, head: rama, base,
+        body: `Propuesto desde la app: esta máquina no está en ${gimnasio()}.\n\nSe borra \`${carpeta}/${f.name}\`. Al aceptarlo, la app deja de proponerla allí. Si además está en la lista \`aparatos\` de \`LUGARES\` (\`comun/catalogo.js\`), quítala también: es la lista de reserva para cuando no se puede consultar GitHub.`,
+      } });
+      evento("gim-maquina-quitada");
+      pon(`Propuesta creada (#${pr.number}). <a href="${esc(pr.html_url)}" target="_blank" rel="noopener">Ver en GitHub ↗</a>`);
+    } catch (e) { pon(`No se pudo completar: ${esc(e.message)}`, true); b.disabled = false; }
   },
 
   // 2. Pull request con las fotos elegidas: rama nueva + un commit por foto + PR.

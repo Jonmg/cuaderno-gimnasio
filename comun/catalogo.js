@@ -78,14 +78,15 @@ window.APARATOS = [
 
 /* Sitios donde se entrena (el perfil dice cuáles usa en PERFIL.lugares). El id es también la
    carpeta de sus fotos (fotos/<id>/). aparatos: lo que hay; sin la lista, hay de todo.
+   soloConFoto: solo se propone lo que tiene foto en fotos/<id>/ (se consulta a GitHub); la lista
+   de aparatos queda para cuando aún no se ha podido consultar, y debe coincidir con las fotos.
    nombres: cómo se llama allí una máquina del catálogo. tema: colores y letra de la app. */
 window.LUGARES = {
   "vivagym-miribilla": { nombre: "VivaGym Miribilla", corto: "VivaGym", tema: "vivagym" },
   tekniker: {
-    nombre: "Gimnasio Tekniker", corto: "Tekniker", tema: "tekniker",
-    aparatos: ["mancuernas", "banco", "barra", "banco-press", "multipower", "barra-dominadas", "espalderas", "suelo",
-      "polea-baja", "polea-alta", "polea-doble", "maq-press-pecho", "maq-extension", "cinta", "eliptica", "bici-spinning",
-      "fitball", "kettlebell"],
+    nombre: "Gimnasio Tekniker", corto: "Tekniker", tema: "tekniker", soloConFoto: true,
+    aparatos: ["mancuernas", "banco-press", "multipower", "barra-dominadas", "espalderas", "suelo", "polea-baja", "polea-alta",
+      "polea-doble", "maq-press-pecho", "maq-extension", "cinta", "eliptica", "bici-spinning", "fitball", "kettlebell"],
     // La máquina de 4 puestos: remo, jalón y dos poleas (baja para bíceps y hombro, alta para tríceps).
     nombres: { "polea-baja": "Multiestación · remo sentado", "polea-alta": "Multiestación · jalón con asiento", "polea-doble": "Multiestación · poleas alta y baja" },
   },

@@ -42,6 +42,9 @@ Mejoras pensadas y aún sin hacer, para que no se pierdan. Cuando se haga una, s
 
 ## Hecho
 
+- **20/10/2026 · Tekniker:** solo se propone lo que tiene foto del gimnasio; desde la ficha de
+  una máquina, con GitHub conectado, se puede proponer quitarla.
+
 - **20/10/2026 · Todas:** la libreta de rutina es una para todos, con enlace de VivaGym y de
   Tekniker; cada uno marca dónde entrena. Trae sola los datos y fotos de las libretas de Jon,
   Mikel u Otra persona. En la portada: Manolo, VivaGym y Tekniker.

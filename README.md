@@ -198,6 +198,7 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-lugar-cambiado` | Cambiar el lugar de entrenamiento (sin decir cuál) |
 | `gim-libreta-traida` | La libreta nueva trae los datos de una libreta vieja (sin decir de quién) |
 | `gim-lugares-elegidos` | Marcar o desmarcar un gimnasio en Ajustes (sin decir cuál) |
+| `gim-maquina-quitada` | Proponer quitar una máquina de un gimnasio (sin decir cuál) |
 | `gim-plan-personalizado` | Cambiar los días de fuerza o de cardio (sin decir cuántos) |
 | `gim-favoritos-abiertos` | Abrir la lista de favoritos |
 | `gim-favorito-marcado` | Marcar un favorito (sin decir cuál) |
@@ -319,9 +320,16 @@ La libreta de rutina ofrece los sitios de su `window.PERFIL` (`"lugares": ["viva
   (azul de Tekniker, banda azul marino, detalle amarillo, letra Albert Sans, botones en píldora).
 - **Aparatos:** con la lista `aparatos`, la app solo propone las variantes que se pueden hacer
   allí; el ejercicio del plan que no se puede hacer se cambia solo por otro del mismo músculo
-  (en Tekniker, Prensa → Sentadilla en multipower y Curl femoral → Curl nórdico), con *elegir
-  otro* por si no convence. Ejercicios, Máquinas y Álbum enseñan lo de ese sitio (*Ver todos*
-  para el catálogo entero).
+  (en Tekniker, Prensa → Sentadilla en multipower, Fondos → Press francés), con *elegir otro*
+  por si no convence; si no hay ninguno parecido, ese día no se propone y se dice. Ejercicios,
+  Máquinas y Álbum enseñan lo de ese sitio (*Ver todos* para el catálogo entero). El plan de
+  Ajustes se enseña tal como queda en el sitio actual.
+- **Solo con foto** (`soloConFoto: true`, Tekniker): solo se propone lo que tiene foto del
+  gimnasio en `fotos/<id>/` (la app consulta la carpeta en GitHub; la lista `aparatos` es la
+  reserva para cuando aún no ha podido, y debe coincidir con las fotos). Para **añadir** una
+  máquina: foto y *Compartir* (al aceptar el pull request, se propone). Para **quitar** una que no
+  está: en su ficha, *¿No está? Proponer quitarla* (solo en móviles con GitHub conectado) abre un
+  pull request que borra su foto. VivaGym no tiene lista: se propone todo el catálogo.
 - **Nombres:** `nombres` renombra máquinas del catálogo en ese sitio. En Tekniker, la máquina de
   4 puestos son tres "aparatos": remo (`polea-baja`), jalón (`polea-alta`) y las poleas alta y
   baja (`polea-doble`).

@@ -44,9 +44,9 @@ const ejerciciosCon = ap => todos().filter(e => e.variantes.some(v => v.ap === a
 const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
 
 /* ---------- Lo que hay en el lugar ----------
-   Con un lugar de pocas máquinas (LUGARES[…].aparatos) solo se proponen las variantes que se
-   pueden hacer allí, y el ejercicio del plan que no se puede hacer se cambia solo por otro del
-   mismo músculo. El registro es uno solo: la última vez, la progresión, los récords y la semana
+   Con un lugar limitado (LUGARES[…].aparatos o soloConFoto) solo se proponen las variantes que
+   se pueden hacer allí, y el ejercicio del plan que no se puede hacer se cambia solo por otro del
+   mismo músculo; si no hay ninguno, ese día no se propone. El registro es uno solo: la última vez, la progresión, los récords y la semana
    cuentan igual entrene donde entrene. */
 const disponible = v => !v?.ap || hayAparato(v.ap);
 const sePuedeAqui = e => !!e && variantes(e).some(disponible);
@@ -160,7 +160,8 @@ function prescripcion(pe, exId) {
 }
 function huecos(d) {
   const dia = diaDef(d); if (!dia) return [];
-  const out = [], restringido = !!lugar()?.aparatos;
+  const out = [], restringido = lugarLimitado();
+  out.noAqui = [];   // ejercicios del plan que aquí no se pueden hacer ni cambiar por otro
   const evitar = new Set([...dia.ejercicios.map(pe => pe.id), ...Object.values(d.cambios || {}), ...Object.values(Datos.ajustes.sustituciones || {}), ...(d.extras || [])]);
   for (const pe of dia.ejercicios) {
     const slot = slotDe(pe);
@@ -172,6 +173,7 @@ function huecos(d) {
       const alt = alternativa(cat(exId), evitar);
       if (alt) { exId = alt.id; porLugar = true; evitar.add(alt.id); }
     }
+    if (restringido && exId !== hoy && !sePuedeAqui(cat(exId)) && !empezado(d, exId)) { out.noAqui.push(cat(pe.id)?.nombre || pe.id); continue; }
     out.push({ slot, e: prescripcion(pe, exId), original: { ...cat(pe.id), ...pe }, cambiado: exId !== pe.id, cambioHoy: exId === hoy && exId !== pe.id, porLugar, sinAparato: restringido && !sePuedeAqui(cat(exId)) });
   }
   for (const id of d.extras || []) { const c = cat(id); if (c) out.push({ slot: "x:" + id, e: { ...c, seccion: zonaDe(c) }, extra: true }); }
@@ -518,6 +520,7 @@ function pintarSesion(d, dia) {
   }
   const quitados = (d.quitados || []).map(slot => dia.ejercicios.find(pe => slotDe(pe) === slot)).filter(Boolean).map(pe => ({ ...cat(pe.id), slot: slotDe(pe) }));
   h += `<div class="fila"><button class="btn sec" data-anadir>+ Añadir ejercicio</button></div>`;
+  if (hs.noAqui?.length) h += `<p class="small muted" style="margin:0">Hoy no se propone${hs.noAqui.length > 1 ? "n" : ""} ${esc(hs.noAqui.join(", "))}: en ${esc(lugar().corto)} no hay con qué hacerlo${hs.noAqui.length > 1 ? "s" : ""} ni otro parecido.</p>`;
   if (quitados.length) h += `<p class="small muted" style="margin:0">Quitados hoy: ${quitados.map(e => `${esc(e.nombre)} <button class="enlace" data-recuperar="${e.slot}">recuperar</button>`).join(" · ")}</p>`;
   return h + `</section>`;
 }
@@ -827,6 +830,9 @@ function hojaAparato(ap) {
     ${htmlFoto(ap, a.nombre)}
     ${a.nota ? `<p class="nota">${esc(a.nota)}</p>` : ""}
     ${(c => c?.desde ? `<p class="small" style="margin:0">🃏 Cromo conseguido${c.desde !== "foto" ? ` el ${fechaCorta(deClave(c.desde))}` : ""}${c.dorado ? " · dorado ★" : " · con una foto real será dorado"}.</p>` : `<p class="small muted" style="margin:0">🃏 Cromo sin conseguir: entrena con esta máquina para llevártelo.</p>`)(cromos().find(c => c.a.id === ap))}
+    ${lugar()?.soloConFoto ? (FotosGym.url[ap] ? `<p class="small" style="margin:0">✓ Está en ${esc(lugar().corto)}: tiene foto del gimnasio, así que se propone.${conGH() ? ` <button class="enlace" data-quitarap="${ap}">¿No está? Proponer quitarla</button>` : ""}</p>`
+      : `<p class="aviso small" style="margin:0">En ${esc(lugar().corto)} no se propone: no hay foto de esta máquina del gimnasio. Si la hay, hazle una foto y compártela.</p>`) : ""}
+    <p class="small" id="msgQuitar" role="status" style="margin:0"></p>
     <p class="small muted" style="margin:0">Archivo en el repositorio: <code>fotos/${slugGym()}/${ap}.jpg</code></p>
     <label class="campo" for="notaAp"><b style="color:var(--ink)">Notas de la máquina</b><span class="small muted">Dónde está en la sala, número, peculiaridades…</span>
       <textarea id="notaAp" data-notaap="${ap}" rows="2" class="area">${esc(Datos.ajustes.notasAp?.[ap] || "")}</textarea></label>
@@ -854,7 +860,7 @@ function htmlAlbum() {
 
 /* ---------- Vista: Ejercicios y máquinas ---------- */
 const Lib = { vista: "ejercicios", q: "", musc: "", mat: "", todo: false };
-const libAqui = () => !!lugar()?.aparatos && !Lib.todo;
+const libAqui = () => lugarLimitado() && !Lib.todo;
 function pintarEjercicios() {
   const seg = `<div class="seg" role="tablist" aria-label="Ver">
     <button role="tab" data-libvista="ejercicios" aria-selected="${Lib.vista === "ejercicios"}">Ejercicios</button>
@@ -862,7 +868,7 @@ function pintarEjercicios() {
     <button role="tab" data-libvista="album" aria-selected="${Lib.vista === "album"}">Álbum</button></div>`;
   if (Lib.vista === "album") { $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}${htmlAlbum()}</div>`; return; }
   if (Lib.vista === "maquinas") {
-    const apsAqui = APARATOS.filter(a => hayAparato(a.id));
+    const apsAqui = APARATOS.filter(a => hayAparato(a.id) || (lugarLimitado() && Lib.todo));
     const delGym = apsAqui.filter(a => FotosGym.url[a.id]).length, propias = Compartir.pendientes(), mias = propias.filter(ap => !FotosGym.url[ap]).length;
     $("#vista").innerHTML = `<div class="wrap" style="padding:0">${seg}
     <section class="card" aria-labelledby="t-fotosgym">
@@ -874,6 +880,8 @@ function pintarEjercicios() {
     <section class="card">
       <h2>Máquinas y material</h2>
       <p class="small muted" style="margin:0">Una foto por máquina sirve para todos los ejercicios que la usan.</p>
+      ${lugar()?.soloConFoto ? `<p class="small muted" style="margin:0">${Lib.todo ? `Todo el catálogo. Las que no tienen foto de ${esc(lugar().corto)} no se proponen: si hay alguna, hazle una foto y compártela. <button class="enlace" data-libtodo>Solo las de ${esc(lugar().corto)}</button>`
+        : `En ${esc(lugar().corto)} solo se proponen las máquinas con foto real del gimnasio. ¿Falta alguna? <button class="enlace" data-libtodo>Ver todo el catálogo</button>`}</p>` : ""}
       ${TIPOS_APARATO.filter(([t]) => apsAqui.some(a => a.tipo === t)).map(([t, n]) => `<div><p class="eyebrow" style="margin:10px 0 0">${n}</p><div class="lista">${apsAqui.filter(a => a.tipo === t).map(a => {
         const k = ejerciciosCon(a.id).length;
         return `<button class="item" data-aparato="${a.id}">${fotoAp(a.id, "item-foto")}<span class="item-txt"><b>${apFav(a.id) ? "★ " : ""}${esc(a.nombre)}</b><span class="small muted">${k} ejercicio${k === 1 ? "" : "s"}${Fotos.url[a.id] ? " · tu foto" : FotosGym.url[a.id] ? "" : " · sin foto real"}${Datos.ajustes.notasAp?.[a.id] ? " · " + esc(Datos.ajustes.notasAp[a.id]) : ""}</span></span></button>`;
@@ -886,7 +894,7 @@ function pintarEjercicios() {
     <p class="small muted" style="margin:0">Elige músculo y material para ver con qué puedes trabajarlo. Toca uno para ver cómo se hace.</p>
     <input id="buscarEj" class="texto" type="search" placeholder="Buscar: prensa, polea, isquios…" value="${esc(Lib.q)}" autocomplete="off">
     ${htmlFiltros(Lib, "lib")}
-    ${lugar()?.aparatos ? `<p class="small muted" style="margin:0">${Lib.todo ? `Todos los ejercicios del catálogo. <button class="enlace" data-libtodo>Solo lo que hay en ${esc(lugar().corto)}</button>` : `Solo lo que se puede hacer en ${esc(lugar().corto)}. <button class="enlace" data-libtodo>Ver todos</button>`}</p>` : ""}
+    ${lugarLimitado() ? `<p class="small muted" style="margin:0">${Lib.todo ? `Todos los ejercicios del catálogo. <button class="enlace" data-libtodo>Solo lo que hay en ${esc(lugar().corto)}</button>` : `Solo lo que se puede hacer en ${esc(lugar().corto)}. <button class="enlace" data-libtodo>Ver todos</button>`}</p>` : ""}
     <div id="listaLib" class="lista">${htmlLista(filtrar({ ...Lib, aqui: libAqui() }), "ayuda")}</div>
     <button class="btn sec" data-crearlib>Crear ejercicio nuevo</button>
   </section></div>`;
@@ -907,7 +915,7 @@ function htmlTuPlan(enHoy) {
     <div class="campo"><span>Días de cardio a la semana <span class="muted small">(cinta, bici, elíptica, o deporte por fuera)</span></span>${chips("diascardio", [0, 1, 2, 3, 4, 5], o.cardio, o.gym)}</div>
     <div class="semana-tipo" aria-label="Semana orientativa">${semana.map((t, i) => `<span class="${t === "F" ? "f" : t === "C" ? "c" : ""}"><b>${LETRAS_SEMANA[i]}</b>${t === "F" ? "Fuerza" : t === "C" ? "Cardio" : "—"}</span>`).join("")}</div>
     <p class="small muted" style="margin:0">Semana orientativa: cada día la app propone lo que toca según lo que lleves hecho, entrenes el día que entrenes.</p>
-    <div class="historial">${P.dias.map(d => `<div class="hist"><span><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</span><span class="muted small">${d.ejercicios.filter(pe => !pe.opcional).length} ejercicios</span></div>`).join("")}
+    <div class="historial">${P.dias.map(d => `<div class="hist"><span><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</span><span class="muted small">${huecos({ diaPlan: d.id }).filter(h => !h.e.opcional).length} ejercicios</span></div>`).join("")}
       ${o.cardio && DIA.cardio ? `<div class="hist"><span><b>Cardio</b> · ${esc(cat(DIA.cardio.ejercicios[0].id)?.nombre)}</span><span class="muted small">${pauta({ ...cat(DIA.cardio.ejercicios[0].id), ...DIA.cardio.ejercicios[0] })}</span></div>` : ""}</div>
     <div class="fila"><button class="btn sec peq" data-favoritos>★ Favoritos${nf ? ` (${nf})` : ""}</button>${enHoy ? `<button class="btn peq" data-planlisto>Listo</button>` : ""}</div>
     ${nf ? "" : `<p class="small muted" style="margin:0">Marca tus ejercicios y máquinas favoritas: saldrán más a menudo en el plan.</p>`}
@@ -915,7 +923,8 @@ function htmlTuPlan(enHoy) {
 }
 const textoFavs = () => { const e = favoritos("ej").length, m = favoritos("ap").length; return e + m ? `Tienes ${e} ejercicio${e === 1 ? "" : "s"} y ${m} máquina${m === 1 ? "" : "s"} como favoritos.` : "Aún no tienes favoritos."; };
 // Máquinas de los sitios donde entrena la persona (sin lugares con lista, todas).
-const apsMios = () => APARATOS.filter(a => !lugares().length || lugares().some(id => !LUGARES[id].aparatos || LUGARES[id].aparatos.includes(a.id)));
+const apsMios = () => APARATOS.filter(a => !lugares().length || lugares().some(id => hayAparato(a.id, id)));
+const ejMios = () => todos().filter(e => !lugares().length || lugares().some(id => variantes(e).some(v => !v.ap || hayAparato(v.ap, id))));
 function hojaFavoritos() {
   const aps = apsMios(), chip = (tipo, id, nombre) => `<button class="chip mini" data-fav="${tipo}|${id}" aria-pressed="${tipo === "ap" ? apFav(id) : esFav(id)}">${esc(nombre)}</button>`;
   return `<div class="hoja-cab"><h2>Favoritos</h2>${botonCerrar}</div>
@@ -924,7 +933,7 @@ function hojaFavoritos() {
     <h3>Máquinas y material</h3>
     ${TIPOS_APARATO.filter(([t]) => aps.some(a => a.tipo === t)).map(([t, n]) => `<div><p class="eyebrow" style="margin:4px 0 6px">${esc(n)}</p><div class="chips-fav">${aps.filter(a => a.tipo === t).map(a => chip("ap", a.id, a.nombre)).join("")}</div></div>`).join("")}
     <h3>Ejercicios</h3>
-    ${FILTROS_MUSCULO.map(([n, ms]) => { const l = todos().filter(e => ms.includes(e.m[0])); return l.length ? `<div><p class="eyebrow" style="margin:4px 0 6px">${esc(n)}</p><div class="chips-fav">${l.map(e => chip("ej", e.id, e.nombre)).join("")}</div></div>` : ""; }).join("")}
+    ${FILTROS_MUSCULO.map(([n, ms]) => { const l = ejMios().filter(e => ms.includes(e.m[0])); return l.length ? `<div><p class="eyebrow" style="margin:4px 0 6px">${esc(n)}</p><div class="chips-fav">${l.map(e => chip("ej", e.id, e.nombre)).join("")}</div></div>` : ""; }).join("")}
     <button class="btn" data-cerrar>Hecho</button>`;
 }
 HOJAS.favoritos = hojaFavoritos;
@@ -964,10 +973,11 @@ function pintarAjustes() {
       <p class="muted small" style="margin:0">Mantén la app abierta durante el descanso: con la pantalla bloqueada el móvil no deja pitar.</p>
     </section>
     <section class="card"><h2>${esc(P.nombre)}</h2>
-      ${[...P.dias, ...(DIA.cardio ? [DIA.cardio] : [])].map(d => `<details><summary><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</summary><div class="historial">${d.ejercicios.map(pe => {
-        const sid = a.sustituciones?.[slotDe(pe)], e = sid && cat(sid) ? prescripcion(pe, sid) : { ...cat(pe.id), ...pe };
-        return `<div class="hist"><span>${esFav(e.id) ? "★ " : ""}${esc(e.nombre)}${sid ? ` <span class="muted small">(en lugar de ${esc(cat(pe.id)?.nombre)})</span>` : ""}${e.opcional ? " (opcional)" : ""}</span><span class="muted num">${pauta(e)}</span></div>`;
-      }).join("")}</div></details>`).join("")}
+      ${lugarLimitado() ? `<p class="small muted" style="margin:0">Así queda en <b>${esc(lugar().nombre)}</b>: solo con lo que hay allí.</p>` : ""}
+      ${[...P.dias, ...(DIA.cardio ? [DIA.cardio] : [])].map(d => { const hs = huecos({ diaPlan: d.id }); return `<details><summary><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</summary><div class="historial">${hs.map(h => {
+        const e = h.e, antes = h.cambiado ? h.original.nombre : "";
+        return `<div class="hist"><span>${esFav(e.id) ? "★ " : ""}${esc(e.nombre)}${antes ? ` <span class="muted small">(en lugar de ${esc(antes)}${h.porLugar ? ` en ${esc(lugar().corto)}` : ""})</span>` : ""}${e.opcional ? " (opcional)" : ""}</span><span class="muted num">${pauta(e)}</span></div>`;
+      }).join("")}${hs.noAqui.length ? `<p class="small muted" style="margin:6px 0 0">No se propone${hs.noAqui.length > 1 ? "n" : ""} aquí: ${esc(hs.noAqui.join(", "))}.</p>` : ""}</div></details>`; }).join("")}
       <p class="muted small" style="margin:0">Duración ~${P.duracionMin} min. Descansos: ${esc(P.textoDescansos)}</p>
     </section>
     <section class="card"><h2>Cambios fijos en tu plan</h2>
