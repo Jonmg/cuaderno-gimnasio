@@ -52,7 +52,7 @@ const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
 // no la descarte (sinVariantes: lo que su máquina no permite, como el cruce de poleas).
 function posible(e, i, id = lugarId()) {
   const v = variantes(e)[i];
-  return !!v && (!v.ap || hayAparato(v.ap, id)) && !LUGARES[id]?.sinVariantes?.includes(`${e.id}|${i}`);
+  return !!v && (!v.ap || hayAparato(v.ap, id)) && !(`${e.id}|${i}` in (LUGARES[id]?.sinVariantes || {}));
 }
 const disponible = (e, i) => posible(e, i);
 const sePuedeAqui = e => !!e && variantes(e).some((_, i) => disponible(e, i));

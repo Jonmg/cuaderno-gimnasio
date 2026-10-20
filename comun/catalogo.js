@@ -87,8 +87,13 @@ window.LUGARES = {
     nombre: "Gimnasio Tekniker", corto: "Tekniker", tema: "tekniker", soloConFoto: true,
     aparatos: ["mancuernas", "banco-press", "multipower", "barra-dominadas", "espalderas", "suelo", "polea-baja", "polea-alta",
       "polea-doble", "maq-press-pecho", "maq-extension", "cinta", "eliptica", "bici-spinning", "fitball", "kettlebell"],
-    // La multiestación tiene una polea alta y una baja fijas: sin cruce de poleas ni tobillera.
-    sinVariantes: ["aperturas|1", "face-pull|1", "pajaros|2", "aductores|1", "patada-gluteo|0", "pallof|0"],
+    // Variantes que no se pueden aunque esté la máquina ("ejercicio|posición": motivo). La
+    // multiestación tiene una polea alta y una baja fijas: sin cruce de poleas ni tobillera.
+    sinVariantes: {
+      "aperturas|1": "hacen falta dos poleas regulables (cruce)", "face-pull|1": "hacen falta dos poleas regulables (cruce)",
+      "pajaros|2": "hacen falta dos poleas regulables (cruce)", "aductores|1": "hace falta tobillera en la polea baja",
+      "patada-gluteo|0": "hace falta tobillera en la polea baja", "pallof|0": "hace falta una polea a media altura",
+    },
     // La máquina de 4 puestos: remo, jalón y dos poleas (baja para bíceps y hombro, alta para tríceps).
     nombres: { "polea-baja": "Multiestación · remo sentado", "polea-alta": "Multiestación · jalón con asiento", "polea-doble": "Multiestación · poleas alta y baja" },
   },

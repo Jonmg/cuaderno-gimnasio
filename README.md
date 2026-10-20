@@ -244,6 +244,7 @@ planes/plantillas.js      días para el plan a medida (huecos con candidatos) y 
 fotos/general/            imágenes genéricas: ilustraciones .svg y fotos libres, indice.json, créditos
 fotos/vivagym-miribilla/  fotos compartidas de cada gimnasio (también fotos/tekniker/)
 herramientas/ilustraciones.mjs   dibuja fotos/general/<máquina>.svg
+herramientas/lista-lugares.mjs   escribe fotos/<lugar>/EJERCICIOS.md: qué se puede y qué no en cada gimnasio
 ```
 
 ### Convenciones
@@ -330,7 +331,11 @@ La libreta de rutina ofrece los sitios de su `window.PERFIL` (`"lugares": ["viva
   máquina: foto y *Compartir* (al aceptar el pull request, se propone). Para **quitar** una que no
   está: en su ficha, *¿No está? Proponer quitarla* (solo en móviles con GitHub conectado) abre un
   pull request que borra su foto. VivaGym no tiene lista: se propone todo el catálogo.
-- **Variantes que no se pueden** (`sinVariantes`, por `"<ejercicio>|<posición de la variante>"`):
+- **Lista de lo que se puede y no se puede** en cada gimnasio con límites:
+  [`fotos/tekniker/EJERCICIOS.md`](fotos/tekniker/EJERCICIOS.md). La genera
+  `node herramientas/lista-lugares.mjs` con las mismas reglas que la app (y avisa si la lista
+  `aparatos` no coincide con las fotos): regenerarla tras cambiar fotos o `sinVariantes`.
+- **Variantes que no se pueden** (`sinVariantes`, `"<ejercicio>|<posición de la variante>": "motivo"`):
   aunque la máquina esté, el sitio descarta lo que no permite. En Tekniker la multiestación tiene
   una polea alta y una baja fijas, sin cruce ni tobillera: fuera aperturas y pájaros en poleas,
   aductores y patada de glúteo en polea, y Pallof. En un sitio limitado, la lista de ejercicios,
