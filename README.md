@@ -330,6 +330,11 @@ La libreta de rutina ofrece los sitios de su `window.PERFIL` (`"lugares": ["viva
   máquina: foto y *Compartir* (al aceptar el pull request, se propone). Para **quitar** una que no
   está: en su ficha, *¿No está? Proponer quitarla* (solo en móviles con GitHub conectado) abre un
   pull request que borra su foto. VivaGym no tiene lista: se propone todo el catálogo.
+- **Variantes que no se pueden** (`sinVariantes`, por `"<ejercicio>|<posición de la variante>"`):
+  aunque la máquina esté, el sitio descarta lo que no permite. En Tekniker la multiestación tiene
+  una polea alta y una baja fijas, sin cruce ni tobillera: fuera aperturas y pájaros en poleas,
+  aductores y patada de glúteo en polea, y Pallof. En un sitio limitado, la lista de ejercicios,
+  sus etiquetas y las fichas solo enseñan lo que se puede hacer allí.
 - **Nombres:** `nombres` renombra máquinas del catálogo en ese sitio. En Tekniker, la máquina de
   4 puestos son tres "aparatos": remo (`polea-baja`), jalón (`polea-alta`) y las poleas alta y
   baja (`polea-doble`).

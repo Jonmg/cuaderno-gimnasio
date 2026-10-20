@@ -48,13 +48,21 @@ const claveFoto = (e, v) => variante(e, v)?.ap || e.id;
    se pueden hacer allí, y el ejercicio del plan que no se puede hacer se cambia solo por otro del
    mismo músculo; si no hay ninguno, ese día no se propone. El registro es uno solo: la última vez, la progresión, los récords y la semana
    cuentan igual entrene donde entrene. */
-const disponible = v => !v?.ap || hayAparato(v.ap);
-const sePuedeAqui = e => !!e && variantes(e).some(disponible);
-const primeraAqui = e => Math.max(0, variantes(e).findIndex(disponible));
+// ¿Se puede hacer la variante i del ejercicio en el sitio id? Hace falta su aparato y que el sitio
+// no la descarte (sinVariantes: lo que su máquina no permite, como el cruce de poleas).
+function posible(e, i, id = lugarId()) {
+  const v = variantes(e)[i];
+  return !!v && (!v.ap || hayAparato(v.ap, id)) && !LUGARES[id]?.sinVariantes?.includes(`${e.id}|${i}`);
+}
+const disponible = (e, i) => posible(e, i);
+const sePuedeAqui = e => !!e && variantes(e).some((_, i) => disponible(e, i));
+const primeraAqui = e => Math.max(0, variantes(e).findIndex((_, i) => disponible(e, i)));
+// Variantes que se pueden hacer aquí (todas si el sitio no tiene límites).
+const variantesAqui = e => variantes(e).map((v, i) => ({ v, i })).filter(o => disponible(e, o.i));
 function alternativa(e, evitar) {
   const mismo = c => c.m[0] === e.m[0] ? 2 : c.m.includes(e.m[0]) ? 1 : 0;
   const puntos = c => mismo(c) * 4 + (c.tipo === e.tipo ? 2 : 0) + ((c.unidad || "") === (e.unidad || "") && !!c.sinPeso === !!e.sinPeso ? 1 : 0)
-    + (esFav(c.id) ? 2.5 : 0) + (variantes(c).some(v => apFav(v.ap) && disponible(v)) ? 1 : 0);
+    + (esFav(c.id) ? 2.5 : 0) + (variantes(c).some((v, i) => apFav(v.ap) && disponible(c, i)) ? 1 : 0);
   return todos().filter(c => !evitar.has(c.id) && mismo(c) && sePuedeAqui(c)).sort((a, b) => puntos(b) - puntos(a))[0] || null;
 }
 
@@ -236,12 +244,12 @@ function entrada(d, e) {
     const antes = Object.keys(Datos.dias).filter(k => k < d.fecha && Datos.dias[k].ej?.[e.id]?.series.some(s => s.hecho)).sort();
     const prev = antes.filter(k => lugarDe(k) === lugarId()).pop() || antes.pop();
     const v0 = prev ? Datos.dias[prev].ej[e.id].v : -1, vs = variantes(e);
-    const vale = i => i >= 0 && i < vs.length && disponible(vs[i]), fav = vs.findIndex(v => apFav(v.ap) && disponible(v));
+    const vale = i => i >= 0 && i < vs.length && disponible(e, i), fav = vs.findIndex((v, i) => apFav(v.ap) && disponible(e, i));
     d.ej[e.id] = { v: vale(v0) && (fav < 0 || apFav(vs[v0].ap)) ? v0 : fav >= 0 ? fav : primeraAqui(e), series: [], rodilla: false };
   }
   const x = d.ej[e.id];
   // Si se cambió de lugar antes de empezar, pasa a una variante que haya aquí.
-  if (!x.series.some(s => s.hecho) && !disponible(variante(e, x.v))) x.v = primeraAqui(e);
+  if (!x.series.some(s => s.hecho) && !disponible(e, x.v)) x.v = primeraAqui(e);
   while (x.series.length < e.series) x.series.push({ peso: "", reps: "", hecho: false });
   return x;
 }
@@ -551,7 +559,7 @@ function pintarEjercicio(d, dia, hueco) {
     ${ajusteMaquina ? `<p class="ajuste-maq small">⚙ ${esc(ajusteMaquina)}</p>` : ""}
     ${e.nota ? `<p class="nota">${esc(e.nota)}</p>` : ""}`;
   // Solo las variantes que se pueden hacer aquí (y la ya empezada, aunque no).
-  const aqui = vs.map((v, i) => ({ v, i })).filter(o => disponible(o.v) || (bloqueado && x.v === o.i));
+  const aqui = vs.map((v, i) => ({ v, i })).filter(o => disponible(e, o.i) || (bloqueado && x.v === o.i));
   if (aqui.length > 1) h += `<div class="variantes" role="group" aria-label="Con qué lo haces">${aqui.map(({ v, i }) => `<button class="chip var" data-var="${e.id}" data-v="${i}" aria-pressed="${x.v === i}" ${bloqueado && x.v !== i ? "disabled" : ""}>${v.ap ? fotoAp(v.ap) : ""}<span>${esc(v.n)}</span></button>`).join("")}</div>`;
   else if (aqui[0]?.v.ap) h += `<button class="ap-linea" data-aparato="${aqui[0].v.ap}">${fotoAp(aqui[0].v.ap)}<span>${esc(AP[aqui[0].v.ap]?.nombre || aqui[0].v.n)}</span></button>`;
   if (u) h += `<p class="ultima num">${textoUltima(e, u)}</p>`;
@@ -693,15 +701,15 @@ function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [
     .filter(e => !excluir.has(e.id)
       && (!aqui || sePuedeAqui(e))
       && (!grupo || grupo.includes(e.m[0]))
-      && (!mat || e.variantes.some(v => AP[v.ap]?.tipo === mat && (!aqui || disponible(v))))
+      && (!mat || e.variantes.some((v, i) => AP[v.ap]?.tipo === mat && (!aqui || disponible(e, i))))
       && (!t || sinAcentos(`${e.nombre} ${nombreMusculos(e)} ${e.variantes.map(v => `${v.n} ${AP[v.ap]?.nombre || ""}`).join(" ")}`).includes(t)))
     .sort((a, b) => primero.includes(b.m[0]) - primero.includes(a.m[0]) || favorito(b) - favorito(a) || a.nombre.localeCompare(b.nombre, "es"));
 }
-function htmlLista(lista, accion) {
+function htmlLista(lista, accion, aqui = false) {
   if (!lista.length) return `<p class="muted small" style="margin:0">No hay ninguno así. Prueba con otro filtro o créalo abajo.</p>`;
   return lista.map(e => {
     const n = sesionesDe(e.id).length;
-    const tipos = [...new Set(e.variantes.map(v => AP[v.ap]?.tipo).filter(Boolean))];
+    const tipos = [...new Set((aqui ? variantesAqui(e).map(o => o.v) : variantes(e)).map(v => AP[v.ap]?.tipo).filter(Boolean))];
     return `<button class="item" data-${accion}="${e.id}">
       ${iconoMusculo(e.m, { clase: "musculo item-ico" })}
       <span class="item-txt"><b>${esFav(e.id) ? "★ " : ""}${esc(e.nombre)}</b><span class="small muted">${esc(nombreMusculos(e))}${enElPlan.has(e.id) ? " · en tu plan" : ""}${e.propio ? " · creado por ti" : ""}${n ? ` · ${n} ${n > 1 ? "sesiones" : "sesión"}` : ""}</span>
@@ -768,7 +776,7 @@ function hojaSelector() {
 function listaSel() {
   const d = Datos.dias[HOY];
   const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
-  return htmlLista(filtrar({ ...Sel, excluir: enUso(d), primero: hueco?.e.m || [], aqui: true }), "elegir");
+  return htmlLista(filtrar({ ...Sel, excluir: enUso(d), primero: hueco?.e.m || [], aqui: true }), "elegir", true);
 }
 function crearPropio() {
   const nombre = $("#nuevoNombre").value.trim(), min = num($("#nuevoMin").value), max = num($("#nuevoMax").value);
@@ -799,9 +807,11 @@ function hojaAyuda(id) {
   const e = cat(id); if (!e) return "";
   const ses = sesionesDe(id);
   // Variante de referencia: la de hoy si ya está, si no la última que se usó.
-  const vAct = Datos.dias[HOY]?.ej?.[id]?.v ?? ses[0]?.x.v ?? 0;
+  // En un sitio limitado, si esa no se puede hacer aquí, la primera que sí.
+  const v0 = Datos.dias[HOY]?.ej?.[id]?.v ?? ses[0]?.x.v ?? 0, limitado = lugarLimitado() && sePuedeAqui(e);
+  const vAct = limitado && !disponible(e, v0) ? primeraAqui(e) : v0;
   const va = variante(e, vAct), clave = claveFoto(e, vAct);
-  const vs = variantes(e);
+  const vs = variantes(e), otras = vs.map((v, i) => ({ v, i })).filter(o => o.i !== vAct && (!limitado || disponible(e, o.i)));
   return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(nombreMusculos(e))}</span><h2>${esc(e.nombre)}</h2></div>${botonCerrar}</div>
     ${botonFav("ej", id)}
     <div class="ficha-top">${iconoMusculo(e.m, { clase: "musculo grande" })}
@@ -810,7 +820,8 @@ function hojaAyuda(id) {
     <div><h3>${va.ap ? esc(AP[va.ap]?.nombre) : "Foto"}</h3>${vs.length > 1 ? `<p class="small muted" style="margin:0 0 6px">Variante: ${esc(va.n)}</p>` : ""}</div>
     ${htmlFoto(clave, va.ap ? AP[va.ap]?.nombre : e.nombre)}
     ${va.ap ? `<p class="small muted" style="margin:0">La foto es de la máquina: sale en todos los ejercicios que la usan.</p>` : ""}
-    ${vs.length > 1 ? `<div><h3>Con qué más se puede hacer</h3><div class="lista">${vs.map((v, i) => i === vAct ? "" : `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${v.ap && !hayAparato(v.ap) ? ` · no hay en ${esc(lugar().corto)}` : v.ap && !fotoReal(v.ap) ? " · sin foto real" : ""}</span></span></button>`).join("")}</div></div>` : ""}
+    ${otras.length ? `<div><h3>Con qué más se puede hacer${limitado ? ` en ${esc(lugar().corto)}` : ""}</h3><div class="lista">${otras.map(({ v, i }) => `<button class="item" ${v.ap ? `data-aparato="${v.ap}"` : "disabled"}>${v.ap ? fotoAp(v.ap, "item-foto") : `<span class="item-foto sin-foto"></span>`}<span class="item-txt"><b>${esc(v.n)}</b><span class="small muted">${esc(AP[v.ap]?.nombre || "")}${!disponible(e, i) && lugarLimitado() ? ` · no se puede en ${esc(lugar().corto)}` : v.ap && !fotoReal(v.ap) ? " · sin foto real" : ""}</span></span></button>`).join("")}</div></div>` : ""}
+    ${lugarLimitado() && !sePuedeAqui(e) ? `<p class="aviso small" style="margin:0">En ${esc(lugar().corto)} no se puede hacer: no se propone allí.</p>` : ""}
     <label class="campo" for="notaEj"><b style="color:var(--ink)">Cómo ajusto la máquina</b><span class="small muted">Asiento, respaldo, agarre, número de máquina… Se ve en el ejercicio.</span>
       <textarea id="notaEj" data-notaej="${id}" rows="2" class="area">${esc(Datos.ajustes.notasEj?.[id] || "")}</textarea></label>
     ${e.pasos?.length ? `<div><h3>Cómo se hace</h3><ol class="pasos">${e.pasos.map(p => `<li>${esc(p)}</li>`).join("")}</ol></div>` : ""}
@@ -824,7 +835,7 @@ function hojaAyuda(id) {
 /* ---------- Hoja: ficha de una máquina o material ---------- */
 function hojaAparato(ap) {
   const a = AP[ap]; if (!a) return "";
-  const lista = ejerciciosCon(ap);
+  const lista = ejerciciosCon(ap).filter(e => !lugarLimitado() || !hayAparato(ap) || variantes(e).some((v, i) => v.ap === ap && disponible(e, i)));
   return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(TIPO_AP[a.tipo])}</span><h2>${esc(a.nombre)}</h2></div>${botonCerrar}</div>
     ${botonFav("ap", ap)}
     ${htmlFoto(ap, a.nombre)}
@@ -895,7 +906,7 @@ function pintarEjercicios() {
     <input id="buscarEj" class="texto" type="search" placeholder="Buscar: prensa, polea, isquios…" value="${esc(Lib.q)}" autocomplete="off">
     ${htmlFiltros(Lib, "lib")}
     ${lugarLimitado() ? `<p class="small muted" style="margin:0">${Lib.todo ? `Todos los ejercicios del catálogo. <button class="enlace" data-libtodo>Solo lo que hay en ${esc(lugar().corto)}</button>` : `Solo lo que se puede hacer en ${esc(lugar().corto)}. <button class="enlace" data-libtodo>Ver todos</button>`}</p>` : ""}
-    <div id="listaLib" class="lista">${htmlLista(filtrar({ ...Lib, aqui: libAqui() }), "ayuda")}</div>
+    <div id="listaLib" class="lista">${htmlLista(filtrar({ ...Lib, aqui: libAqui() }), "ayuda", libAqui())}</div>
     <button class="btn sec" data-crearlib>Crear ejercicio nuevo</button>
   </section></div>`;
   verZona();
@@ -924,7 +935,7 @@ function htmlTuPlan(enHoy) {
 const textoFavs = () => { const e = favoritos("ej").length, m = favoritos("ap").length; return e + m ? `Tienes ${e} ejercicio${e === 1 ? "" : "s"} y ${m} máquina${m === 1 ? "" : "s"} como favoritos.` : "Aún no tienes favoritos."; };
 // Máquinas de los sitios donde entrena la persona (sin lugares con lista, todas).
 const apsMios = () => APARATOS.filter(a => !lugares().length || lugares().some(id => hayAparato(a.id, id)));
-const ejMios = () => todos().filter(e => !lugares().length || lugares().some(id => variantes(e).some(v => !v.ap || hayAparato(v.ap, id))));
+const ejMios = () => todos().filter(e => !lugares().length || lugares().some(id => variantes(e).some((_, i) => posible(e, i, id))));
 function hojaFavoritos() {
   const aps = apsMios(), chip = (tipo, id, nombre) => `<button class="chip mini" data-fav="${tipo}|${id}" aria-pressed="${tipo === "ap" ? apFav(id) : esFav(id)}">${esc(nombre)}</button>`;
   return `<div class="hoja-cab"><h2>Favoritos</h2>${botonCerrar}</div>
@@ -1163,7 +1174,7 @@ window.App = {
   // Buscadores: solo se repinta la lista, para no perder el foco del teclado.
   entrada(t) {
     if (t.id === "buscarSel" && Sel) { Sel.q = t.value; $("#listaSel").innerHTML = listaSel(); }
-    else if (t.id === "buscarEj") { Lib.q = t.value; $("#listaLib").innerHTML = htmlLista(filtrar({ ...Lib, aqui: libAqui() }), "ayuda"); }
+    else if (t.id === "buscarEj") { Lib.q = t.value; $("#listaLib").innerHTML = htmlLista(filtrar({ ...Lib, aqui: libAqui() }), "ayuda", libAqui()); }
   },
 };
 // Aviso breve en la zona del temporizador (por ejemplo, en mitad de una superserie).
