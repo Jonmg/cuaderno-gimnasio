@@ -30,10 +30,15 @@ const CATALOGO = [
   { id: "hombro", nombre: "Press de hombro en máquina", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 10, peso: 5, pauta: "Peso muy ligero. Para si notas molestia." },
   // Equilibrio y movilidad
   { id: "equilibrio", nombre: "Equilibrio a una pierna con apoyo", grupo: "Equilibrio", tipo: "tiempo", min: 2, pauta: "20 segundos por pierna, varias veces. Siempre con algo a mano." },
-  { id: "puente", nombre: "Puente de glúteo en colchoneta", grupo: "Equilibrio", tipo: "fuerza", series: 2, reps: 10, peso: 0, pauta: "Sube la cadera despacio. Peso = 0." },
+  // Retirados: no le gustan los ejercicios tumbado. Siguen aquí por su historial.
+  { id: "puente", nombre: "Puente de glúteo en colchoneta", grupo: "Equilibrio", tipo: "fuerza", series: 2, reps: 10, peso: 0, pauta: "Sube la cadera despacio. Peso = 0.", retirado: true },
   { id: "marcha", nombre: "Marcha en el sitio levantando rodillas", grupo: "Equilibrio", tipo: "tiempo", min: 2, pauta: "Con apoyo cerca. Rodillas a altura cómoda." },
-  // Vuelta a la calma
-  { id: "estiramientos", nombre: "Estiramientos suaves", grupo: "Vuelta a la calma", tipo: "tiempo", min: 5, pauta: "Piernas, espalda y hombros. Sin rebotes, sin dolor." },
+  // Vuelta a la calma: estiramientos de pies, sentado o de pie (nada tumbado)
+  { id: "estiramientos", nombre: "Estiramientos suaves", grupo: "Vuelta a la calma", tipo: "tiempo", min: 5, pauta: "Piernas, espalda y hombros. Sin rebotes, sin dolor.", retirado: true },
+  { id: "gemelo-pared", nombre: "Estiramiento de gemelo en la pared", grupo: "Vuelta a la calma", tipo: "tiempo", min: 3, pauta: "De pie, manos en la pared. 30 segundos por pierna, dos veces." },
+  { id: "planta-pie", nombre: "Estiramiento de la planta del pie, sentado", grupo: "Vuelta a la calma", tipo: "tiempo", min: 3, pauta: "Sentado, tira de los dedos del pie hacia ti. 30 segundos por pie, dos veces." },
+  { id: "tobillos", nombre: "Círculos de tobillo, sentado", grupo: "Vuelta a la calma", tipo: "tiempo", min: 2, pauta: "Sentado, dibuja círculos con cada pie: 10 hacia cada lado." },
+  { id: "pelota-pie", nombre: "Rodar una pelota bajo el pie", grupo: "Vuelta a la calma", tipo: "tiempo", min: 3, pauta: "Sentado, con una pelota de tenis o una botella. Un minuto y medio por pie." },
 ];
 /* ---------- Fichas ----------
    Máquina de cada ejercicio (ap: id de APARATOS en catalogo.js; la foto va por máquina) y cómo
@@ -103,6 +108,18 @@ const FICHAS = {
   estiramientos: { ap: "suelo",
     pasos: ["Piernas, espalda y hombros, de pie o sentado.", "Mantén cada postura 20–30 segundos respirando con calma.", "Tiene que notarse una tensión suave, nunca dolor."],
     errores: ["Rebotar.", "Forzar la zona de la operación."] },
+  "gemelo-pared": {
+    pasos: ["De pie frente a una pared, con las dos manos apoyadas a la altura del pecho.", "Lleva una pierna atrás con el talón pegado al suelo y la rodilla estirada.", "Inclínate un poco hacia la pared hasta notar tirar la pantorrilla. Aguanta 30 segundos respirando con calma.", "Cambia de pierna. Dos veces cada una."],
+    errores: ["Levantar el talón de atrás.", "Hacerlo sin apoyo o con rebotes."] },
+  "planta-pie": {
+    pasos: ["Sentado en una silla o banco firme.", "Cruza una pierna y apoya el tobillo sobre la otra rodilla (o estira la pierna delante si cuesta).", "Con la mano, tira de los dedos del pie hacia ti hasta notar estirar la planta. Aguanta 30 segundos.", "Cambia de pie. Dos veces cada uno."],
+    errores: ["Tirar hasta que duela.", "Encorvar la espalda: mejor estirar la pierna y llegar menos."] },
+  tobillos: {
+    pasos: ["Sentado, con un pie apoyado y el otro levantado un poco del suelo.", "Dibuja círculos lentos con la punta del pie: 10 hacia un lado y 10 hacia el otro.", "Después, sube y baja la punta 10 veces. Cambia de pie."],
+    errores: ["Hacerlo deprisa.", "Mover toda la pierna en vez del tobillo."] },
+  "pelota-pie": {
+    pasos: ["Sentado, descalzo o con calcetín, con una pelota de tenis (o una botella) bajo un pie.", "Hazla rodar despacio desde los dedos hasta el talón, apretando lo que sea agradable.", "Un minuto y medio por pie."],
+    errores: ["Apretar hasta que duela.", "Hacerlo de pie si cuesta mantener el equilibrio."] },
 };
 for (const e of CATALOGO) Object.assign(e, FICHAS[e.id]);
 const POR_ID = Object.fromEntries(CATALOGO.map(e => [e.id, e]));
@@ -112,12 +129,19 @@ const MUSCULOS_EJ = {
   prensa: ["cuadriceps", "gluteo"], extension: ["cuadriceps"], femoral: ["isquios"], abductor: ["gluteo-medio"], aductor: ["aductores"],
   silla: ["cuadriceps", "gluteo"], talones: ["gemelo"], remo: ["espalda", "dorsal"], jalon: ["dorsal", "biceps"], pecho: ["pecho", "triceps"],
   biceps: ["biceps"], triceps: ["triceps"], hombro: ["hombro"], equilibrio: ["cuerpo"], puente: ["gluteo", "isquios"], estiramientos: ["cuerpo"],
+  "gemelo-pared": ["gemelo"], "planta-pie": ["gemelo"], tobillos: ["gemelo"], "pelota-pie": ["gemelo"],
 };
 // Estructura de una sesión de gimnasio: cuántos ejercicios de cada grupo.
 const ESTRUCTURA = [["Calentamiento", 1], ["Piernas", 2], ["Espalda y brazos", 2], ["Equilibrio", 1], ["Vuelta a la calma", 1]];
-// Plan por defecto según el día de la semana (0 = domingo).
-const PLAN_SEMANA = ["descanso", "gym", "paseo", "gym", "paseo", "gym", "paseo"];
-const TIPOS = { gym: "Gimnasio", paseo: "Paseo", descanso: "Descanso" };
+// Plan por defecto según el día de la semana (0 = domingo): lunes, miércoles y viernes tiene
+// diálisis (sin entreno); martes, jueves y sábado, gimnasio; domingo, paseo. El paseo sale todos
+// los días.
+const PLAN_SEMANA = ["paseo", "dialisis", "gym", "dialisis", "gym", "dialisis", "gym"];
+const TIPOS = { gym: "Gimnasio", paseo: "Paseo", dialisis: "Diálisis", descanso: "Descanso" };
+// Días sin entreno: cuentan como cumplidos y no entran en la cuenta de estrellas de la semana.
+const SIN_ENTRENO = ["descanso", "dialisis"];
+// Los ejercicios que se pueden proponer (los retirados quedan solo para el historial).
+const vigentes = () => CATALOGO.filter(e => !e.retirado);
 
 /* ---------- Historial y progresión ---------- */
 // Últimos registros hechos de un ejercicio, del más reciente al más antiguo (sin contar el día indicado).
@@ -138,7 +162,7 @@ function sugerenciaSubir(id, hoy) {
 
 function generarSesion(k, excluir = []) {
   const r = azar(k + excluir.join(""));
-  const activos = CATALOGO.filter(e => !Datos.ajustes.desactivados.includes(e.id));
+  const activos = vigentes().filter(e => !Datos.ajustes.desactivados.includes(e.id));
   // Evita repetir lo de la última sesión de gimnasio cuando hay alternativa.
   const ultima = Object.keys(Datos.dias).filter(x => x < k && Datos.dias[x].tipo === "gym").sort().pop();
   const recientes = new Set(ultima ? (Datos.dias[ultima].ejercicios || []).map(e => e.id) : []);
@@ -174,14 +198,14 @@ function diaActivo(d) {
 
 /* ---------- Estrellas del día ----------
    Gimnasio: una por bloque de la sesión (los cinco de ESTRUCTURA), cuando están hechos todos
-   sus ejercicios. Paseo: una cada 5 minutos andando, hasta cinco. Descanso: el día cuenta como
-   cumplido y no entra en la cuenta de la semana. */
+   sus ejercicios. Paseo: una cada 5 minutos andando, hasta cinco. Descanso y diálisis: el día
+   cuenta como cumplido y no entra en la cuenta de la semana. */
 const MIN_ESTRELLA = 5;
-const NOMBRE_BLOQUE = { Calentamiento: "Calentar", Piernas: "Piernas", "Espalda y brazos": "Brazos", Equilibrio: "Equilibrio", "Vuelta a la calma": "Estirar" };
+const NOMBRE_BLOQUE = { Calentamiento: "Calentar", Piernas: "Piernas", "Espalda y brazos": "Brazos", Equilibrio: "Equilibrio", "Vuelta a la calma": "Pies" };
 const tipoDe = k => Datos.dias[k]?.tipo || PLAN_SEMANA[deClave(k).getDay()];
 function estrellas(k) {
   const d = Datos.dias[k], tipo = tipoDe(k);
-  if (tipo === "descanso") return null;
+  if (SIN_ENTRENO.includes(tipo)) return null;
   if (tipo === "paseo") { const min = Number(d?.paseo?.min) || 0; return [1, 2, 3, 4, 5].map(i => ({ n: `${i * MIN_ESTRELLA} min`, ok: min >= i * MIN_ESTRELLA })); }
   const ejs = d?.ejercicios || [], todo = ejs.length > 0 && ejs.every(e => e.hecho);
   return ESTRUCTURA.map(([g]) => {
@@ -192,11 +216,11 @@ function estrellas(k) {
 const cuantas = k => (estrellas(k) || []).filter(s => s.ok).length;
 // Nombre de la estrella que se acaba de ganar (comparando antes y después), o "".
 const estrellaNueva = (antes, despues) => (despues || []).find((s, i) => s.ok && !antes?.[i]?.ok)?.n || "";
-// Una semana de lunes a domingo: estrellas ganadas y posibles (los días de descanso no cuentan).
+// Una semana de lunes a domingo: estrellas ganadas y posibles (descanso y diálisis no cuentan).
 function semanaEstrellas(lunes = lunesDe(new Date())) {
   const dias = [];
   for (let i = 0; i < 7; i++) { const f = new Date(lunes); f.setDate(f.getDate() + i); const k = claveFecha(f); dias.push({ k, f, tipo: tipoDe(k), n: cuantas(k) }); }
-  const activos = dias.filter(x => x.tipo !== "descanso");
+  const activos = dias.filter(x => !SIN_ENTRENO.includes(x.tipo));
   return { dias, ganadas: activos.reduce((s, x) => s + x.n, 0), posibles: activos.length * 5 };
 }
 const SVG_ESTRELLA = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.4l2.95 6.1 6.65.8-4.9 4.6 1.25 6.6L12 17.3l-5.95 3.2 1.25-6.6-4.9-4.6 6.65-.8z"/></svg>';
@@ -209,11 +233,11 @@ function htmlEstrellas(d) {
   let h = `<section class="card" aria-labelledby="t-estrellas">
     <div class="top"><h2 id="t-estrellas">Tus estrellas de hoy</h2>${est ? `<span class="num" style="font-size:1.5rem">${n}/5</span>` : ""}</div>`;
   h += est ? `<div class="estrellas" role="img" aria-label="${n} de 5 estrellas">${est.map(s => `<div>${estrella(s.ok)}<span>${esc(s.n)}</span></div>`).join("")}</div>`
-    : `<p class="muted" style="margin:0">Hoy descansas: el día cuenta como cumplido ✓</p>`;
+    : `<p class="muted" style="margin:0">${d.tipo === "dialisis" ? "Hoy tienes diálisis: no hay entreno y" : "Hoy descansas:"} el día cuenta como cumplido ✓</p>`;
   if (pendiente) h += `<button class="btn grande" data-empezar>${ejs.some(e => e.hecho) ? "▶ Seguir con la sesión" : "▶ Empezar la sesión"}</button>`;
   else if (d.tipo === "gym" && n === 5) h += `<p style="margin:0"><b>¡Las cinco!</b> Sesión completa.</p>`;
   if (d.tipo === "paseo") h += `<p class="small muted" style="margin:0">Una estrella por cada ${MIN_ESTRELLA} minutos andando. Apúntalo abajo, en <b>Paseo</b>.</p>`;
-  h += `<div class="semana-dias" role="img" aria-label="Esta semana: ${sem.ganadas} de ${sem.posibles} estrellas">${sem.dias.map(x => `<div class="${x.k === HOY ? "hoy" : ""}"><span>${LETRA_DIA[x.f.getDay()]}</span>${x.tipo === "descanso" ? `<b>–</b>` : `<b class="num">${x.k > HOY ? "·" : x.n}</b>`}</div>`).join("")}</div>
+  h += `<div class="semana-dias" role="img" aria-label="Esta semana: ${sem.ganadas} de ${sem.posibles} estrellas">${sem.dias.map(x => `<div class="${x.k === HOY ? "hoy" : ""}"><span>${LETRA_DIA[x.f.getDay()]}</span>${x.tipo === "dialisis" ? `<b class="dialisis" title="Diálisis">diál.</b>` : x.tipo === "descanso" ? `<b>–</b>` : `<b class="num">${x.k > HOY ? "·" : x.n}</b>`}</div>`).join("")}</div>
     <p class="small muted" style="margin:0">Esta semana: <b>${sem.ganadas} de ${sem.posibles}</b> estrellas${sem.ganadas ? "" : ". ¡A por la primera!"}</p>
   </section>`;
   return h;
@@ -265,7 +289,7 @@ function hojaPaso() {
 /* ---------- Celebración ---------- */
 const FIESTA = [
   "¡Sesión completa, {n}! Cada día que entrenas, ganas fuerza.", "¡Bien hecho, {n}! Hoy has vuelto a sumar.",
-  "¡Cinco estrellas, {n}! Así se recupera la fuerza.", "¡Lo has conseguido, {n}! Ahora agua y a descansar.",
+  "¡Cinco estrellas, {n}! Así se recupera la fuerza.", "¡Lo has conseguido, {n}! Ahora, a descansar.",
   "¡Hecho, {n}! Paso a paso se llega lejos.", "¡Qué máquina, {n}! Otro día más al bote.",
   "¡Enhorabuena, {n}! Tu entrenador estaría orgulloso.", "¡Bravo, {n}! Hoy eres un poco más fuerte que ayer.",
 ];
@@ -306,13 +330,13 @@ function hojaFiesta() {
    en iPhone) y no sale del móvil hasta que se envía. */
 const Semana = { url: "", file: null, estado: "" };
 function rachaDias() {
-  // Días seguidos (hasta hoy o ayer) con algo hecho, contando los días de descanso planificados.
+  // Días seguidos (hasta hoy o ayer) con algo hecho, contando los de descanso y diálisis.
   let racha = 0; const cur = new Date();
   if (!diaActivo(Datos.dias[HOY])) cur.setDate(cur.getDate() - 1);
   while (racha < 3650) {
     const d = Datos.dias[claveFecha(cur)];
     if (diaActivo(d)) racha++;
-    else if (!(d?.tipo === "descanso" || (!d && PLAN_SEMANA[cur.getDay()] === "descanso"))) break;
+    else if (!SIN_ENTRENO.includes(d?.tipo || PLAN_SEMANA[cur.getDay()])) break;
     cur.setDate(cur.getDate() - 1);
   }
   return racha;
@@ -356,7 +380,7 @@ async function dibujarSemana() {
     const x0 = 80 + i * (cw + 14), cx = x0 + cw / 2, hoy = x.k === HOY;
     caja(x0, 650, cw, 210, 22, hoy ? "#FFF1E8" : "#FFFFFF");
     texto(LETRA_DIA[x.f.getDay()], cx, 705, `700 34px ${TXT}`, hoy ? "#C24000" : "#666E70", cw, "center");
-    if (x.tipo === "descanso") { texto("–", cx, 800, `800 60px ${TIT}`, "#B7CBD2", cw, "center"); texto("descanso", cx, 840, `400 20px ${TXT}`, "#666E70", cw - 8, "center"); return; }
+    if (SIN_ENTRENO.includes(x.tipo)) { texto("–", cx, 800, `800 60px ${TIT}`, "#B7CBD2", cw, "center"); texto(x.tipo === "dialisis" ? "diálisis" : "descanso", cx, 840, `400 20px ${TXT}`, "#666E70", cw - 8, "center"); return; }
     estrellaC(cx, 755, 26, x.n ? "#FD5000" : "#DCE3E5");
     texto(x.k > HOY ? "" : String(x.n), cx, 838, `800 56px ${TIT}`, "#0C0E0D", cw, "center");
   });
@@ -425,13 +449,14 @@ function pintarHoy() {
 
   h += `<section class="card" aria-labelledby="t-plan">
     <h2 id="t-plan">Hoy toca</h2>
-    <div class="chips" role="group" aria-label="Tipo de día">${Object.entries(TIPOS).map(([v, t]) => `<button class="chip" data-tipo="${v}" aria-pressed="${d.tipo === v}">${t}</button>`).join("")}</div>
+    <div class="chips cuatro" role="group" aria-label="Tipo de día">${Object.entries(TIPOS).map(([v, t]) => `<button class="chip" data-tipo="${v}" aria-pressed="${d.tipo === v}">${t}</button>`).join("")}</div>
   </section>`;
 
   if (d.tipo === "gym") h += pintarGym(d);
-  if (d.tipo === "paseo") h += pintarPaseo(d);
+  if (d.tipo === "dialisis") h += `<section class="card dialisis" aria-labelledby="t-dialisis"><h2 id="t-dialisis">Hoy tienes diálisis</h2><p class="muted" style="margin:0">Hoy no hay entreno: el día cuenta como cumplido. Descansa. Si al volver te encuentras con fuerzas, un paseo corto y tranquilo; si no, nada.</p></section>`;
   if (d.tipo === "descanso") h += `<section class="card"><h2>Día de descanso</h2><p class="muted">Descansar también es parte del plan: el músculo se recupera hoy. Si te apetece, un paseo tranquilo de 10–15 minutos está bien.</p></section>`;
-  if (d.tipo !== "paseo" && Number(d.paseo?.min) > 0) h += pintarPaseo(d);
+  // El paseo sale todos los días.
+  h += pintarPaseo(d);
 
   h += `<section class="card"><label class="campo" for="nota" style="font-size:1rem;color:var(--ink)"><b>Nota del día</b><span class="muted small">Molestias, cómo dormiste, lo que dijo el médico…</span></label>
     <textarea id="nota" rows="3" class="area">${esc(d.nota)}</textarea></section>`;
@@ -455,7 +480,7 @@ function pintarGym(d) {
   let h = `<section class="card" aria-labelledby="t-gym">
     <div class="top"><h2 id="t-gym">Sesión de gimnasio</h2><span class="num" style="font-size:1.5rem">${hechos}/${ejs.length}</span></div>
     <div class="progreso-dia" aria-hidden="true"><i style="width:${pct}%"></i></div>
-    ${hechos === ejs.length && ejs.length ? `<p class="aviso" style="background:var(--accent-soft)"><b>Sesión completa.</b> Bien hecho. Bebe agua y descansa.</p>` : ""}
+    ${hechos === ejs.length && ejs.length ? `<p class="aviso" style="background:var(--accent-soft)"><b>Sesión completa.</b> Bien hecho. Ahora, a descansar.</p>` : ""}
     <div>`;
   ejs.forEach((e, i) => {
     const c = POR_ID[e.id]; if (!c) return;
@@ -493,8 +518,8 @@ function pintarPaseo(d) {
   const ultimos = Object.keys(Datos.dias).filter(k => k < HOY && Number(Datos.dias[k].paseo?.min) > 0).sort().slice(-1);
   const ref = ultimos.length ? `La última vez: <b class="num">${Datos.dias[ultimos[0]].paseo.min} min</b>${Datos.dias[ultimos[0]].paseo.km ? ` · ${Datos.dias[ultimos[0]].paseo.km} km` : ""}.` : "Empieza con lo que te resulte cómodo, por ejemplo 15–20 minutos.";
   return `<section class="card" aria-labelledby="t-paseo">
-    <h2 id="t-paseo">Paseo</h2>
-    <p class="muted small" style="margin:0">${ref} Ve sumando poco a poco: unos 5 minutos más por semana es buen ritmo.</p>
+    <h2 id="t-paseo">Paseo de hoy</h2>
+    <p class="muted small" style="margin:0">${d.tipo === "dialisis" ? "Opcional en día de diálisis: solo si te encuentras bien, y corto." : `${d.tipo === "gym" ? "Además del gimnasio, si te apetece. " : ""}${ref} Ve sumando poco a poco: unos 5 minutos más por semana es buen ritmo.`}</p>
     <div class="campos">
       <label class="campo">Minutos<input class="num" type="number" inputmode="decimal" min="0" id="p-min" data-paseo="min" value="${esc(p.min)}"></label>
       <label class="campo">Kilómetros<input class="num" type="number" inputmode="decimal" min="0" step="0.1" id="p-km" data-paseo="km" value="${esc(p.km)}"></label>
@@ -539,7 +564,7 @@ function pintarEjercicios() {
   let h = `<div class="wrap" style="padding:0"><section class="card"><h2>Ejercicios y máquinas</h2>
     <p class="small muted" style="margin:0">Toca uno para ver la foto de la máquina, cómo se hace y lo que has hecho.</p>`;
   for (const g of grupos) {
-    h += `<div><p class="eyebrow" style="margin:10px 0 0">${esc(g)}</p><div class="lista">${CATALOGO.filter(e => e.grupo === g).map(e => {
+    h += `<div><p class="eyebrow" style="margin:10px 0 0">${esc(g)}</p><div class="lista">${vigentes().filter(e => e.grupo === g).map(e => {
       const a = AP[e.ap], n = historialEj(e.id, "9999").length;
       const det = [a ? a.nombre : "Sin máquina"];
       if (Fotos.url[e.ap]) det.push("tu foto"); else if (a && !FotosGym.url[e.ap]) det.push("sin foto real");
@@ -559,10 +584,10 @@ function pintarAjustes() {
     <section class="card"><h2>Ejercicios que puedo hacer</h2>
       <p class="muted small" style="margin:0">Quita los que el médico o el entrenador te hayan desaconsejado, o las máquinas que no tenga tu gimnasio. Las sesiones solo usarán los marcados.</p>`;
   for (const g of grupos) {
-    h += `<div><p class="eyebrow" style="margin:12px 0 0">${esc(g)}</p><div class="lista-ajustes">${CATALOGO.filter(e => e.grupo === g).map(e => `<label><input type="checkbox" id="aj-${e.id}" data-activo="${e.id}" ${Datos.ajustes.desactivados.includes(e.id) ? "" : "checked"}><span>${esc(e.nombre)}</span></label>`).join("")}</div></div>`;
+    h += `<div><p class="eyebrow" style="margin:12px 0 0">${esc(g)}</p><div class="lista-ajustes">${vigentes().filter(e => e.grupo === g).map(e => `<label><input type="checkbox" id="aj-${e.id}" data-activo="${e.id}" ${Datos.ajustes.desactivados.includes(e.id) ? "" : "checked"}><span>${esc(e.nombre)}</span></label>`).join("")}</div></div>`;
   }
   h += `</section>
-    <section class="card"><h2>Semana tipo</h2><p class="muted small" style="margin:0">Lunes, miércoles y viernes: gimnasio. Martes, jueves y sábado: paseo. Domingo: descanso. Cada día puedes cambiarlo arriba en <b>Hoy</b>.</p></section>
+    <section class="card"><h2>Semana tipo</h2><p class="muted small" style="margin:0">Lunes, miércoles y viernes: diálisis, sin entreno. Martes, jueves y sábado: gimnasio. Domingo: paseo. El paseo se puede apuntar todos los días. Cada día puedes cambiarlo arriba en <b>Hoy</b>.</p></section>
     ${Compartir.htmlAjustes()}
     ${htmlCopia()}
     <section class="card"><h2>Importante</h2><p class="muted small" style="margin:0">App personal, sin relación oficial con el gimnasio. Esta libreta te ayuda a ser constante, pero no sustituye al médico ni al entrenador. Los pesos y tiempos iniciales son orientativos: ajústalos a lo que hacías con el entrenador. Ante cualquier síntoma raro, para.</p></section>
@@ -629,7 +654,7 @@ const FRASES = [
   "{n}, escucha al cuerpo: si pide calma, calma; si pide marcha, marcha.", "{n}, cada serie de hoy es una escalera más fácil mañana.",
   "Poco a poco se llega lejos, {n}. Y tú ya vas lejos.", "{n}, un buen paseo y a las máquinas: que no se oxide nada.",
   "Respira hondo, {n}. Hoy también suma.", "{n}, la mejor sesión es la que se hace, aunque sea corta.",
-  "Sin prisa pero sin pausa, {n}.", "{n}, que el día empiece con energía: un vaso de agua y a por ello.",
+  "Sin prisa pero sin pausa, {n}.", "{n}, que el día empiece con energía: a por ello.",
   "El mejor momento para moverse es hoy, {n}.", "{n}, tu entrenador estaría orgulloso. Sigue con el plan.",
   "{n}, cada día que te mueves es un día que ganas.", "Hoy toca sumar, {n}. Lo que sea, pero sumar.",
   "{n}, hoy hay cinco estrellas esperándote.", "A por las estrellas de hoy, {n}. Una a una.",
@@ -638,9 +663,11 @@ function motivacion() {
   const n = nombreVisible(), d = Datos.dias[HOY];
   const ultimo = Object.keys(Datos.dias).filter(k => k < HOY && diaActivo(Datos.dias[k])).sort().pop();
   const sinMoverse = ultimo ? Math.round((deClave(HOY) - deClave(ultimo)) / 864e5) : 0;
-  if (diaActivo(d)) return `¡Hecho por hoy, ${n}! Ahora a descansar y a beber agua.`;
-  if (sinMoverse >= 3) return `${n}, hace ${sinMoverse} días que no apuntas nada. Un paseo corto hoy y retomamos.`;
-  if ((d?.tipo || PLAN_SEMANA[new Date().getDay()]) === "descanso") return `${n}, hoy toca descansar: también es parte del plan.`;
+  if (diaActivo(d)) return `¡Hecho por hoy, ${n}! Ahora, a descansar.`;
+  if (sinMoverse >= 3 && !SIN_ENTRENO.includes(d?.tipo || PLAN_SEMANA[new Date().getDay()])) return `${n}, hace ${sinMoverse} días que no apuntas nada. Un paseo corto hoy y retomamos.`;
+  const tipo = d?.tipo || PLAN_SEMANA[new Date().getDay()];
+  if (tipo === "dialisis") return `${n}, hoy tienes diálisis: hoy no hay entreno. Descansa, que mañana seguimos.`;
+  if (tipo === "descanso") return `${n}, hoy toca descansar: también es parte del plan.`;
   return fraseDelDia(FRASES);
 }
 
@@ -648,6 +675,18 @@ function motivacion() {
 window.App = {
   pestañas: [["hoy", "Hoy"], ["progreso", "Progreso"], ["ejercicios", "Ejercicios"], ["ajustes", "Ajustes"]],
   ajustesIniciales: { nombre: "", desactivados: [], notasEj: {} },
+  // Si la sesión de hoy ya estaba preparada con un ejercicio retirado (tumbado) sin hacer, se
+  // cambia por otro de su bloque.
+  alCargar() {
+    const d = Datos.dias[HOY];
+    if (d?.tipo !== "gym") return;
+    (d.ejercicios || []).forEach((e, i) => {
+      if (e.hecho || !POR_ID[e.id]?.retirado) return;
+      const usados = d.ejercicios.map(x => x.id);
+      const otro = vigentes().find(c => c.grupo === POR_ID[e.id].grupo && !usados.includes(c.id) && !Datos.ajustes.desactivados.includes(c.id));
+      if (otro) d.ejercicios[i] = nuevaEntrada(otro, HOY);
+    });
+  },
   vistas: { hoy: pintarHoy, progreso: pintarProgreso, ejercicios: pintarEjercicios, ajustes: pintarAjustes },
   motivacion,
   // Al cerrar el paso a paso se repinta la lista, por si se cambiaron cifras.
@@ -693,7 +732,7 @@ window.App = {
     else if (b.dataset.cambiar) {
       const i = Number(b.dataset.cambiar), actual = POR_ID[d.ejercicios[i].id];
       const usados = d.ejercicios.map(e => e.id);
-      const opciones = CATALOGO.filter(e => e.grupo === actual.grupo && !usados.includes(e.id) && !Datos.ajustes.desactivados.includes(e.id));
+      const opciones = vigentes().filter(e => e.grupo === actual.grupo && !usados.includes(e.id) && !Datos.ajustes.desactivados.includes(e.id));
       if (!opciones.length) { b.textContent = "No hay otro de este grupo"; b.disabled = true; return false; }
       d.ejercicios[i] = nuevaEntrada(opciones[Math.floor(Math.random() * opciones.length)], HOY); tocar(HOY);
     }

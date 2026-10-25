@@ -391,6 +391,8 @@ code { font-size: .85em; background: var(--bg); border-radius: 5px; padding: 1px
 .semana-dias div { background: var(--bg); border-radius: 10px; padding: 4px 0 2px; display: grid; font-size: .75rem; font-weight: 700; color: var(--muted); }
 .semana-dias div.hoy { background: var(--accent-soft); color: var(--accent-texto); }
 .semana-dias b { font-family: var(--f-num); font-stretch: 78%; font-size: 1.25rem; color: var(--ink); line-height: 1.2; }
+.semana-dias b.dialisis { font-family: inherit; font-stretch: normal; font-size: .7rem; color: var(--sec-oscuro); line-height: 1.9; }
+.card.dialisis { border-left: 6px solid var(--sec); }
 .btn.grande { min-height: 60px; font-size: 1.2rem; width: 100%; border-radius: 12px; }
 .btn.verde { background: var(--ok); border-color: var(--ok); color: #FFFFFF; }
 .paso-nombre { font-size: 1.6rem !important; }

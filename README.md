@@ -50,8 +50,8 @@ libreta desde el mismo sitio (mejor, desde el icono).
 ### Aita (motor de recuperación, `comun/recuperacion.js`)
 
 - **Cinco estrellas al día:** en gimnasio, una por bloque de la sesión (calentar, piernas,
-  brazos, equilibrio, estirar); en paseo, una cada 5 minutos andando. El descanso cuenta como
-  día cumplido. Se ve la semana entera (por ejemplo, 12 de 30) y avisa de cada estrella nueva.
+  brazos, equilibrio, pies); en paseo, una cada 5 minutos andando. Los días de diálisis y de
+  descanso cuentan como cumplidos. Se ve la semana entera (por ejemplo, 12 de 30) y avisa de cada estrella nueva.
 - **Sesión paso a paso** (botón *Empezar la sesión*): un ejercicio en pantalla con la foto de la
   máquina, las cifras ya puestas y un botón grande *Hecho*; pregunta cómo ha ido y pasa al
   siguiente. Al terminar, celebración con confeti, lo que ha mejorado y la cuenta de la semana.
@@ -59,17 +59,22 @@ libreta desde el mismo sitio (mejor, desde el icono).
   WhatsApp a la familia (desde Progreso o al terminar).
 - **Hoy:** cómo se encuentra (1–5; un día flojo propone bajar el ritmo), botón *Tengo alguna
   molestia* con las señales para parar y el 112, y el tipo de día.
-- **Semana tipo:** lunes, miércoles y viernes gimnasio; martes, jueves y sábado paseo; domingo
-  descanso. Cada día se puede cambiar.
+- **Semana tipo:** lunes, miércoles y viernes **diálisis** (marcado, sin entreno); martes,
+  jueves y sábado gimnasio (3 por semana); domingo paseo. Cada día se puede cambiar.
+- **Paseo todos los días:** la tarjeta *Paseo de hoy* sale siempre; en día de diálisis, como
+  opcional y corto.
 - **Gimnasio:** sesión variada cada día (calentamiento, 2 de piernas, 2 de espalda y brazos,
-  equilibrio y estiramientos) con 21 ejercicios suaves en máquina. Evita repetir los de la
+  equilibrio y estiramientos de pies) con ejercicios suaves en máquina. **Nada tumbado:** el
+  puente de glúteo y los estiramientos en colchoneta están retirados (`retirado: true`, se
+  guardan por el historial); al final, estiramiento de gemelo en la pared, de la planta del pie,
+  círculos de tobillo o rodar una pelota bajo el pie, sentado o de pie. Evita repetir los de la
   sesión anterior, se puede cambiar un ejercicio o pedir otra sesión. Peso, series y
   repeticiones se rellenan con lo de la última vez; si dos veces seguidas fue *fácil*, sugiere
   subir un poco.
 - **Ficha de cada ejercicio** (tocando el músculo o la máquina): foto de la máquina, músculos
   que trabaja, cómo se hace y con qué tener cuidado (pensado para la recuperación), notas de
   cómo ajustarla (se ven en la sesión), historial y vídeos.
-- **Ejercicios:** los 21 por grupos, con la foto de su máquina, para mirarlos antes de ir.
+- **Ejercicios:** los 23 en uso, por grupos, con la foto de su máquina, para mirarlos antes de ir.
 - **Paseo:** minutos y kilómetros, con la referencia de la última vez.
 - **Progreso:** racha de días, estrellas y minutos andando por semana, peso en cada máquina e
   historial.
@@ -229,7 +234,7 @@ aita/                     libreta de Manolo: index.html (define window.PERFIL) y
 vivagym/ tekniker/        libreta de rutina para cualquiera, con el gimnasio con que se estrena
 jon/ mikel/ tu/           enlaces antiguos: la misma libreta de rutina (iconos ya instalados)
 comun/base.js             núcleo: datos por persona, pestañas, hoja inferior, fotos, copia, gráficos
-comun/recuperacion.js     motor de Aita (sus 21 ejercicios, con su máquina y cómo se hacen)
+comun/recuperacion.js     motor de Aita (sus ejercicios, con su máquina y cómo se hacen)
 comun/rutina.js           motor de rutina (VivaGym y Tekniker)
 comun/catalogo.js         músculos, máquinas y ejercicios del catálogo
 comun/fichas.js           común a todas las libretas: foto de cada máquina y sus botones
