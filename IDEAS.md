@@ -42,6 +42,11 @@ Mejoras pensadas y aún sin hacer, para que no se pierdan. Cuando se haga una, s
 
 ## Hecho
 
+- **26/10/2026 · VivaGym y Tekniker (para Jone y todos):** la primera vez se elige *Proponme un
+  plan* o *Me lo hago yo*; enfoque Pierna y glúteo (y Torso); cardio antes de las máquinas;
+  *Mi semana* para ver y editar todo el plan; en *Hoy*, cambiar, quitar o añadir pregunta
+  ¿solo hoy o a partir de ahora?
+
 - **20/10/2026 · Tekniker:** solo se propone lo que tiene foto del gimnasio; desde la ficha de
   una máquina, con GitHub conectado, se puede proponer quitarla.
 

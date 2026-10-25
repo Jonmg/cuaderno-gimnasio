@@ -67,12 +67,17 @@ function alternativa(e, evitar) {
 }
 
 /* ---------- Plan a medida ----------
-   La persona elige cuántos días de fuerza y de cardio quiere a la semana y sus favoritos
-   (ejercicios y máquinas). El plan se arma con planes/plantillas.js: cada hueco toma su primer
-   candidato, salvo que un favorito encaje (mismo grupo muscular y tipo) o un candidato se haga
-   en una máquina favorita. Los favoritos que no caben en ningún hueco entran como extra
-   opcional en el día que más se les parece. Sin azar: con los mismos ajustes sale el mismo plan,
-   para que la progresión tenga hilo. Los cambios fijos de cada hueco siguen mandando. */
+   La primera vez, cada persona elige cómo empezar: que la app le proponga un plan o hacérselo
+   ella. El plan propuesto sale de cuántos días de fuerza y de cardio quiere a la semana, del
+   enfoque (equilibrado, pierna y glúteo, torso) y de sus favoritos, con planes/plantillas.js:
+   cada hueco toma su primer candidato, salvo que un favorito encaje (mismo grupo muscular y
+   tipo) o un candidato se haga en una máquina favorita. Los favoritos que no caben en ningún
+   hueco entran como extra opcional en el día que más se les parece. Sin azar: con los mismos
+   ajustes sale el mismo plan, para que la progresión tenga hilo.
+   En cuanto la persona cambia algo del plan "a partir de ahora" (o se lo hace ella), el plan
+   pasa a ser suyo: se guarda tal cual en ajustes.miPlan y ya no se rehace solo. Pedir otro plan
+   propuesto lo borra (el historial no se toca). Los minutos de cardio antes de las máquinas no
+   van dentro del plan: se ponen como primer ejercicio de cada día de fuerza, sea cual sea. */
 const PL = window.PLANTILLAS;
 const favoritos = tipo => Datos.ajustes.favoritos?.[tipo] || [];
 const esFav = id => favoritos("ej").includes(id);
@@ -83,6 +88,8 @@ function objetivos() {
   const a = Datos.ajustes, gym = Number(a.diasGym) || BASE.dias.length, cardio = Number(a.diasCardio) || 0;
   return { gym, cardio, total: gym + cardio };
 }
+const enfoque = () => PL?.semanas[Datos.ajustes.enfoque] ? Datos.ajustes.enfoque : "equilibrado";
+const planPropio = () => !!Datos.ajustes.miPlan?.dias?.length;
 const grupoDe = m => FILTROS_MUSCULO.find(f => f[1].includes(m))?.[1] || [m];
 const ZONA_PIERNA = ["cuadriceps", "isquios", "gluteo", "gluteo-medio", "aductores", "gemelo"], ZONA_CORE = ["abdomen", "oblicuos", "lumbar"];
 const zonaCuerpo = m => ZONA_PIERNA.includes(m) ? "pierna" : ZONA_CORE.includes(m) ? "core" : m === "cardio" || m === "cuerpo" ? m : "torso";
@@ -104,9 +111,16 @@ function entradaPlan(h, id, slot) {
   const { seccion, superserie, opcional, rodilla } = pauta;
   return JSON.parse(JSON.stringify({ id, slot, seccion, superserie, opcional, rodilla }));
 }
+// El ejercicio con el que se hace el cardio de antes: el elegido, o el de una máquina favorita, o
+// el primero que se pueda hacer aquí.
+function ejCardioAntes() {
+  const elegido = Datos.ajustes.cardioAntesEj, lista = PL.cardioAntes.map(cat).filter(Boolean);
+  if (cat(elegido)) return elegido;
+  return (lista.find(e => conApFav(e) && sePuedeAqui(e)) || lista.find(sePuedeAqui) || lista[0]).id;
+}
 function construirPlan() {
   if (!PL) return;
-  const n = Math.min(6, Math.max(1, objetivos().gym));
+  const a = Datos.ajustes, n = Math.min(6, Math.max(1, objetivos().gym));
   const defs = { ...PL.dias, cardio: PL.cardio };
   for (const d of BASE.dias) defs[d.id] = { ...d, huecos: d.ejercicios.map(e => ({ ...e, ej: [e.id], slot: e.id })) };
   const armar = (id, nombre) => {
@@ -115,22 +129,93 @@ function construirPlan() {
     return { ...def, id, nombre, ejercicios };
   };
   DIA = Object.fromEntries(Object.keys(defs).map(id => [id, armar(id, id === "cardio" ? defs[id].nombre : defs[id].titulo)]));
-  const rot = PL.semanas[n].map((id, i) => (DIA[id] = armar(id, `Día ${i + 1}`)));
-  // Favoritos sin hueco (y máquinas favoritas que ningún ejercicio del plan usa): extra opcional.
-  const usa = ap => rot.some(d => d.ejercicios.some(pe => variantes(cat(pe.id) || {}).some(v => v.ap === ap)));
-  const quiere = [...favoritos("ej"), ...favoritos("ap").filter(ap => AP[ap] && AP[ap].tipo !== "cardio" && !usa(ap)).map(ap => ejerciciosCon(ap)[0]?.id)];
-  for (const id of new Set(quiere)) {
-    const e = cat(id);
-    if (!e || e.oculto || e.m[0] === "cardio" || rot.some(d => d.ejercicios.some(pe => pe.id === id))) continue;
-    const parecido = d => d.ejercicios.reduce((s, pe) => { const m = cat(pe.id)?.m[0]; return s + (m === e.m[0] ? 3 : zonaCuerpo(m) === zonaCuerpo(e.m[0]) ? 1 : 0); }, 0);
-    const extras = d => d.ejercicios.filter(pe => pe.slot.startsWith("fav-")).length;
-    const dia = rot.filter(d => extras(d) < 2).sort((a, b) => parecido(b) - parecido(a) || extras(a) - extras(b))[0];
-    if (dia) dia.ejercicios.push({ id, slot: `fav-${id}`, seccion: "★ Favorito", opcional: true, rodilla: false });
+  let rot;
+  if (planPropio()) {
+    // Los días que se quitaron del plan siguen en DIA: el historial y el día ya empezado los usan.
+    for (const d of a.miPlan.quitados || []) DIA[d.id] = { calentamiento: [], ...JSON.parse(JSON.stringify(d)), nombre: d.titulo };
+    rot = a.miPlan.dias.map((d, i) => (DIA[d.id] = { calentamiento: [], ...JSON.parse(JSON.stringify(d)), nombre: `Día ${i + 1}` }));
   }
-  const o = objetivos();
-  P = { ...BASE, nombre: `Plan de ${n} día${n > 1 ? "s" : ""} de fuerza${o.cardio ? ` y ${o.cardio} de cardio` : ""}`, dias: rot };
+  else {
+    rot = PL.semanas[enfoque()][n].map((id, i) => (DIA[id] = armar(id, `Día ${i + 1}`)));
+    // Favoritos sin hueco (y máquinas favoritas que ningún ejercicio del plan usa): extra opcional.
+    const usa = ap => rot.some(d => d.ejercicios.some(pe => variantes(cat(pe.id) || {}).some(v => v.ap === ap)));
+    const quiere = [...favoritos("ej"), ...favoritos("ap").filter(ap => AP[ap] && AP[ap].tipo !== "cardio" && !usa(ap)).map(ap => ejerciciosCon(ap)[0]?.id)];
+    for (const id of new Set(quiere)) {
+      const e = cat(id);
+      if (!e || e.oculto || e.m[0] === "cardio" || rot.some(d => d.ejercicios.some(pe => pe.id === id))) continue;
+      const parecido = d => d.ejercicios.reduce((s, pe) => { const m = cat(pe.id)?.m[0]; return s + (m === e.m[0] ? 3 : zonaCuerpo(m) === zonaCuerpo(e.m[0]) ? 1 : 0); }, 0);
+      const extras = d => d.ejercicios.filter(pe => pe.slot.startsWith("fav-")).length;
+      const dia = rot.filter(d => extras(d) < 2).sort((a, b) => parecido(b) - parecido(a) || extras(a) - extras(b))[0];
+      if (dia) dia.ejercicios.push({ id, slot: `fav-${id}`, seccion: "★ Favorito", opcional: true, rodilla: false });
+    }
+  }
+  // Cardio antes de las máquinas: primer ejercicio de cada día de fuerza (y fuera el "5 min de bici").
+  const min = Number(a.cardioAntes) || 0;
+  if (min) for (const d of rot) {
+    d.calentamiento = (d.calentamiento || []).filter(c => !/^\d+ min/.test(c));
+    d.ejercicios.unshift({ id: ejCardioAntes(), slot: "cardio-antes", cardioAntes: true, seccion: "Cardio para empezar", series: 1, reps: [min, min], unidad: "min", sinPeso: true, tipo: "aislamiento", rodilla: false });
+  }
+  const o = objetivos(), nd = rot.length;
+  P = { ...BASE, dias: rot, nombre: planPropio() ? `Tu plan: ${nd} día${nd > 1 ? "s" : ""}${nd > 1 ? " que se turnan" : ""}`
+    : `Plan de ${n} día${n > 1 ? "s" : ""} de fuerza${o.cardio ? ` y ${o.cardio} de cardio` : ""}${enfoque() !== "equilibrado" ? ` · ${PL.enfoques.find(x => x[0] === enfoque())[1].toLowerCase()}` : ""}` };
   enElPlan = new Set([...rot, DIA.cardio].flatMap(d => d.ejercicios.map(pe => pe.id)));
 }
+
+/* ---------- Editar el plan ----------
+   Todo cambio "a partir de ahora" pasa por aquí: el plan se vuelve de la persona (miPlan, copia
+   del que se ve, con los cambios fijos de antes ya dentro) y se rehace. */
+function miPlan() {
+  const a = Datos.ajustes;
+  if (!planPropio()) a.miPlan = { propio: false, dias: P.dias.map(d => JSON.parse(JSON.stringify({ id: d.id, titulo: d.titulo, calentamiento: d.calentamiento, nota: d.nota, rodilla: d.rodilla, ejercicios: d.ejercicios.filter(pe => !pe.cardioAntes) }))) };
+  // Los cambios fijos de antes (sustituciones por hueco) pasan a estar dentro del plan.
+  for (const d of a.miPlan.dias) d.ejercicios = d.ejercicios.map(pe => {
+    const id = a.sustituciones?.[slotDe(pe)];
+    if (!id || !cat(id)) return pe;
+    delete a.sustituciones[slotDe(pe)];
+    return entradaCambiada(pe, id);
+  });
+  return a.miPlan;
+}
+// Otro ejercicio en el mismo hueco: conserva la pauta si se mide igual; si no, la del catálogo.
+function entradaCambiada(pe, id) {
+  const c = cat(id), { seccion, superserie, opcional, slot } = pe;
+  const nueva = mismaMedida(prescripcion(pe, pe.id), c) ? { ...pe, id } : JSON.parse(JSON.stringify({ id, slot, seccion, superserie, opcional }));
+  if (grupoDe(cat(pe.id)?.m[0])[0] !== grupoDe(c.m[0])[0]) nueva.seccion = zonaDe(c);
+  return nueva;
+}
+// Una superserie solo tiene sentido con dos o más ejercicios seguidos.
+function arreglarSuperseries(dia) {
+  for (const ss of new Set(dia.ejercicios.map(pe => pe.superserie).filter(Boolean))) {
+    const pos = dia.ejercicios.map((pe, i) => pe.superserie === ss ? i : -1).filter(i => i >= 0);
+    if (pos.length < 2 || pos[pos.length - 1] - pos[0] !== pos.length - 1) for (const i of pos) delete dia.ejercicios[i].superserie;
+  }
+}
+function guardarPlan(mp) {
+  for (const d of mp.dias) arreglarSuperseries(d);
+  Datos.guardarAjustes(); construirPlan(); evento("gim-plan-editado");
+}
+const diaDeMiPlan = id => miPlan().dias.find(d => d.id === id);
+// Cambios fijos desde Hoy o desde Mi semana. El hueco del cardio de antes va por sus ajustes.
+function cambiarEnPlan(diaId, slot, id) {
+  if (slot === "cardio-antes") { Datos.ajustes.cardioAntesEj = id; Datos.guardarAjustes(); construirPlan(); evento("gim-plan-editado"); return; }
+  const mp = miPlan(), d = mp.dias.find(x => x.id === diaId), i = d?.ejercicios.findIndex(pe => slotDe(pe) === slot);
+  if (i >= 0) d.ejercicios[i] = entradaCambiada(d.ejercicios[i], id);
+  guardarPlan(mp);
+}
+function quitarDelPlan(diaId, slot) {
+  if (slot === "cardio-antes") { Datos.ajustes.cardioAntes = 0; Datos.guardarAjustes(); construirPlan(); evento("gim-plan-editado"); return; }
+  const mp = miPlan(), d = mp.dias.find(x => x.id === diaId);
+  if (d) d.ejercicios = d.ejercicios.filter(pe => slotDe(pe) !== slot);
+  guardarPlan(mp);
+}
+function añadirAlPlan(diaId, id) {
+  const mp = miPlan(), d = mp.dias.find(x => x.id === diaId), c = cat(id); if (!d || !c) return;
+  d.ejercicios.push({ id, slot: `p-${id}-${Date.now().toString(36)}`, seccion: zonaDe(c) });
+  guardarPlan(mp);
+}
+// Días que la persona puede tocar del plan (el de cardio y el libre van aparte).
+const enRotacion = id => P.dias.some(d => d.id === id);
+const nombreDia = id => DIA[id]?.nombre || "";
 // Semana orientativa: los días de entreno repartidos de lunes a domingo, alternando fuerza y cardio.
 function semanaTipo() {
   const o = objetivos(), t = Math.min(7, o.total), dias = Array(7).fill("");
@@ -473,7 +558,7 @@ function pintarHoy() {
   // Un punto por día: los de fuerza llenos y los de cardio en el otro color.
   const puntos = (n, hechos, clase) => Array.from({ length: Math.max(n, hechos) }, (_, i) => `<i class="${clase} ${i < hechos ? "hecho" : ""}"></i>`).join("");
   let h = `<div class="wrap" style="padding:0">
-    ${Datos.ajustes.planHecho ? "" : htmlTuPlan(true)}
+    ${Datos.ajustes.planHecho ? "" : Datos.ajustes.comoEmpezar ? htmlTuPlan(true) : htmlEmpezar()}
     <section class="card semana" aria-label="Esta semana">
       <div class="puntos" aria-hidden="true">${puntos(o.gym, sem.gym, "fuerza")}${puntos(o.cardio, sem.cardio, "cardio")}</div>
       <div><b class="num grande">${hechos} de ${o.total}</b> <span class="muted">entrenos esta semana</span>
@@ -514,7 +599,8 @@ function pintarSesion(d, dia) {
     ${dia.calentamiento.length ? `<div class="calent"><span class="eyebrow">Calentamiento</span>
       ${dia.calentamiento.map((c, i) => `<label class="lista-check"><input type="checkbox" id="cal-${i}" data-calent="${i}" ${d.calent?.[i] ? "checked" : ""}><span>${esc(c)}</span></label>`).join("")}
     </div>` : ""}`;
-  if (!hs.length) h += `<p class="muted" style="margin:0">Añade los ejercicios que vayas haciendo: cada uno queda registrado con su historial.</p>`;
+  if (!hs.length) h += enRotacion(dia.id) ? `<p class="muted" style="margin:0">Este día aún no tiene ejercicios. Ponlos en <button class="enlace" data-misemana>Mi semana</button> para que salgan siempre, o añade hoy los que vayas haciendo.</p>`
+    : `<p class="muted" style="margin:0">Añade los ejercicios que vayas haciendo: cada uno queda registrado con su historial.</p>`;
   let i = 0;
   while (i < hs.length) {
     const { e } = hs[i];
@@ -527,7 +613,7 @@ function pintarSesion(d, dia) {
     } else { h += pintarEjercicio(d, dia, hs[i]); i++; }
   }
   const quitados = (d.quitados || []).map(slot => dia.ejercicios.find(pe => slotDe(pe) === slot)).filter(Boolean).map(pe => ({ ...cat(pe.id), slot: slotDe(pe) }));
-  h += `<div class="fila"><button class="btn sec" data-anadir>+ Añadir ejercicio</button></div>`;
+  h += `<div class="fila"><button class="btn sec" data-anadir>+ Añadir ejercicio</button>${enRotacion(dia.id) ? `<button class="btn sec" data-misemana>✎ Mi semana</button>` : ""}</div>`;
   if (hs.noAqui?.length) h += `<p class="small muted" style="margin:0">Hoy no se propone${hs.noAqui.length > 1 ? "n" : ""} ${esc(hs.noAqui.join(", "))}: en ${esc(lugar().corto)} no hay con qué hacerlo${hs.noAqui.length > 1 ? "s" : ""} ni otro parecido.</p>`;
   if (quitados.length) h += `<p class="small muted" style="margin:0">Quitados hoy: ${quitados.map(e => `${esc(e.nombre)} <button class="enlace" data-recuperar="${e.slot}">recuperar</button>`).join(" · ")}</p>`;
   return h + `</section>`;
@@ -577,7 +663,7 @@ function pintarEjercicio(d, dia, hueco) {
   });
   h += `</div><div class="fila ej-acciones">`;
   if (dia.rodilla && e.rodilla !== false) h += `<button class="chip mini" data-rod="${e.id}" aria-pressed="${!!x.rodilla}">Me molestó la rodilla</button>`;
-  if (!bloqueado && !hueco.extra) h += `<button class="chip mini" data-cambiar="${slot}">Cambiar ejercicio</button><button class="chip mini" data-quitar="${slot}">Quitar hoy</button>`;
+  if (!bloqueado && !hueco.extra) h += `<button class="chip mini" data-cambiar="${slot}">Cambiar ejercicio</button><button class="chip mini" data-quitar="${slot}">Quitar</button>`;
   return h + `</div></article>`;
 }
 
@@ -697,13 +783,15 @@ const favorito = e => esFav(e.id) ? 2 : conApFav(e) ? 1 : 0;
 function filtrar({ q = "", musc = "", mat = "", excluir = new Set(), primero = [], aqui = false }) {
   const t = sinAcentos(q).trim();
   const grupo = FILTROS_MUSCULO.find(f => f[0] === musc)?.[1];
+  // Al buscar, primero los que lo llevan en el nombre ("prensa" da la prensa antes que el gemelo en prensa).
+  const enNombre = e => t && sinAcentos(e.nombre).includes(t) ? 1 : 0;
   return todos()
     .filter(e => !excluir.has(e.id)
       && (!aqui || sePuedeAqui(e))
       && (!grupo || grupo.includes(e.m[0]))
       && (!mat || e.variantes.some((v, i) => AP[v.ap]?.tipo === mat && (!aqui || disponible(e, i))))
       && (!t || sinAcentos(`${e.nombre} ${nombreMusculos(e)} ${e.variantes.map(v => `${v.n} ${AP[v.ap]?.nombre || ""}`).join(" ")}`).includes(t)))
-    .sort((a, b) => primero.includes(b.m[0]) - primero.includes(a.m[0]) || favorito(b) - favorito(a) || a.nombre.localeCompare(b.nombre, "es"));
+    .sort((a, b) => enNombre(b) - enNombre(a) || primero.includes(b.m[0]) - primero.includes(a.m[0]) || favorito(b) - favorito(a) || a.nombre.localeCompare(b.nombre, "es"));
 }
 function htmlLista(lista, accion, aqui = false) {
   if (!lista.length) return `<p class="muted small" style="margin:0">No hay ninguno así. Prueba con otro filtro o créalo abajo.</p>`;
@@ -727,23 +815,56 @@ function htmlFiltros(st, para) {
 }
 
 /* ---------- Hojas ---------- */
-let Sel = null;          // cambiar / añadir / crear ejercicio
+// Sel: hoja de elegir ejercicio. Modos: cambiar, anadir y quitar (hoy, en Hoy), plan-cambiar y
+// plan-anadir (en Mi semana, a partir de ahora) y explorar (crear desde Ejercicios).
+let Sel = null;
 function abrirAyuda(id) { abrirFicha("ayuda", id); evento("gim-ficha-abierta"); }
 function abrirAparato(ap) { abrirFicha("aparato", ap); evento("gim-ficha-abierta"); }
 
+const enPlan = () => Sel.modo.startsWith("plan-");
+// El hueco que se cambia: en Hoy, el de la sesión; en Mi semana, la entrada del plan.
+function huecoSel() {
+  if (!Sel.slot) return null;
+  if (!enPlan()) return huecos(Datos.dias[HOY]).find(h => h.slot === Sel.slot) || null;
+  const pe = DIA[Sel.dia]?.ejercicios.find(x => slotDe(x) === Sel.slot);
+  return pe ? { slot: Sel.slot, e: prescripcion(pe, pe.id) } : null;
+}
 function hojaSelector() {
-  const d = Datos.dias[HOY];
-  const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
+  const d = Datos.dias[HOY], dia = diaDef(d);
+  const hueco = huecoSel();
+  // ¿Solo hoy o a partir de ahora? Lo segundo cambia el plan (si el día de hoy es del plan).
+  const deAhora = dia && (enRotacion(dia.id) || Sel.slot === "cardio-antes");
+  const titDia = dia ? `${esc(dia.nombre)}${dia.titulo && enRotacion(dia.id) ? ` · ${esc(dia.titulo)}` : ""}` : "";
   if (Sel.paso === "confirmar") {
-    const nuevo = cat(Sel.elegido), dia = diaDef(d);
+    const nuevo = cat(Sel.elegido);
     return `<div class="hoja-cab"><h2>Cambiar ejercicio</h2>${botonCerrar}</div>
       <div class="cambio">${iconoMusculo(hueco.e.m)}<span>${esc(hueco.e.nombre)}</span><b aria-hidden="true">→</b>${iconoMusculo(nuevo.m)}<span><b>${esc(nuevo.nombre)}</b></span></div>
       <p class="small muted" style="margin:0">Se registra como ${esc(nuevo.nombre)}, con su propio historial.</p>
       <div class="grid-botones">
         <button class="btn" data-confirmar="hoy">Solo hoy</button>
-        ${DIA[dia.id] ? `<button class="btn sec" data-confirmar="siempre">Siempre en ${esc(dia.nombre)}</button>` : ""}
+        ${deAhora || DIA[dia.id] ? `<button class="btn sec" data-confirmar="siempre">A partir de ahora</button>` : ""}
       </div>
+      ${deAhora ? `<p class="small muted" style="margin:0">"A partir de ahora" lo cambia en tu plan${Sel.slot === "cardio-antes" ? ", para el cardio de antes de todos los días" : `: cada vez que toque ${titDia}`}.</p>` : ""}
       <button class="enlace" data-volversel style="justify-self:start">Elegir otro</button>`;
+  }
+  if (Sel.paso === "confirmar-anadir") {
+    const nuevo = cat(Sel.elegido);
+    return `<div class="hoja-cab"><h2>Añadir ${esc(nuevo.nombre)}</h2>${botonCerrar}</div>
+      <div class="grid-botones">
+        <button class="btn" data-anadirhoy>Solo hoy</button>
+        <button class="btn sec" data-anadirsiempre>A partir de ahora</button>
+      </div>
+      <p class="small muted" style="margin:0">"A partir de ahora" lo añade a tu plan: saldrá cada vez que toque ${titDia}.</p>
+      <button class="enlace" data-volversel style="justify-self:start">Elegir otro</button>`;
+  }
+  if (Sel.paso === "quitar") {
+    return `<div class="hoja-cab"><h2>Quitar ${esc(hueco.e.nombre)}</h2>${botonCerrar}</div>
+      <div class="grid-botones">
+        <button class="btn" data-quitarhoy>Solo hoy</button>
+        <button class="btn sec" data-quitarsiempre>Quitar del plan</button>
+      </div>
+      <p class="small muted" style="margin:0">${Sel.slot === "cardio-antes" ? `"Quitar del plan" quita el cardio de antes de las máquinas en todos los días. Se puede volver a poner en Mi semana.`
+        : `"Quitar del plan" lo quita a partir de ahora: ya no saldrá cuando toque ${titDia}. Su historial se queda.`}</p>`;
   }
   if (Sel.paso === "crear") {
     const grupo = FILTROS_MUSCULO.find(f => f[0] === Sel.musc)?.[1];
@@ -766,17 +887,18 @@ function hojaSelector() {
       <p class="small" id="msgNuevo" role="status" style="margin:0"></p>
       <div class="grid-botones"><button class="btn" data-guardarnuevo>Guardar ejercicio</button>${Sel.modo !== "explorar" ? `<button class="btn sec" data-volversel>Volver a la lista</button>` : ""}</div>`;
   }
-  const titulo = Sel.modo === "cambiar" ? `Cambiar ${esc(hueco.e.nombre)}` : "Añadir ejercicio";
+  const titulo = hueco ? `Cambiar ${esc(hueco.e.nombre)}` : Sel.modo === "plan-anadir" ? `Añadir a ${esc(DIA[Sel.dia]?.titulo || "este día")}` : "Añadir ejercicio";
   return `<div class="hoja-cab"><h2>${titulo}</h2>${botonCerrar}</div>
+    ${enPlan() ? `<button class="enlace" data-misemana style="justify-self:start">← Volver a Mi semana</button>` : ""}
     <input id="buscarSel" class="texto" type="search" placeholder="Buscar: prensa, polea, isquios…" value="${esc(Sel.q)}" autocomplete="off">
     ${htmlFiltros(Sel, "sel")}
     <div id="listaSel" class="lista">${listaSel()}</div>
     <button class="btn sec" data-crear>Crear ejercicio nuevo</button>`;
 }
 function listaSel() {
-  const d = Datos.dias[HOY];
-  const hueco = Sel.slot ? huecos(d).find(h => h.slot === Sel.slot) : null;
-  return htmlLista(filtrar({ ...Sel, excluir: enUso(d), primero: hueco?.e.m || [], aqui: true }), "elegir", true);
+  const hueco = huecoSel();
+  const excluir = enPlan() ? new Set((DIA[Sel.dia]?.ejercicios || []).map(pe => pe.id)) : enUso(Datos.dias[HOY]);
+  return htmlLista(filtrar({ ...Sel, excluir, primero: hueco?.e.m || [], aqui: true }), "elegir", true);
 }
 function crearPropio() {
   const nombre = $("#nuevoNombre").value.trim(), min = num($("#nuevoMin").value), max = num($("#nuevoMax").value);
@@ -794,6 +916,16 @@ function crearPropio() {
   Datos.ajustes.propios = [...propios(), e];
   Datos.guardarAjustes();
   return e.id;
+}
+// Lo que pasa al elegir un ejercicio de la lista, según para qué se abrió.
+function elegido(d, id) {
+  if (Sel.modo === "plan-cambiar") { cambiarEnPlan(Sel.dia, Sel.slot, id); Sel = null; abrirFicha("semana"); return; }
+  if (Sel.modo === "plan-anadir") { añadirAlPlan(Sel.dia, id); Sel = null; abrirFicha("semana"); return; }
+  Sel.elegido = id;
+  if (Sel.modo === "cambiar") { Sel.paso = "confirmar"; abrirHoja(hojaSelector()); return; }
+  // Añadir en un día del plan: ¿solo hoy o a partir de ahora?
+  if (enRotacion(d.diaPlan)) { Sel.paso = "confirmar-anadir"; abrirHoja(hojaSelector()); return; }
+  añadirExtra(d, id); cerrarHoja();
 }
 function añadirExtra(d, id) { d.extras = [...(d.extras || []), id]; if (!d.diaPlan) d.diaPlan = "libre"; tocar(HOY); evento("gim-plan-adaptado"); }
 // Estadísticas: primer registro del día y sesión completa (todas las series obligatorias hechas).
@@ -912,25 +1044,107 @@ function pintarEjercicios() {
   verZona();
 }
 
-/* ---------- Tu plan y favoritos ----------
-   La misma tarjeta sale en Hoy la primera vez (con el nombre) y siempre en Ajustes. */
+/* ---------- Tu plan, Mi semana y favoritos ----------
+   La primera vez, Hoy pregunta cómo empezar (proponme un plan / me lo hago yo). Después, la
+   tarjeta del plan sale en Hoy hasta darle a Listo, y siempre en Ajustes. Mi semana es la hoja
+   donde se ve y se edita todo el plan. */
 const LETRAS_SEMANA = ["L", "M", "X", "J", "V", "S", "D"];
+const MIN_CARDIO_ANTES = [0, 10, 15, 20, 30];
+function htmlEmpezar() {
+  return `<section class="card tu-plan" aria-labelledby="t-empezar">
+    <h2 id="t-empezar">¿Cómo quieres empezar?</h2>
+    <label class="campo" for="nombre">Tu nombre<input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre || "Cómo te llamas")}" class="texto" autocomplete="given-name"></label>
+    <div class="opciones-inicio">
+      <button class="opcion" data-empezar="guiado"><b>Proponme un plan</b><span>Dices cuántos días vas y en qué te quieres centrar, y la app te lo organiza.</span></button>
+      <button class="opcion" data-empezar="propio"><b>Me lo hago yo</b><span>Creas tus días con las máquinas y ejercicios que te gustan.</span></button>
+    </div>
+    <p class="small muted" style="margin:0">Elijas lo que elijas, luego puedes cambiar, quitar o añadir cualquier ejercicio.</p>
+  </section>`;
+}
+const chipsCardioAntes = () => `<div class="campo"><span>Cardio antes de las máquinas <span class="muted small">(cinta, bici o elíptica)</span></span>
+  <div class="chips dias-sem" role="group">${MIN_CARDIO_ANTES.map(n => `<button class="chip" data-cardioantes="${n}" aria-pressed="${(Number(Datos.ajustes.cardioAntes) || 0) === n}">${n ? `${n}'` : "No"}</button>`).join("")}</div></div>`;
 function htmlTuPlan(enHoy) {
-  const o = objetivos(), semana = semanaTipo(), nf = favoritos("ej").length + favoritos("ap").length;
+  const a = Datos.ajustes, o = objetivos(), semana = semanaTipo(), nf = favoritos("ej").length + favoritos("ap").length;
+  const propio = !!a.miPlan?.propio, conCambios = planPropio() && !propio;
   const chips = (k, valores, actual, otro) => `<div class="chips dias-sem" role="group">${valores.map(n => `<button class="chip" data-${k}="${n}" aria-pressed="${n === actual}" ${n + otro > 7 ? "disabled" : ""}>${n}</button>`).join("")}</div>`;
+  const cuenta = d => d.ejercicios.filter(pe => !pe.opcional && !pe.cardioAntes).length;
   return `<section class="card tu-plan" aria-labelledby="t-plan">
-    <h2 id="t-plan">${enHoy ? "Haz el plan a tu medida" : "Tu plan"}</h2>
-    ${enHoy ? `<p class="small muted" style="margin:0">Dinos cuántos días quieres entrenar y qué te gusta más: el plan se organiza solo. Se puede cambiar cuando quieras en Ajustes.</p>
-      <label class="campo" for="nombre">Tu nombre<input id="nombre" value="${esc(Datos.ajustes.nombre)}" placeholder="${esc(PERFIL.nombre || "Cómo te llamas")}" class="texto" autocomplete="given-name"></label>` : ""}
-    <div class="campo"><span id="t-dg">Días de fuerza a la semana</span>${chips("diasgym", [1, 2, 3, 4, 5, 6], o.gym, o.cardio)}</div>
+    <h2 id="t-plan">${enHoy ? (propio ? "Tu plan, a tu manera" : "Tu plan propuesto") : "Tu plan"}</h2>
+    ${enHoy ? `<p class="small muted" style="margin:0">${propio ? "Crea tus días en Mi semana y añade tus máquinas y ejercicios. Si cada día haces algo distinto, añade más días: se van turnando."
+      : "Dinos cuántos días vas y en qué te quieres centrar: el plan se organiza solo. Luego puedes cambiar, quitar o añadir lo que quieras."}</p>` : ""}
+    <div class="campo"><span>${propio ? "Días de gimnasio a la semana <span class=\"muted small\">(tu objetivo)</span>" : "Días de fuerza a la semana"}</span>${chips("diasgym", [1, 2, 3, 4, 5, 6], o.gym, o.cardio)}</div>
     <div class="campo"><span>Días de cardio a la semana <span class="muted small">(cinta, bici, elíptica, o deporte por fuera)</span></span>${chips("diascardio", [0, 1, 2, 3, 4, 5], o.cardio, o.gym)}</div>
+    ${propio ? "" : `<div class="campo"><span>En qué te quieres centrar</span><div class="chips enfoques" role="group">${PL.enfoques.map(([id, n, t]) => `<button class="chip" data-enfoque="${id}" aria-pressed="${enfoque() === id}"><b>${esc(n)}</b><span class="small">${esc(t)}</span></button>`).join("")}</div></div>`}
+    ${chipsCardioAntes()}
     <div class="semana-tipo" aria-label="Semana orientativa">${semana.map((t, i) => `<span class="${t === "F" ? "f" : t === "C" ? "c" : ""}"><b>${LETRAS_SEMANA[i]}</b>${t === "F" ? "Fuerza" : t === "C" ? "Cardio" : "—"}</span>`).join("")}</div>
     <p class="small muted" style="margin:0">Semana orientativa: cada día la app propone lo que toca según lo que lleves hecho, entrenes el día que entrenes.</p>
-    <div class="historial">${P.dias.map(d => `<div class="hist"><span><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</span><span class="muted small">${huecos({ diaPlan: d.id }).filter(h => !h.e.opcional).length} ejercicios</span></div>`).join("")}
+    <div class="historial">${P.dias.map(d => `<div class="hist"><span><b>${esc(d.nombre)}</b> · ${esc(d.titulo)}</span><span class="muted small">${cuenta(d) ? `${cuenta(d)} ejercicio${cuenta(d) > 1 ? "s" : ""}` : "sin ejercicios aún"}</span></div>`).join("")}
       ${o.cardio && DIA.cardio ? `<div class="hist"><span><b>Cardio</b> · ${esc(cat(DIA.cardio.ejercicios[0].id)?.nombre)}</span><span class="muted small">${pauta({ ...cat(DIA.cardio.ejercicios[0].id), ...DIA.cardio.ejercicios[0] })}</span></div>` : ""}</div>
-    <div class="fila"><button class="btn sec peq" data-favoritos>★ Favoritos${nf ? ` (${nf})` : ""}</button>${enHoy ? `<button class="btn peq" data-planlisto>Listo</button>` : ""}</div>
-    ${nf ? "" : `<p class="small muted" style="margin:0">Marca tus ejercicios y máquinas favoritas: saldrán más a menudo en el plan.</p>`}
+    ${conCambios ? `<p class="small muted" style="margin:0">Es el plan propuesto con tus cambios. <button class="enlace" data-rehacer>Pedir otro plan</button></p>` : ""}
+    <div class="fila"><button class="btn ${enHoy && propio ? "" : "sec "}peq" data-misemana>✎ Ver y editar mi semana</button><button class="btn sec peq" data-favoritos>★ Favoritos${nf ? ` (${nf})` : ""}</button>${enHoy ? `<button class="btn peq" data-planlisto>Listo</button>` : ""}</div>
+    ${nf ? "" : `<p class="small muted" style="margin:0">${propio ? "Marca tus ejercicios y máquinas favoritas: salen los primeros al añadir." : "Marca tus ejercicios y máquinas favoritas: saldrán más a menudo en el plan."}</p>`}
+    ${enHoy ? `<p class="small muted" style="margin:0">${propio ? `¿Mejor que te lo organice la app? <button class="enlace" data-empezar="guiado">Proponme un plan</button>` : `¿Prefieres montártelo desde cero? <button class="enlace" data-empezar="propio">Me lo hago yo</button>`}</p>` : ""}
   </section>`;
+}
+// Mi semana: todos los días del plan con sus ejercicios, para cambiarlos a partir de ahora.
+function hojaSemana() {
+  const o = objetivos(), lim = lugarLimitado();
+  const fila = (d, pe, i, n) => {
+    const e = prescripcion(pe, pe.id), k = `${d.id}|${slotDe(pe)}`, nombre = esc(e.nombre);
+    const aviso = lim && !sePuedeAqui(e) ? ` · en ${esc(lugar().corto)} se cambia por otro` : "";
+    return `<li class="ms-ej">
+      <div class="ms-txt">${iconoMusculo(e.m, { clase: "musculo item-ico" })}<span><b>${esFav(e.id) ? "★ " : ""}${nombre}</b>
+        <span class="small muted">${pe.cardioAntes ? `${pauta(e)} · antes de las máquinas` : `${pauta(e)}${e.opcional ? " · opcional" : ""}`}${aviso}</span></span></div>
+      <div class="ms-acc">${pe.cardioAntes ? "" : `
+        <button class="chip mini" data-msmover="${k}|-1" aria-label="Subir ${nombre}" ${i === 0 ? "disabled" : ""}>↑</button>
+        <button class="chip mini" data-msmover="${k}|1" aria-label="Bajar ${nombre}" ${i === n - 1 ? "disabled" : ""}>↓</button>
+        <button class="chip mini" data-mspauta="${k}">Series</button>`}
+        <button class="chip mini" data-mscambiar="${k}">Cambiar</button>
+        ${pe.cardioAntes ? "" : `<button class="chip mini" data-msquitar="${k}" aria-label="Quitar ${nombre}">Quitar</button>`}</div>
+    </li>`;
+  };
+  return `<div class="hoja-cab"><h2>Mi semana</h2>${botonCerrar}</div>
+    <p class="small muted" style="margin:0">Los días se turnan en orden, vayas el día que vayas. Lo que cambies aquí vale <b>a partir de ahora</b>; para cambiar algo solo hoy, hazlo en Hoy.</p>
+    ${chipsCardioAntes()}
+    ${P.dias.map(d => {
+      const ejs = d.ejercicios.filter(pe => !pe.cardioAntes);
+      return `<div class="ms-dia">
+        <div class="ms-cab"><b>${esc(d.nombre)}</b><input class="texto" data-mstitulo="${d.id}" value="${esc(d.titulo)}" aria-label="Nombre de ${esc(d.nombre)}" maxlength="40">
+          ${P.dias.length > 1 ? `<button class="enlace" data-msborrardia="${d.id}">Quitar día</button>` : ""}</div>
+        <ol class="ms-lista">${d.ejercicios.filter(pe => pe.cardioAntes).map(pe => fila(d, pe, 0, 0)).join("")}${ejs.map((pe, i) => fila(d, pe, i, ejs.length)).join("")}</ol>
+        ${ejs.length ? "" : `<p class="small muted" style="margin:0">Aún sin ejercicios.</p>`}
+        <button class="btn sec peq" data-msanadir="${d.id}">+ Añadir ejercicio</button>
+      </div>`;
+    }).join("")}
+    <button class="btn sec" data-msdia>+ Añadir otro día</button>
+    ${o.cardio && DIA.cardio ? `<p class="small muted" style="margin:0">Además, ${o.cardio} día${o.cardio > 1 ? "s" : ""} de cardio a la semana (${esc(cat(DIA.cardio.ejercicios[0].id)?.nombre)}): la app lo propone cuando toca.</p>` : ""}
+    ${planPropio() && !Datos.ajustes.miPlan.propio ? `<p class="small muted" style="margin:0">Es el plan propuesto con tus cambios. <button class="enlace" data-rehacer>Pedir otro plan</button></p>` : ""}
+    <button class="btn" data-cerrar>Hecho</button>`;
+}
+HOJAS.semana = hojaSemana;
+// Series y repeticiones de un ejercicio del plan.
+function hojaPauta(k) {
+  const [diaId, slot] = k.split("|"), pe = DIA[diaId]?.ejercicios.find(x => slotDe(x) === slot);
+  if (!pe) return hojaSemana();
+  const e = prescripcion(pe, pe.id), u = e.unidad === "s" ? "segundos" : e.unidad === "min" ? "minutos" : "repeticiones";
+  return `<div class="hoja-cab"><h2>${esc(e.nombre)}</h2>${botonCerrar}</div>
+    <p class="small muted" style="margin:0">${esc(DIA[diaId].titulo)} · ahora ${pauta(e)}</p>
+    <div class="campos">
+      <label class="campo">Series<select id="msSeries">${[1, 2, 3, 4, 5, 6].map(n => `<option ${n === e.series ? "selected" : ""}>${n}</option>`).join("")}</select></label>
+      <label class="campo">Mínimo<input class="num corto" type="number" inputmode="numeric" min="1" id="msMin" value="${e.reps[0]}"></label>
+      <label class="campo">Máximo<input class="num corto" type="number" inputmode="numeric" min="1" id="msMax" value="${e.reps[1]}"></label>
+    </div>
+    <p class="small muted" style="margin:0">En ${u}${e.porLado ? ", por lado" : ""}. Cuando llegues al máximo en todas las series, la app te propone subir.</p>
+    <p class="small" id="msgPauta" role="status" style="margin:0"></p>
+    <div class="grid-botones"><button class="btn" data-msguardarpauta="${esc(k)}">Guardar</button><button class="btn sec" data-misemana>Volver a Mi semana</button></div>`;
+}
+HOJAS.pauta = hojaPauta;
+// Si el plan es el propuesto con cambios, pedir otro días/enfoque pierde esos cambios: se pregunta.
+function soltarCambios() {
+  if (!planPropio() || Datos.ajustes.miPlan.propio) return true;
+  if (!confirm("Con esto la app te propone otro plan y se pierden los cambios que hiciste en el tuyo (tu historial se queda). ¿Seguir?")) return false;
+  delete Datos.ajustes.miPlan;
+  return true;
 }
 const textoFavs = () => { const e = favoritos("ej").length, m = favoritos("ap").length; return e + m ? `Tienes ${e} ejercicio${e === 1 ? "" : "s"} y ${m} máquina${m === 1 ? "" : "s"} como favoritos.` : "Aún no tienes favoritos."; };
 // Máquinas de los sitios donde entrena la persona (sin lugares con lista, todas).
@@ -962,10 +1176,6 @@ const botonFav = (tipo, id) => { const on = tipo === "ap" ? apFav(id) : esFav(id
 function opciones(valores, actual, sufijo = "") { return valores.map(v => `<option value="${v}" ${Number(actual) === v ? "selected" : ""}>${fmt(v)}${sufijo}</option>`).join(""); }
 function pintarAjustes() {
   const a = Datos.ajustes;
-  const sust = Object.entries(a.sustituciones || {}).map(([slot, id]) => {
-    const dia = [...P.dias, ...Object.values(DIA)].find(d => d.ejercicios.some(pe => slotDe(pe) === slot)), pe = dia?.ejercicios.find(x => slotDe(x) === slot);
-    return pe && cat(id) ? `<div class="hist"><span>${esc(dia.nombre)}: ${esc(cat(pe.id)?.nombre)} → <b>${esc(cat(id).nombre)}</b></span><button class="enlace" data-deshacersust="${slot}">Deshacer</button></div>` : "";
-  }).join("");
   $("#vista").innerHTML = `<div class="wrap" style="padding:0">
     ${htmlPerfil()}
     ${htmlTuPlan(false)}
@@ -990,9 +1200,7 @@ function pintarAjustes() {
         return `<div class="hist"><span>${esFav(e.id) ? "★ " : ""}${esc(e.nombre)}${antes ? ` <span class="muted small">(en lugar de ${esc(antes)}${h.porLugar ? ` en ${esc(lugar().corto)}` : ""})</span>` : ""}${e.opcional ? " (opcional)" : ""}</span><span class="muted num">${pauta(e)}</span></div>`;
       }).join("")}${hs.noAqui.length ? `<p class="small muted" style="margin:6px 0 0">No se propone${hs.noAqui.length > 1 ? "n" : ""} aquí: ${esc(hs.noAqui.join(", "))}.</p>` : ""}</div></details>`; }).join("")}
       <p class="muted small" style="margin:0">Duración ~${P.duracionMin} min. Descansos: ${esc(P.textoDescansos)}</p>
-    </section>
-    <section class="card"><h2>Cambios fijos en tu plan</h2>
-      ${sust ? `<div class="historial">${sust}</div>` : `<p class="muted small" style="margin:0">Ninguno. En cada ejercicio, "Cambiar ejercicio" permite cambiarlo solo hoy o siempre.</p>`}
+      <button class="btn sec peq" data-misemana style="justify-self:start">✎ Editar mi semana</button>
     </section>
     ${Compartir.htmlAjustes()}
     ${htmlCopia()}
@@ -1021,7 +1229,7 @@ function motivacion() {
   const ultimo = Object.keys(Datos.dias).filter(k => k < HOY && diaActivo(Datos.dias[k])).sort().pop();
   const sinEntrenar = ultimo ? Math.round((deClave(HOY) - deClave(ultimo)) / 864e5) : 0;
   const racha = rachaSemanas();
-  if (!Datos.ajustes.planHecho && !Object.values(Datos.dias).some(diaActivo)) return `${Datos.ajustes.nombre || PERFIL.nombre ? `${n}, primero` : "Primero"}, haz el plan a tu medida: cuántos días entrenas y qué te gusta más.`;
+  if (!Datos.ajustes.planHecho && !Object.values(Datos.dias).some(diaActivo)) return `${Datos.ajustes.nombre || PERFIL.nombre ? `${n}, primero` : "Primero"}, ${Datos.ajustes.comoEmpezar ? "deja tu plan a tu gusto y dale a Listo." : "elige cómo quieres entrenar: te propongo un plan o te lo haces tú."}`;
   if (diaActivo(d)) return hechos >= obj ? `¡Hecho, ${n}! Objetivo de la semana cumplido. Ahora toca descansar.` : `¡Sesión hecha, ${n}! Agua, buena comida y a descansar.`;
   if (sinEntrenar >= 14) return `${n}, han pasado ${Math.floor(sinEntrenar / 7)} semanas. No hay nada que recuperar: con ir hoy, ya ganas.`;
   if (sinEntrenar >= 4) return `${n}, llevas ${sinEntrenar} días sin entrenar. Hoy es un buen día para volver.`;
@@ -1054,7 +1262,11 @@ window.App = {
   alCargar() {
     const a = Datos.ajustes;
     if (a.diasGym == null) { a.diasGym = BASE.dias.length; a.diasCardio = Math.max(0, Math.min(5, (Number(a.objetivo) || BASE.objetivoSemanal) - a.diasGym)); }
+    // Quien ya entrenaba con el plan propuesto no ve la pregunta de cómo empezar.
+    if (!a.comoEmpezar && (a.planHecho || Object.values(Datos.dias).some(diaActivo))) a.comoEmpezar = "guiado";
     construirPlan();
+    // Los cambios fijos de antes (por hueco) pasan a estar dentro del plan, que ya es de la persona.
+    if (Object.keys(a.sustituciones || {}).some(slot => P.dias.some(d => d.ejercicios.some(pe => slotDe(pe) === slot)))) { miPlan(); Datos.guardarAjustes(); construirPlan(); }
   },
   // Las fotos de la versión anterior iban por ejercicio: pasan a la máquina que usa (si no tiene ya).
   async alCargarFotos() {
@@ -1073,6 +1285,66 @@ window.App = {
     if (ds.ayuda) { abrirAyuda(ds.ayuda); return false; }
     if (ds.aparato) { abrirAparato(ds.aparato); return false; }
     if ("favoritos" in ds) { abrirFicha("favoritos"); evento("gim-favoritos-abiertos"); return false; }
+    if ("misemana" in ds) { Sel = null; abrirFicha("semana"); evento("gim-semana-abierta"); return false; }
+    if (ds.empezar) {
+      if (ds.empezar === "guiado") {
+        if (a.miPlan?.propio && a.miPlan.dias.some(x => x.ejercicios.length) && !confirm("Se borra el plan que te has hecho (tu historial se queda) y la app te propone uno. ¿Seguir?")) return false;
+        if (a.miPlan?.propio) delete a.miPlan;
+        a.comoEmpezar = "guiado"; Datos.guardarAjustes(); construirPlan(); evento("gim-plan-guiado"); return;
+      }
+      a.comoEmpezar = "propio";
+      if (!a.miPlan?.propio) a.miPlan = { propio: true, dias: [{ id: "m-" + Date.now().toString(36), titulo: "Mi día 1", calentamiento: [], ejercicios: [] }] };
+      Datos.guardarAjustes(); construirPlan(); evento("gim-plan-propio"); repintar(); abrirFicha("semana"); return false;
+    }
+    if ("rehacer" in ds) {
+      if (!soltarCambios()) return false;
+      a.comoEmpezar = "guiado"; Datos.guardarAjustes(); construirPlan(); evento("gim-plan-rehecho");
+      if (Hoja?.tipo === "semana") refrescarHoja();
+      return;
+    }
+    if (ds.enfoque) {
+      if (ds.enfoque === enfoque() || !soltarCambios()) return false;
+      a.enfoque = ds.enfoque; Datos.guardarAjustes(); construirPlan(); evento("gim-plan-personalizado"); return;
+    }
+    if (ds.cardioantes) {
+      a.cardioAntes = Number(ds.cardioantes); Datos.guardarAjustes(); construirPlan(); evento("gim-plan-personalizado");
+      if (Hoja?.tipo === "semana") refrescarHoja();
+      return;
+    }
+    /* Mi semana: cambios en el plan a partir de ahora. */
+    const [msDia, msSlot, msDir] = (ds.msmover || ds.mscambiar || ds.msquitar || ds.mspauta || ds.msguardarpauta || "").split("|");
+    if (ds.msmover) {
+      const mp = miPlan(), dd = mp.dias.find(x => x.id === msDia), i = dd?.ejercicios.findIndex(pe => slotDe(pe) === msSlot), j = i + Number(msDir);
+      if (!dd || i < 0 || j < 0 || j >= dd.ejercicios.length) return false;
+      [dd.ejercicios[i], dd.ejercicios[j]] = [dd.ejercicios[j], dd.ejercicios[i]];
+      guardarPlan(mp); refrescarHoja(); return;
+    }
+    if (ds.mscambiar) { Sel = { modo: "plan-cambiar", dia: msDia, slot: msSlot, q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
+    if (ds.msanadir) { Sel = { modo: "plan-anadir", dia: ds.msanadir, q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
+    if (ds.msquitar) {
+      const pe = DIA[msDia]?.ejercicios.find(x => slotDe(x) === msSlot);
+      if (!pe || !confirm(`¿Quitar ${cat(pe.id)?.nombre || "este ejercicio"} de ${DIA[msDia].titulo}? Su historial se queda.`)) return false;
+      quitarDelPlan(msDia, msSlot); refrescarHoja(); return;
+    }
+    if (ds.mspauta) { abrirFicha("pauta", ds.mspauta); return false; }
+    if (ds.msguardarpauta) {
+      const n = Number($("#msSeries").value), min = num($("#msMin").value), max = num($("#msMax").value);
+      if (!min || !max || min > max) { const m = $("#msgPauta"); m.textContent = "Revisa el rango: el mínimo no puede ser mayor que el máximo."; m.style.color = "var(--warn)"; return false; }
+      const mp = miPlan(), pe = mp.dias.find(x => x.id === msDia)?.ejercicios.find(x => slotDe(x) === msSlot);
+      if (pe) { pe.series = n; pe.reps = [min, max]; delete pe.seriesOpcionales; guardarPlan(mp); }
+      abrirFicha("semana"); return;
+    }
+    if ("msdia" in ds) {
+      const mp = miPlan();
+      mp.dias.push({ id: "m-" + Date.now().toString(36), titulo: `Mi día ${mp.dias.length + 1}`, calentamiento: [], ejercicios: [] });
+      guardarPlan(mp); refrescarHoja(); return;
+    }
+    if (ds.msborrardia) {
+      const mp = miPlan(), dd = mp.dias.find(x => x.id === ds.msborrardia);
+      if (!dd || mp.dias.length < 2 || (dd.ejercicios.length && !confirm(`¿Quitar el día "${dd.titulo}" del plan? Lo que ya hiciste ese día se queda en tu historial.`))) return false;
+      mp.dias = mp.dias.filter(x => x !== dd); mp.quitados = [...(mp.quitados || []).filter(x => x.id !== dd.id), dd];
+      guardarPlan(mp); refrescarHoja(); return;
+    }
     if (ds.fav) {
       const on = alternarFav(ds.fav);
       // En la lista de favoritos se cambia solo el botón, para no perder por dónde se iba.
@@ -1080,11 +1352,21 @@ window.App = {
       return;
     }
     if (ds.diasgym || ds.diascardio) {
+      if (ds.diasgym && Number(ds.diasgym) !== objetivos().gym && !soltarCambios()) return false;
       if (ds.diasgym) a.diasGym = Number(ds.diasgym); else a.diasCardio = Number(ds.diascardio);
       a.objetivo = objetivos().total; Datos.guardarAjustes(); construirPlan(); evento("gim-plan-personalizado"); return;
     }
     if ("planlisto" in ds) { a.planHecho = true; Datos.guardarAjustes(); return; }
     if (ds.cambiar) { Sel = { modo: "cambiar", slot: ds.cambiar, q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
+    if (ds.quitar) {
+      // En un día del plan se pregunta si es solo hoy o a partir de ahora; si no, se quita hoy.
+      if (enRotacion(d.diaPlan) || ds.quitar === "cardio-antes") { Sel = { modo: "quitar", slot: ds.quitar, paso: "quitar" }; abrirHoja(hojaSelector()); return false; }
+      d.quitados = [...new Set([...(d.quitados || []), ds.quitar])]; tocar(HOY); return;
+    }
+    if ("quitarhoy" in ds) { d.quitados = [...new Set([...(d.quitados || []), Sel.slot])]; tocar(HOY); cerrarHoja(); return; }
+    if ("quitarsiempre" in ds) { quitarDelPlan(d.diaPlan, Sel.slot); cerrarHoja(); return; }
+    if ("anadirhoy" in ds) { añadirExtra(d, Sel.elegido); cerrarHoja(); return; }
+    if ("anadirsiempre" in ds) { añadirAlPlan(d.diaPlan, Sel.elegido); tocar(HOY); cerrarHoja(); return; }
     if ("anadir" in ds) { Sel = { modo: "anadir", q: "", musc: "", mat: "", paso: "lista" }; abrirHoja(hojaSelector()); return false; }
     if ("crearlib" in ds) { Sel = { modo: "explorar", q: "", musc: Lib.musc, mat: Lib.mat, paso: "crear" }; abrirHoja(hojaSelector()); return false; }
     if (ds.filtro !== undefined) {
@@ -1096,27 +1378,26 @@ window.App = {
     if ("libtodo" in ds) { Lib.todo = !Lib.todo; return; }
     if ("crear" in ds) { Sel.paso = "crear"; abrirHoja(hojaSelector()); return false; }
     if ("volversel" in ds) { Sel.paso = "lista"; abrirHoja(hojaSelector()); return false; }
-    if (ds.elegir) {
-      if (Sel.modo === "cambiar") { Sel.elegido = ds.elegir; Sel.paso = "confirmar"; abrirHoja(hojaSelector()); return false; }
-      añadirExtra(d, ds.elegir); cerrarHoja(); return;
-    }
+    if (ds.elegir) { elegido(d, ds.elegir); return; }
     if (ds.confirmar) {
-      if (ds.confirmar === "siempre") { a.sustituciones = { ...a.sustituciones, [Sel.slot]: Sel.elegido }; if (d.cambios) delete d.cambios[Sel.slot]; Datos.guardarAjustes(); }
-      else d.cambios = { ...d.cambios, [Sel.slot]: Sel.elegido };
+      if (ds.confirmar === "hoy") d.cambios = { ...d.cambios, [Sel.slot]: Sel.elegido };
+      else {
+        if (d.cambios) delete d.cambios[Sel.slot];
+        if (enRotacion(d.diaPlan) || Sel.slot === "cardio-antes") cambiarEnPlan(d.diaPlan, Sel.slot, Sel.elegido);
+        // El día de cardio no se edita en Mi semana: su cambio fijo va por hueco.
+        else { a.sustituciones = { ...a.sustituciones, [Sel.slot]: Sel.elegido }; Datos.guardarAjustes(); }
+      }
       tocar(HOY); cerrarHoja(); evento("gim-plan-adaptado"); return;
     }
     if ("guardarnuevo" in ds) {
       const id = crearPropio(); if (!id) return false;
-      if (Sel.modo === "cambiar") { Sel.elegido = id; Sel.paso = "confirmar"; abrirHoja(hojaSelector()); return; }
-      if (Sel.modo === "anadir") { añadirExtra(d, id); cerrarHoja(); return; }
-      evento("gim-plan-adaptado"); Sel = null; abrirAyuda(id); return;
+      if (Sel.modo === "explorar") { evento("gim-plan-adaptado"); Sel = null; abrirAyuda(id); return; }
+      elegido(d, id); return;
     }
     if (ds.borrarpropio) { a.propios = propios().filter(e => e.id !== ds.borrarpropio); Datos.guardarAjustes(); cerrarHoja(); return; }
-    if (ds.deshacersust) { delete a.sustituciones[ds.deshacersust]; Datos.guardarAjustes(); return; }
 
     /* Sesión de hoy */
     if ("diaplan" in ds) { if (ds.diaplan === "libre" && d.diaPlan !== "libre") evento("gim-plan-adaptado"); d.diaPlan = ds.diaplan || null; tocar(HOY); }
-    else if (ds.quitar) { d.quitados = [...new Set([...(d.quitados || []), ds.quitar])]; tocar(HOY); }
     else if (ds.recuperar) { d.quitados = (d.quitados || []).filter(x => x !== ds.recuperar); tocar(HOY); }
     else if (ds.revertir) { if (d.cambios?.[ds.revertir]) delete d.cambios[ds.revertir]; else { delete a.sustituciones[ds.revertir]; Datos.guardarAjustes(); } tocar(HOY); }
     else if (ds.quitarextra) { d.extras = (d.extras || []).filter(x => x !== ds.quitarextra); tocar(HOY); }
@@ -1158,7 +1439,11 @@ window.App = {
   cambio(t) {
     const d = diaDe(HOY), a = Datos.ajustes;
     if (Compartir.cambio(t) || FotoFicha.cambio(t)) return;
-    if (t.dataset.notaej) { a.notasEj = { ...a.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
+    if (t.dataset.mstitulo) {
+      const mp = miPlan(), dd = mp.dias.find(x => x.id === t.dataset.mstitulo), v = t.value.trim();
+      if (dd && v && v !== dd.titulo) { dd.titulo = v; guardarPlan(mp); repintar(); }
+    }
+    else if (t.dataset.notaej) { a.notasEj = { ...a.notasEj, [t.dataset.notaej]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
     else if (t.dataset.notaap) { a.notasAp = { ...a.notasAp, [t.dataset.notaap]: t.value.trim() }; Datos.guardarAjustes(); repintar(); }
     else if (t.dataset.serie) { const [id, i] = t.dataset.serie.split("|"); d.ej[id].series[Number(i)][t.dataset.k] = t.value === "" ? "" : Number(t.value); tocar(HOY); }
     else if (t.dataset.calent) { d.calent = d.calent || []; d.calent[Number(t.dataset.calent)] = t.checked; if (t.checked) actividad(d); tocar(HOY); repintar(); }

@@ -90,12 +90,27 @@ libreta desde el mismo sitio (mejor, desde el icono).
 
 ### Libreta de rutina: VivaGym y Tekniker (motor de rutina, `comun/rutina.js`)
 
-- **Plan a medida** (tarjeta en *Hoy* la primera vez y siempre en Ajustes → Tu plan): nombre,
-  **días de fuerza** (1–6) y **días de cardio** (0–5) a la semana, y **favoritos**. Con 3 días
-  de fuerza el plan es el de siempre (`planes/rutina-3dias.js`); con otros números se arma con
-  `planes/plantillas.js`: 1 = cuerpo entero, 2 = cuerpo entero A/B, 4 = torso/pierna ×2,
-  5 = los 3 días + torso B + pierna B, 6 = los 3 días + hombro/pecho, espalda/bíceps y pierna B.
+- **¿Cómo quieres empezar?** La primera vez, *Hoy* pide el nombre y ofrece dos caminos:
+  **Proponme un plan** o **Me lo hago yo**. Quien ya tenía entrenos no ve esta pregunta.
+- **Plan propuesto** (tarjeta en *Hoy* hasta darle a Listo y siempre en Ajustes → Tu plan):
+  **días de fuerza** (1–6) y **días de cardio** (0–5) a la semana, **enfoque** (Equilibrado,
+  Pierna y glúteo, Torso) y **favoritos**. Equilibrado con 3 días es el plan de siempre
+  (`planes/rutina-3dias.js`); lo demás se arma con `planes/plantillas.js`. Pierna y glúteo:
+  días de cinco ejercicios de pierna y glúteo (A, B, C) con algún día de torso a partir de 3.
   Enseña una semana orientativa (L Fuerza, M Cardio…).
+- **Me lo hago yo:** empieza con un día vacío; en *Mi semana* se le añaden ejercicios (los
+  favoritos salen primero) y más días si cada día es distinto (se turnan). Los días de la
+  semana quedan como objetivo para la racha.
+- **Cardio antes de las máquinas** (No, 10, 15, 20 o 30 min): primer ejercicio de cada día de
+  fuerza, en bici, elíptica, cinta o remo (el de una máquina favorita, o el que se elija).
+- **Mi semana** (botón en Tu plan, en Ajustes y debajo de la sesión de *Hoy*): todos los días
+  del plan con sus ejercicios; cada uno se puede subir o bajar, cambiar de series y
+  repeticiones, cambiar por otro o quitar, y se pueden añadir ejercicios y días o renombrarlos.
+  Vale a partir de ahora. En *Hoy*, cambiar, quitar o añadir pregunta **¿Solo hoy o a partir
+  de ahora?** En cuanto se cambia algo a partir de ahora, el plan es de la persona
+  (`ajustes.miPlan`) y no se rehace solo; cambiar los días de fuerza o el enfoque, o *Pedir
+  otro plan*, avisa de que esos cambios se pierden (el historial no). Los cambios fijos de antes
+  (`sustituciones`) se meten en el plan al abrir la libreta, salvo los del día de cardio.
 - **Qué día toca:** el siguiente día de fuerza al último entrenado (Día 1 → 2 → 3 → 1), no el
   día de la semana; y **cardio** cuando falta para la semana (alterna con la fuerza mientras
   falten los dos). El día de cardio propone cinta, bici o elíptica en minutos, más core y
@@ -106,7 +121,8 @@ libreta desde el mismo sitio (mejor, desde el icono).
   favorita hace que los ejercicios se propongan en ella cuando se pueda; si ningún ejercicio del
   plan la usa, entra uno suyo como extra. Salen también primero en las listas y en los cambios
   automáticos de Tekniker. Sin azar: los mismos ajustes dan el mismo plan, para que la
-  progresión tenga hilo. Los cambios fijos que haga la persona siguen mandando.
+  progresión tenga hilo. Con el plan ya cambiado por la persona, los favoritos no lo rehacen:
+  solo salen primero al añadir o cambiar.
 - **Cada serie por separado,** con lo de la última vez como sugerencia. Al marcarla arranca el
   **descanso** (90 s principales, 60 s aislamientos; pitido y vibración al terminar) y corre el
   **cronómetro de sesión**.
@@ -213,7 +229,11 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-paseo-cronometro` | Empezar un paseo con cronómetro (Manolo) |
 | `gim-paseo-corregido` | Corregir a mano el total de minutos andados del día (Manolo) |
 | `gim-maquina-quitada` | Proponer quitar una máquina de un gimnasio (sin decir cuál) |
-| `gim-plan-personalizado` | Cambiar los días de fuerza o de cardio (sin decir cuántos) |
+| `gim-plan-personalizado` | Cambiar los días de fuerza o de cardio, el enfoque o el cardio de antes (sin decir cuál) |
+| `gim-plan-guiado`, `gim-plan-propio` | Elegir *Proponme un plan* o *Me lo hago yo* |
+| `gim-semana-abierta` | Abrir *Mi semana* |
+| `gim-plan-editado` | Cambiar algo del plan a partir de ahora (sin decir qué) |
+| `gim-plan-rehecho` | *Pedir otro plan* tras haberlo cambiado |
 | `gim-favoritos-abiertos` | Abrir la lista de favoritos |
 | `gim-favorito-marcado` | Marcar un favorito (sin decir cuál) |
 
@@ -305,9 +325,11 @@ Edita `planes/rutina-3dias.js`: días, ejercicios (por `id` del catálogo), seri
 descanso, superseries y notas. Los campos están explicados al principio del archivo.
 
 Los demás planes salen de `planes/plantillas.js`: cada día es una lista de huecos con sus
-candidatos (`ej`, por orden de preferencia) y su pauta; en `semanas`, qué días forman el plan
-según los días de fuerza; en `cardio`, el día de cardio. Los `id` de los días no se cambian (el
-historial guarda qué día se hizo). Cada persona elige días y favoritos en la app.
+candidatos (`ej`, por orden de preferencia) y su pauta; en `enfoques` y `semanas`, qué días
+forman el plan según el enfoque y los días de fuerza; en `cardio`, el día de cardio; en
+`cardioAntes`, con qué se hace el cardio de antes de las máquinas. Los `id` de los días no se
+cambian (el historial guarda qué día se hizo). Cada persona elige días, enfoque y favoritos en
+la app, y luego puede cambiar su plan en *Mi semana*.
 
 ### Añadir máquinas o ejercicios
 
