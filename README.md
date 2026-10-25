@@ -141,7 +141,9 @@ libreta desde el mismo sitio (mejor, desde el icono).
   separado) y racha de semanas cumplidas. Las libretas de antes conservan su objetivo: 3 días de
   fuerza y el resto, de cardio.
 - **Progreso:** entrenos por semana, evolución por ejercicio y variante, récords, kilos movidos,
-  rodilla, deporte e historial.
+  rodilla, deporte e historial. En *Últimos días*, tocar un día abre lo que se hizo: cada
+  ejercicio con su variante y sus series (kilos × repeticiones), mejor marca de ese día, rodilla,
+  deporte y nota; desde ahí, la ficha de cada ejercicio. *Ver días anteriores* carga 14 más.
 - **Ánimos con contexto:** récord personal al superar la mejor marca (más kilos, o más
   repeticiones con los mismos), bienvenida tras una semana o más sin ir, aviso de la última serie
   del día, sesión completa y semana cumplida. Tras tres semanas sin hacer un ejercicio, propone
@@ -232,6 +234,7 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-plan-personalizado` | Cambiar los días de fuerza o de cardio, el enfoque o el cardio de antes (sin decir cuál) |
 | `gim-plan-guiado`, `gim-plan-propio` | Elegir *Proponme un plan* o *Me lo hago yo* |
 | `gim-semana-abierta` | Abrir *Mi semana* |
+| `gim-dia-abierto` | Abrir un día de *Últimos días* en Progreso (sin decir cuál) |
 | `gim-plan-editado` | Cambiar algo del plan a partir de ahora (sin decir qué) |
 | `gim-plan-rehecho` | *Pedir otro plan* tras haberlo cambiado |
 | `gim-favoritos-abiertos` | Abrir la lista de favoritos |

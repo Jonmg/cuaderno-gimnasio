@@ -228,6 +228,13 @@ details summary { cursor: pointer; min-height: 32px; }
 .historial { display: grid; gap: 0; }
 .hist { display: flex; justify-content: space-between; gap: 12px; padding-block: 10px; border-top: 1px solid var(--line); }
 .hist:first-child { border-top: 0; }
+.dia-btn { width: 100%; align-items: center; background: none; border: 0; border-top: 1px solid var(--line); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.dia-btn:first-child { border-top: 0; }
+.dia-btn > :last-child { text-align: right; white-space: nowrap; }
+.dia-ej { display: grid; gap: 6px; padding: 10px 12px; border-radius: 14px; border: 1px solid var(--line); }
+.dia-ej-cab { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.dia-ej-cab > span { display: grid; gap: 1px; }
+.dia-series { margin: 0; padding-left: 22px; display: grid; gap: 2px; }
 
 /* ---------- Iconos de músculo y de material ---------- */
 .musculo { width: 44px; height: 62px; flex: none; display: block; }

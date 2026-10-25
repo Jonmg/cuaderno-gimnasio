@@ -767,14 +767,42 @@ function pintarProgreso() {
   for (const k of claves) { const w = semanaDe(semanas, k); if (!w) continue; for (const x of Datos.dias[k].deporte || []) { dep[x.tipo] = dep[x.tipo] || { veces: 0, min: 0 }; dep[x.tipo].veces++; dep[x.tipo].min += Number(x.min) || 0; } }
   if (Object.keys(dep).length) h += `<section class="card"><h2>Deporte (8 semanas)</h2><div class="historial">${Object.entries(dep).sort((a, b) => b[1].min - a[1].min).map(([t, m]) => `<div class="hist"><span>${esc(t)}</span><span class="muted">${m.veces} ${m.veces > 1 ? "veces" : "vez"} · ${m.min} min</span></div>`).join("")}</div></section>`;
 
-  h += `<section class="card"><h2>Últimos días</h2><div class="historial">${claves.slice(-14).reverse().map(k => {
+  h += `<section class="card"><h2>Últimos días</h2><p class="small muted" style="margin:0">Toca un día para ver lo que hiciste.</p><div class="historial">${claves.slice(-diasVistos).reverse().map(k => {
     const d = Datos.dias[k], partes = [];
-    if (hizoGym(d)) partes.push(`${diaDef(d)?.nombre || "Gimnasio"}${lugares().length > 1 ? ` · ${LUGARES[lugarDe(k)].corto}` : ""}${d.inicio && d.ultima ? ` · ${Math.max(1, Math.round((d.ultima - d.inicio) / 60e3))} min` : ""}`);
+    if (hizoGym(d)) partes.push(`${diaDef(d)?.nombre || "Gimnasio"}${lugares().length > 1 ? ` · ${LUGARES[lugarDe(k)].corto}` : ""}${minutosDia(d) ? ` · ${minutosDia(d)} min` : ""}`);
     for (const x of d.deporte || []) partes.push(`${x.tipo} ${x.min} min`);
-    return `<div class="hist"><span>${fechaLarga(deClave(k))}</span><span class="muted">${esc(partes.join(" · "))}</span></div>`;
-  }).join("")}</div></section></div>`;
+    return `<button class="hist dia-btn" data-verdia="${k}"><span>${fechaLarga(deClave(k))}</span><span class="muted">${esc(partes.join(" · "))} ›</span></button>`;
+  }).join("")}</div>${claves.length > diasVistos ? `<button class="btn sec peq" data-masdias style="justify-self:start">Ver días anteriores</button>` : ""}</section></div>`;
   $("#vista").innerHTML = h;
 }
+
+/* ---------- Hoja: lo que se hizo un día ----------
+   Desde Progreso → Últimos días: cada ejercicio con sus series, récords de ese día, deporte,
+   rodilla y nota. Solo lectura: lo de hoy se cambia en Hoy. */
+let diasVistos = 14;
+const minutosDia = d => d.inicio && d.ultima ? Math.max(1, Math.round((d.ultima - d.inicio) / 60e3)) : 0;
+function hojaDia(k) {
+  const d = Datos.dias[k]; if (!d) return "";
+  const dia = diaDef(d), min = minutosDia(d);
+  const datos = [dia && hizoGym(d) ? `${dia.nombre}${dia.titulo && dia.titulo !== dia.nombre ? ` · ${dia.titulo}` : ""}` : "", lugares().length > 1 && hizoGym(d) ? LUGARES[lugarDe(k)]?.nombre : "", min ? `${min} min` : ""].filter(Boolean);
+  const hechos = Object.entries(d.ej || {}).map(([id, x]) => ({ e: cat(id), x })).filter(o => o.e && o.x.series.some(s => s.hecho));
+  const ejs = hechos.map(({ e, x }) => {
+    const hs = x.series.filter(s => s.hecho), modo = modoMarca(e, x), record = mejorMarca(e, x.v)?.k === k && hs.some(s => valida(modo, s));
+    const serie = s => e.sinPeso || s.peso === "" ? `${s.reps} ${uRep(e)}` : `${fmt(s.peso)} kg × ${s.reps}`;
+    return `<div class="dia-ej">
+      <button class="dia-ej-cab" data-ayuda="${e.id}">${iconoMusculo(e.m, { clase: "musculo item-ico" })}<span><b>${esc(nombreCompleto(e, x.v))}</b>
+        <span class="small muted">${hs.length} serie${hs.length > 1 ? "s" : ""}${e.porLado ? " · por lado" : ""}${record ? " · 🏆 mejor marca" : ""}${x.rodilla ? " · molestó la rodilla" : ""}</span></span></button>
+      <ol class="dia-series num">${hs.map(s => `<li>${serie(s)}</li>`).join("")}</ol></div>`;
+  }).join("");
+  return `<div class="hoja-cab"><div><span class="ej-grupo">${esc(datos.join(" · ") || "Día")}</span><h2>${esc(fechaLarga(deClave(k)))}</h2></div>${botonCerrar}</div>
+    ${ejs || `<p class="muted small" style="margin:0">Este día no hay series apuntadas.</p>`}
+    ${hechos.length ? `<p class="small muted" style="margin:0">${hechos.length} ejercicio${hechos.length > 1 ? "s" : ""}${volumenDia(d) ? ` · ${fmt(Math.round(volumenDia(d)))} kg movidos` : ""}. Toca uno para ver su ficha e historial.</p>` : ""}
+    ${(d.deporte || []).length ? `<div><h3>Deporte</h3><div class="historial">${d.deporte.map(x => `<div class="hist"><span>${esc(x.tipo)}</span><span class="num">${esc(x.min)} min</span></div>`).join("")}</div></div>` : ""}
+    ${d.rodilla != null ? `<p style="margin:0"><b>Rodilla:</b> ${d.rodilla} de 10</p>` : ""}
+    ${d.nota ? `<div><h3>Nota del día</h3><p class="nota" style="margin:0">${esc(d.nota)}</p></div>` : ""}
+    <button class="btn" data-cerrar>Cerrar</button>`;
+}
+HOJAS.dia = hojaDia;
 
 /* ---------- Listas de ejercicios (buscador y filtros) ---------- */
 // El filtro de músculo mira el principal: "Bíceps" da curls, no jalones.
@@ -1285,6 +1313,8 @@ window.App = {
     if (ds.ayuda) { abrirAyuda(ds.ayuda); return false; }
     if (ds.aparato) { abrirAparato(ds.aparato); return false; }
     if ("favoritos" in ds) { abrirFicha("favoritos"); evento("gim-favoritos-abiertos"); return false; }
+    if (ds.verdia) { abrirFicha("dia", ds.verdia); evento("gim-dia-abierto"); return false; }
+    if ("masdias" in ds) { diasVistos += 14; return; }
     if ("misemana" in ds) { Sel = null; abrirFicha("semana"); evento("gim-semana-abierta"); return false; }
     if (ds.empezar) {
       if (ds.empezar === "guiado") {
