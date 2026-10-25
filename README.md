@@ -50,7 +50,7 @@ libreta desde el mismo sitio (mejor, desde el icono).
 ### Aita (motor de recuperación, `comun/recuperacion.js`)
 
 - **Cinco estrellas al día:** en gimnasio, una por bloque de la sesión (calentar, piernas,
-  brazos, equilibrio, pies); en paseo, una cada 5 minutos andando. Los días de diálisis y de
+  brazos, tronco —equilibrio, lumbares o abdominales—, pies); en paseo, una cada 5 minutos andando. Los días de diálisis y de
   descanso cuentan como cumplidos. Se ve la semana entera (por ejemplo, 12 de 30) y avisa de cada estrella nueva.
 - **Sesión paso a paso** (botón *Empezar la sesión*): un ejercicio en pantalla con la foto de la
   máquina, las cifras ya puestas y un botón grande *Hecho*; pregunta cómo ha ido y pasa al
@@ -61,14 +61,17 @@ libreta desde el mismo sitio (mejor, desde el icono).
   molestia* con las señales para parar y el 112, y el tipo de día.
 - **Semana tipo:** lunes, miércoles y viernes **diálisis** (marcado, sin entreno); martes,
   jueves y sábado gimnasio (3 por semana); domingo paseo. Cada día se puede cambiar.
-- **Paseos todos los días** (tarjeta *Paseos de hoy*, siempre): varios al día (objetivo 2 o 3).
+- **Paseos todos los días** (tarjeta *Paseos de hoy*, siempre; los días de gimnasio, arriba del todo): varios al día (objetivo 2 o 3).
   *▶ Empezar un paseo* pone un cronómetro que sigue contando aunque se cierre la app o se
   bloquee el móvil; *Terminar* lo apunta con su hora y minutos. Sin cronómetro, botones de +10,
   +15, +20 y +30 min. Cada paseo se puede quitar y el **total del día** (lo que cuenta para las
   estrellas y el progreso) se suma solo y se puede corregir a mano. Si el cronómetro pasa de dos
   horas, pregunta cuánto anduvo de verdad.
 - **Gimnasio:** sesión variada cada día (calentamiento, 2 de piernas, 2 de espalda y brazos,
-  equilibrio y estiramientos de pies) con ejercicios suaves en máquina. **Nada tumbado:** el
+  equilibrio, tronco y estiramientos de pies) con ejercicios suaves en máquina. Los que **suele
+  hacer** (`habitual: true`: curl y press de pecho sentado, polea alta a un brazo, gemelo,
+  glúteo, lumbares y abdominales en máquina, steps, sentarse y levantarse y elevar piernas en el
+  banco) salen mucho más que el resto, y lo de la sesión anterior, menos. **Nada tumbado:** el
   puente de glúteo y los estiramientos en colchoneta están retirados (`retirado: true`, se
   guardan por el historial); al final, estiramiento de gemelo en la pared, de la planta del pie,
   círculos de tobillo o rodar una pelota bajo el pie, sentado o de pie. Evita repetir los de la

@@ -19,13 +19,17 @@ const CATALOGO = [
   { id: "femoral", nombre: "Curl femoral sentado", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 12, peso: 10, pauta: "Movimiento controlado, sin tirones." },
   { id: "abductor", nombre: "Abductores en máquina", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 12, peso: 15, pauta: "Abre despacio, espalda pegada al respaldo." },
   { id: "aductor", nombre: "Aductores en máquina", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 12, peso: 15, pauta: "Cierra despacio, sin rebote." },
-  { id: "silla", nombre: "Levantarse de la silla", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 8, peso: 0, pauta: "Sin usar las manos si puedes. Peso = 0." },
-  { id: "talones", nombre: "Elevación de talones con apoyo", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 12, peso: 0, pauta: "Agarrado a una barra. Peso = 0." },
+  { id: "silla", nombre: "Sentarse y levantarse del banco", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 8, peso: 0, pauta: "Sin usar las manos si puedes. Peso = 0.", habitual: true },
+  { id: "talones", nombre: "Elevación de talones (gemelo) con apoyo", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 12, peso: 0, pauta: "Agarrado a una barra. Peso = 0.", habitual: true },
+  { id: "gluteo-maq", nombre: "Glúteo en máquina", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 12, peso: 10, pauta: "Pierna atrás despacio, sin arquear la espalda.", habitual: true },
+  { id: "piernas-sentado", nombre: "Elevar las piernas sentado en el banco", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 10, peso: 0, pauta: "Estira la pierna adelante y bájala despacio. Peso = 0.", habitual: true },
+  { id: "step-alturas", nombre: "Step a dos alturas: subir y bajar", grupo: "Piernas", tipo: "fuerza", series: 2, reps: 8, peso: 0, pauta: "Con apoyo cerca. 8 por pierna. Peso = 0.", habitual: true },
   // Tren superior
   { id: "remo", nombre: "Remo sentado en máquina", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 15, pauta: "Saca pecho y junta los omóplatos al tirar." },
   { id: "jalon", nombre: "Jalón al pecho", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 15, pauta: "Tira hacia la parte alta del pecho, no detrás de la nuca." },
-  { id: "pecho", nombre: "Press de pecho en máquina", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 10, pauta: "Empuja soltando el aire. No aguantes la respiración." },
-  { id: "biceps", nombre: "Curl de bíceps en máquina", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 5, pauta: "Codos quietos, sin balancear el cuerpo." },
+  { id: "pecho", nombre: "Press de pecho en máquina, sentado", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 10, pauta: "Asiento echado hasta atrás. Empuja soltando el aire, sin aguantar la respiración.", habitual: true },
+  { id: "biceps", nombre: "Curl de bíceps en máquina, sentado", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 5, pauta: "Codos quietos, sin balancear el cuerpo.", habitual: true },
+  { id: "polea-una", nombre: "Espalda en polea alta, a un brazo", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 5, pauta: "Un brazo cada vez: tira hacia abajo llevando el codo al costado.", habitual: true },
   { id: "triceps", nombre: "Tríceps en polea", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 12, peso: 5, pauta: "Codos pegados al cuerpo." },
   { id: "hombro", nombre: "Press de hombro en máquina", grupo: "Espalda y brazos", tipo: "fuerza", series: 2, reps: 10, peso: 5, pauta: "Peso muy ligero. Para si notas molestia." },
   // Equilibrio y movilidad
@@ -33,6 +37,10 @@ const CATALOGO = [
   // Retirados: no le gustan los ejercicios tumbado. Siguen aquí por su historial.
   { id: "puente", nombre: "Puente de glúteo en colchoneta", grupo: "Equilibrio", tipo: "fuerza", series: 2, reps: 10, peso: 0, pauta: "Sube la cadera despacio. Peso = 0.", retirado: true },
   { id: "marcha", nombre: "Marcha en el sitio levantando rodillas", grupo: "Equilibrio", tipo: "tiempo", min: 2, pauta: "Con apoyo cerca. Rodillas a altura cómoda." },
+  { id: "step-pared", nombre: "Step bajo con las manos en la pared", grupo: "Equilibrio", tipo: "fuerza", series: 2, reps: 8, peso: 0, pauta: "De cara a la pared y con las dos manos apoyadas: sube y baja. 8 por pierna. Peso = 0.", habitual: true },
+  // Tronco
+  { id: "lumbar-maq", nombre: "Lumbares en máquina", grupo: "Tronco", tipo: "fuerza", series: 2, reps: 12, peso: 15, pauta: "Ajusta el respaldo a la altura de las escápulas. Despacio, sin tirones.", habitual: true },
+  { id: "abs-maq", nombre: "Abdominales en máquina", grupo: "Tronco", tipo: "fuerza", series: 2, reps: 12, peso: 10, pauta: "Encógete soltando el aire, sin tirar con los brazos.", habitual: true },
   // Vuelta a la calma: estiramientos de pies, sentado o de pie (nada tumbado)
   { id: "estiramientos", nombre: "Estiramientos suaves", grupo: "Vuelta a la calma", tipo: "tiempo", min: 5, pauta: "Piernas, espalda y hombros. Sin rebotes, sin dolor.", retirado: true },
   { id: "gemelo-pared", nombre: "Estiramiento de gemelo en la pared", grupo: "Vuelta a la calma", tipo: "tiempo", min: 3, pauta: "De pie, manos en la pared. 30 segundos por pierna, dos veces." },
@@ -72,6 +80,27 @@ const FICHAS = {
   aductor: { ap: "maq-abd-add",
     pasos: ["Pon los apoyos por dentro de las rodillas (posición de cerrar), abiertos solo lo que sea cómodo.", "Espalda pegada al respaldo.", "Cierra las piernas despacio y vuelve controlando."],
     errores: ["Empezar con las piernas muy abiertas.", "Rebotar al volver."] },
+  "gluteo-maq": { ap: "maq-gluteo",
+    pasos: ["Apoya el pecho o los antebrazos en la máquina y agárrate bien.", "Coloca el pie (o la parte de atrás de la rodilla) en el apoyo, según la máquina.", "Lleva la pierna hacia atrás despacio apretando el glúteo, sin arquear la espalda.", "Vuelve controlando. Haz todas las de una pierna y cambia."],
+    errores: ["Arquear la zona lumbar para subir más.", "Hacerlo a tirones."] },
+  "piernas-sentado": { ap: "banco",
+    pasos: ["Sentado en el banco, espalda recta y manos agarradas al borde.", "Estira una pierna hacia delante hasta dejarla recta, sin bloquear la rodilla.", "Aguanta un segundo y bájala despacio. Luego la otra."],
+    errores: ["Echarse hacia atrás para subir la pierna.", "Dejarla caer de golpe."] },
+  "step-alturas": { ap: "cajon",
+    pasos: ["Ponte frente al step, con una barra, la pared o alguien al lado para apoyarte.", "Sube un pie al escalón bajo y luego el otro; baja igual, primero el mismo pie.", "Cuando vaya bien, hazlo en la altura de más arriba.", "8 subidas con cada pierna delante."],
+    errores: ["Bajar de espaldas sin mirar.", "Usar la altura alta los días flojos."] },
+  "step-pared": { ap: "cajon",
+    pasos: ["Step bajo pegado a la pared. Ponte de cara a la pared con las dos manos apoyadas.", "Sube un pie al step y luego el otro, sin soltar la pared.", "Baja despacio, primero el mismo pie. 8 veces con cada pierna."],
+    errores: ["Soltar las manos de la pared.", "Ir deprisa."] },
+  "polea-una": { ap: "polea-doble",
+    pasos: ["Polea arriba con un agarre de una mano. Siéntate o ponte de pie frente a ella.", "Agarra el asa con el brazo estirado y la espalda recta.", "Tira hacia abajo llevando el codo hacia el costado y vuelve despacio.", "Todas las de un brazo y luego el otro."],
+    errores: ["Girar el cuerpo para ayudarse.", "Subir el hombro hacia la oreja."] },
+  "lumbar-maq": { ap: "maq-lumbar",
+    pasos: ["Ajusta el respaldo para que el rodillo quede a la altura de las escápulas.", "Pies bien apoyados y manos cruzadas sobre el pecho o en los agarres.", "Échate hacia atrás despacio hasta quedar recto, sin pasarte.", "Vuelve hacia delante controlando."],
+    errores: ["Pasarse hacia atrás arqueando la espalda.", "Hacerlo con impulso."] },
+  "abs-maq": { ap: "maq-abdominal",
+    pasos: ["Ajusta el asiento y agarra las asas o apoya los brazos en los cojines.", "Encógete llevando el pecho hacia las rodillas mientras sueltas el aire.", "Vuelve despacio sin dejar que el peso caiga."],
+    errores: ["Tirar con los brazos o el cuello.", "Aguantar la respiración."] },
   silla: {
     pasos: ["Silla o banco firme. Siéntate en el borde, pies apoyados a la anchura de la cadera.", "Échate un poco hacia delante y levántate empujando con las piernas.", "Siéntate despacio, sin dejarte caer.", "Si hace falta, ayúdate con las manos en los muslos o en los reposabrazos."],
     errores: ["Dejarse caer al sentarse.", "Usar una silla con ruedas o que se mueva."] },
@@ -85,7 +114,7 @@ const FICHAS = {
     pasos: ["Ajusta el rodillo para que sujete los muslos.", "Agarra la barra algo más abierta que los hombros, espalda recta.", "Tira hacia la parte alta del pecho soltando el aire.", "Sube la barra despacio hasta estirar los brazos."],
     errores: ["Tirar por detrás de la nuca.", "Echarse hacia atrás para ayudarse con el cuerpo."] },
   pecho: { ap: "maq-press-pecho",
-    pasos: ["Ajusta el asiento para que las asas queden a la altura del centro del pecho.", "Espalda apoyada y pies en el suelo.", "Empuja soltando el aire, sin bloquear los codos.", "Vuelve despacio hasta notar un estiramiento suave."],
+    pasos: ["Echa el asiento hasta atrás y ajusta la altura para que las asas queden a la del centro del pecho.", "Espalda apoyada y pies en el suelo.", "Empuja soltando el aire, sin bloquear los codos.", "Vuelve despacio hasta notar un estiramiento suave."],
     errores: ["Aguantar la respiración.", "Despegar la espalda del respaldo."] },
   biceps: { ap: "maq-curl",
     pasos: ["Ajusta el asiento para que las axilas queden en el borde del cojín.", "Agarra las asas con las palmas hacia arriba.", "Sube doblando los codos y baja despacio hasta casi estirar."],
@@ -129,10 +158,13 @@ const MUSCULOS_EJ = {
   prensa: ["cuadriceps", "gluteo"], extension: ["cuadriceps"], femoral: ["isquios"], abductor: ["gluteo-medio"], aductor: ["aductores"],
   silla: ["cuadriceps", "gluteo"], talones: ["gemelo"], remo: ["espalda", "dorsal"], jalon: ["dorsal", "biceps"], pecho: ["pecho", "triceps"],
   biceps: ["biceps"], triceps: ["triceps"], hombro: ["hombro"], equilibrio: ["cuerpo"], puente: ["gluteo", "isquios"], estiramientos: ["cuerpo"],
+  "gluteo-maq": ["gluteo"], "piernas-sentado": ["cuadriceps"], "step-alturas": ["cuadriceps", "gluteo"], "step-pared": ["cuadriceps", "gluteo"],
+  "polea-una": ["dorsal", "biceps"], "lumbar-maq": ["lumbar"], "abs-maq": ["abdomen"],
   "gemelo-pared": ["gemelo"], "planta-pie": ["gemelo"], tobillos: ["gemelo"], "pelota-pie": ["gemelo"],
 };
 // Estructura de una sesión de gimnasio: cuántos ejercicios de cada grupo.
-const ESTRUCTURA = [["Calentamiento", 1], ["Piernas", 2], ["Espalda y brazos", 2], ["Equilibrio", 1], ["Vuelta a la calma", 1]];
+// Equilibrio y Tronco comparten estrella: sigue habiendo cinco.
+const ESTRUCTURA = [["Calentamiento", 1], ["Piernas", 2], ["Espalda y brazos", 2], ["Equilibrio", 1], ["Tronco", 1], ["Vuelta a la calma", 1]];
 // Plan por defecto según el día de la semana (0 = domingo): lunes, miércoles y viernes tiene
 // diálisis (sin entreno); martes, jueves y sábado, gimnasio; domingo, paseo. El paseo sale todos
 // los días.
@@ -164,14 +196,13 @@ function generarSesion(k, excluir = []) {
   const r = azar(k + excluir.join(""));
   const activos = vigentes().filter(e => !Datos.ajustes.desactivados.includes(e.id));
   // Evita repetir lo de la última sesión de gimnasio cuando hay alternativa.
+  // Lo que suele hacer (habitual) sale mucho más; lo de la sesión anterior, menos.
   const ultima = Object.keys(Datos.dias).filter(x => x < k && Datos.dias[x].tipo === "gym").sort().pop();
   const recientes = new Set(ultima ? (Datos.dias[ultima].ejercicios || []).map(e => e.id) : []);
   const elegidos = [];
   for (const [grupo, n] of ESTRUCTURA) {
-    let pool = activos.filter(e => e.grupo === grupo && !excluir.includes(e.id));
-    const frescos = pool.filter(e => !recientes.has(e.id));
-    if (frescos.length >= n) pool = frescos;
-    pool = pool.map(e => [r(), e]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+    const pool = activos.filter(e => e.grupo === grupo && !excluir.includes(e.id))
+      .map(e => [r() - (e.habitual ? 0.6 : 0) + (recientes.has(e.id) ? 0.5 : 0), e]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
     elegidos.push(...pool.slice(0, n));
   }
   return elegidos.map(e => nuevaEntrada(e, k));
@@ -197,20 +228,21 @@ function diaActivo(d) {
 }
 
 /* ---------- Estrellas del día ----------
-   Gimnasio: una por bloque de la sesión (los cinco de ESTRUCTURA), cuando están hechos todos
+   Gimnasio: una por bloque de la sesión (los cinco de BLOQUES), cuando están hechos todos
    sus ejercicios. Paseo: una cada 5 minutos andando, hasta cinco. Descanso y diálisis: el día
    cuenta como cumplido y no entra en la cuenta de la semana. */
 const MIN_ESTRELLA = 5;
-const NOMBRE_BLOQUE = { Calentamiento: "Calentar", Piernas: "Piernas", "Espalda y brazos": "Brazos", Equilibrio: "Equilibrio", "Vuelta a la calma": "Pies" };
+const NOMBRE_BLOQUE = { Calentamiento: "Calentar", Piernas: "Piernas", "Espalda y brazos": "Brazos", Equilibrio: "Tronco", Tronco: "Tronco", "Vuelta a la calma": "Pies" };
+const BLOQUES = [...new Set(ESTRUCTURA.map(([g]) => NOMBRE_BLOQUE[g]))];
 const tipoDe = k => Datos.dias[k]?.tipo || PLAN_SEMANA[deClave(k).getDay()];
 function estrellas(k) {
   const d = Datos.dias[k], tipo = tipoDe(k);
   if (SIN_ENTRENO.includes(tipo)) return null;
   if (tipo === "paseo") { const min = Number(d?.paseo?.min) || 0; return [1, 2, 3, 4, 5].map(i => ({ n: `${i * MIN_ESTRELLA} min`, ok: min >= i * MIN_ESTRELLA })); }
   const ejs = d?.ejercicios || [], todo = ejs.length > 0 && ejs.every(e => e.hecho);
-  return ESTRUCTURA.map(([g]) => {
-    const del = ejs.filter(e => POR_ID[e.id]?.grupo === g);
-    return { n: NOMBRE_BLOQUE[g], ok: del.length ? del.every(e => e.hecho) : todo };
+  return BLOQUES.map(n => {
+    const del = ejs.filter(e => NOMBRE_BLOQUE[POR_ID[e.id]?.grupo] === n);
+    return { n, ok: del.length ? del.every(e => e.hecho) : todo };
   });
 }
 const cuantas = k => (estrellas(k) || []).filter(s => s.ok).length;
@@ -439,6 +471,8 @@ function pintarHoy() {
   const d = diaDe(HOY);
   const nombre = `, ${esc(nombreVisible())}`;
   let h = `<div class="wrap" style="padding:0">${htmlEstrellas(d)}`;
+  // Los días de gimnasio, los paseos arriba: si hay uno en marcha, se ve sin bajar.
+  if (d.tipo === "gym") h += pintarPaseo(d);
   h += `<section class="card" aria-labelledby="t-energia">
     <h2 id="t-energia">¿Cómo te encuentras hoy${nombre}?</h2>
     <div class="escala" role="group" aria-label="Energía de hoy">${ENERGIA.map(([v, t]) => `<button class="chip" data-energia="${v}" aria-pressed="${String(d.energia) === v}"><b>${v}</b>${t}</button>`).join("")}</div>
@@ -455,8 +489,8 @@ function pintarHoy() {
   if (d.tipo === "gym") h += pintarGym(d);
   if (d.tipo === "dialisis") h += `<section class="card dialisis" aria-labelledby="t-dialisis"><h2 id="t-dialisis">Hoy tienes diálisis</h2><p class="muted" style="margin:0">Hoy no hay entreno: el día cuenta como cumplido. Descansa. Si al volver te encuentras con fuerzas, un paseo corto y tranquilo; si no, nada.</p></section>`;
   if (d.tipo === "descanso") h += `<section class="card"><h2>Día de descanso</h2><p class="muted">Descansar también es parte del plan: el músculo se recupera hoy. Si te apetece, un paseo tranquilo de 10–15 minutos está bien.</p></section>`;
-  // El paseo sale todos los días.
-  h += pintarPaseo(d);
+  // El paseo sale todos los días (los de gimnasio, ya arriba).
+  if (d.tipo !== "gym") h += pintarPaseo(d);
 
   h += `<section class="card"><label class="campo" for="nota" style="font-size:1rem;color:var(--ink)"><b>Nota del día</b><span class="muted small">Molestias, cómo dormiste, lo que dijo el médico…</span></label>
     <textarea id="nota" rows="3" class="area">${esc(d.nota)}</textarea></section>`;
