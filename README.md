@@ -69,9 +69,9 @@ libreta desde el mismo sitio (mejor, desde el icono).
   horas, pregunta cuánto anduvo de verdad.
 - **Gimnasio:** sesión variada cada día (calentamiento, 2 de piernas, 2 de espalda y brazos,
   equilibrio, tronco y estiramientos de pies) con ejercicios suaves en máquina. Los que **suele
-  hacer** (`habitual: true`: curl y press de pecho sentado, polea alta a un brazo, gemelo,
-  glúteo, lumbares y abdominales en máquina, steps, sentarse y levantarse y elevar piernas en el
-  banco) salen mucho más que el resto, y lo de la sesión anterior, menos. **Nada tumbado:** el
+  hacer** (`habitual: true`: prensa de piernas sentado, curl de bíceps, press de pecho, polea alta a
+  un brazo, gemelo, glúteo sentado abriendo hacia fuera, lumbares y abdominales en máquina, steps,
+  sentarse y levantarse y elevar piernas en el banco). Los abductores en máquina, retirados. salen mucho más que el resto, y lo de la sesión anterior, menos. **Nada tumbado:** el
   puente de glúteo y los estiramientos en colchoneta están retirados (`retirado: true`, se
   guardan por el historial); al final, estiramiento de gemelo en la pared, de la planta del pie,
   círculos de tobillo o rodar una pelota bajo el pie, sentado o de pie. Evita repetir los de la
