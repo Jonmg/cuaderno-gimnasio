@@ -448,3 +448,8 @@ code { font-size: .85em; background: var(--bg); border-radius: 5px; padding: 1px
 .chips-fav .chip[aria-pressed="true"]::after { content: " ★"; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .chips-fav .chip[aria-pressed="true"] { background: #3A3010; color: #FFD666; } }
 :root[data-theme="dark"] .chips-fav .chip[aria-pressed="true"] { background: #3A3010; color: #FFD666; }
+
+/* Paseos de Aita: cronómetro en marcha */
+.paseo-marcha { display: grid; gap: 8px; justify-items: center; text-align: center; padding: 14px; border-radius: 16px; background: var(--accent-soft); }
+.paseo-marcha #pCrono { font-size: 3rem; line-height: 1; color: var(--ink); }
+.paseo-marcha .btn { width: 100%; }

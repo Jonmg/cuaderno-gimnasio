@@ -61,8 +61,12 @@ libreta desde el mismo sitio (mejor, desde el icono).
   molestia* con las señales para parar y el 112, y el tipo de día.
 - **Semana tipo:** lunes, miércoles y viernes **diálisis** (marcado, sin entreno); martes,
   jueves y sábado gimnasio (3 por semana); domingo paseo. Cada día se puede cambiar.
-- **Paseo todos los días:** la tarjeta *Paseo de hoy* sale siempre; en día de diálisis, como
-  opcional y corto.
+- **Paseos todos los días** (tarjeta *Paseos de hoy*, siempre): varios al día (objetivo 2 o 3).
+  *▶ Empezar un paseo* pone un cronómetro que sigue contando aunque se cierre la app o se
+  bloquee el móvil; *Terminar* lo apunta con su hora y minutos. Sin cronómetro, botones de +10,
+  +15, +20 y +30 min. Cada paseo se puede quitar y el **total del día** (lo que cuenta para las
+  estrellas y el progreso) se suma solo y se puede corregir a mano. Si el cronómetro pasa de dos
+  horas, pregunta cuánto anduvo de verdad.
 - **Gimnasio:** sesión variada cada día (calentamiento, 2 de piernas, 2 de espalda y brazos,
   equilibrio y estiramientos de pies) con ejercicios suaves en máquina. **Nada tumbado:** el
   puente de glúteo y los estiramientos en colchoneta están retirados (`retirado: true`, se
@@ -75,7 +79,7 @@ libreta desde el mismo sitio (mejor, desde el icono).
   que trabaja, cómo se hace y con qué tener cuidado (pensado para la recuperación), notas de
   cómo ajustarla (se ven en la sesión), historial y vídeos.
 - **Ejercicios:** los 23 en uso, por grupos, con la foto de su máquina, para mirarlos antes de ir.
-- **Paseo:** minutos y kilómetros, con la referencia de la última vez.
+- **Paseo:** ver *Paseos de hoy*; kilómetros opcionales y cómo fueron (fácil, bien, duro).
 - **Progreso:** racha de días, estrellas y minutos andando por semana, peso en cada máquina e
   historial.
 - **Ajustes:** quitar los ejercicios que el médico o el entrenador desaconsejen, y compartir sus
@@ -203,6 +207,8 @@ procedencia aparece como `app-instalada` (en *Referrers*).
 | `gim-lugar-cambiado` | Cambiar el lugar de entrenamiento (sin decir cuál) |
 | `gim-libreta-traida` | La libreta nueva trae los datos de una libreta vieja (sin decir de quién) |
 | `gim-lugares-elegidos` | Marcar o desmarcar un gimnasio en Ajustes (sin decir cuál) |
+| `gim-paseo-cronometro` | Empezar un paseo con cronómetro (Manolo) |
+| `gim-paseo-corregido` | Corregir a mano el total de minutos andados del día (Manolo) |
 | `gim-maquina-quitada` | Proponer quitar una máquina de un gimnasio (sin decir cuál) |
 | `gim-plan-personalizado` | Cambiar los días de fuerza o de cardio (sin decir cuántos) |
 | `gim-favoritos-abiertos` | Abrir la lista de favoritos |

@@ -236,7 +236,7 @@ function htmlEstrellas(d) {
     : `<p class="muted" style="margin:0">${d.tipo === "dialisis" ? "Hoy tienes diálisis: no hay entreno y" : "Hoy descansas:"} el día cuenta como cumplido ✓</p>`;
   if (pendiente) h += `<button class="btn grande" data-empezar>${ejs.some(e => e.hecho) ? "▶ Seguir con la sesión" : "▶ Empezar la sesión"}</button>`;
   else if (d.tipo === "gym" && n === 5) h += `<p style="margin:0"><b>¡Las cinco!</b> Sesión completa.</p>`;
-  if (d.tipo === "paseo") h += `<p class="small muted" style="margin:0">Una estrella por cada ${MIN_ESTRELLA} minutos andando. Apúntalo abajo, en <b>Paseo</b>.</p>`;
+  if (d.tipo === "paseo") h += `<p class="small muted" style="margin:0">Una estrella por cada ${MIN_ESTRELLA} minutos andando, sumando todos los paseos. Apúntalos abajo, en <b>Paseos de hoy</b>.</p>`;
   h += `<div class="semana-dias" role="img" aria-label="Esta semana: ${sem.ganadas} de ${sem.posibles} estrellas">${sem.dias.map(x => `<div class="${x.k === HOY ? "hoy" : ""}"><span>${LETRA_DIA[x.f.getDay()]}</span>${x.tipo === "dialisis" ? `<b class="dialisis" title="Diálisis">diál.</b>` : x.tipo === "descanso" ? `<b>–</b>` : `<b class="num">${x.k > HOY ? "·" : x.n}</b>`}</div>`).join("")}</div>
     <p class="small muted" style="margin:0">Esta semana: <b>${sem.ganadas} de ${sem.posibles}</b> estrellas${sem.ganadas ? "" : ". ¡A por la primera!"}</p>
   </section>`;
@@ -513,18 +513,64 @@ function campo(i, k, etiqueta, v, paso = "1", pre = "c") {
   return `<label class="campo">${etiqueta}<input class="num" type="number" inputmode="decimal" min="0" step="${paso}" id="${pre}-${i}-${k}" data-campo="${i}" data-k="${k}" value="${esc(v)}"></label>`;
 }
 
+/* ---------- Paseos ----------
+   Varios al día (lo normal son 2 o 3). Cada uno se apunta con el cronómetro (Empezar / Terminar)
+   o con un botón de minutos; el total del día (d.paseo.min) es lo que cuenta para las estrellas y
+   el progreso, y se puede corregir a mano. El cronómetro en marcha se guarda en los ajustes: sigue
+   contando aunque se cierre la app o se bloquee el móvil. */
+const OBJ_PASEOS = 3;
+const horaDe = t => { const f = new Date(t); return `${f.getHours()}:${String(f.getMinutes()).padStart(2, "0")}`; };
+function textoCrono(ms) {
+  const s = Math.max(0, Math.floor(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = String(s % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+}
+// Suma un paseo al día k (y su total). Avisa de las estrellas nuevas si es hoy.
+function sumarPaseo(k, min, crono, inicio = Date.now()) {
+  min = Math.round(Number(min) || 0); if (min <= 0) return;
+  const d = k === HOY ? diaDe(HOY) : Datos.dias[k] || diaDe(k), antes = cuantas(k);
+  d.paseo = d.paseo || {};
+  d.paseos = [...(d.paseos || []), { min, hora: horaDe(inicio), crono: !!crono }];
+  d.paseo.min = (Number(d.paseo.min) || 0) + min;
+  tocar(k); eventoDelDia("gim-entreno-empezado");
+  if (k === HOY) celebrarPaseo(antes, `${min} minutos más andando`);
+}
+function celebrarPaseo(antes, texto) {
+  const ahora = cuantas(HOY);
+  if (ahora > antes) { if (ahora === 5) abrirFiesta(); else { aviso(`⭐ ${ahora} de 5 estrellas: ${texto}`, "celebra"); vibrar(); } }
+  else aviso(`🚶 Paseo apuntado: ${texto}.`);
+}
+function terminarPaseo(cancelar) {
+  const c = Datos.ajustes.paseoEnCurso; if (!c) return;
+  delete Datos.ajustes.paseoEnCurso; Datos.guardarAjustes();
+  if (cancelar) return;
+  let min = Math.round((Date.now() - c.inicio) / 60e3);
+  // Si se le olvidó pararlo, que diga cuánto anduvo de verdad.
+  if (min > 120) { const r = prompt(`El cronómetro lleva ${Math.floor(min / 60)} h ${min % 60} min en marcha. ¿Cuántos minutos anduviste?`, "30"); if (r === null) return; min = Number(r); }
+  sumarPaseo(Datos.dias[c.dia] || c.dia === HOY ? c.dia : HOY, Math.max(1, min), true, c.inicio);
+}
+setInterval(() => { const el = $("#pCrono"), c = Datos.ajustes?.paseoEnCurso; if (el && c) el.textContent = textoCrono(Date.now() - c.inicio); }, 1000);
+
 function pintarPaseo(d) {
-  const p = d.paseo || {};
+  const p = d.paseo || {}, lista = d.paseos || [], total = Number(p.min) || 0, c = Datos.ajustes.paseoEnCurso;
   const ultimos = Object.keys(Datos.dias).filter(k => k < HOY && Number(Datos.dias[k].paseo?.min) > 0).sort().slice(-1);
-  const ref = ultimos.length ? `La última vez: <b class="num">${Datos.dias[ultimos[0]].paseo.min} min</b>${Datos.dias[ultimos[0]].paseo.km ? ` · ${Datos.dias[ultimos[0]].paseo.km} km` : ""}.` : "Empieza con lo que te resulte cómodo, por ejemplo 15–20 minutos.";
-  return `<section class="card" aria-labelledby="t-paseo">
-    <h2 id="t-paseo">Paseo de hoy</h2>
-    <p class="muted small" style="margin:0">${d.tipo === "dialisis" ? "Opcional en día de diálisis: solo si te encuentras bien, y corto." : `${d.tipo === "gym" ? "Además del gimnasio, si te apetece. " : ""}${ref} Ve sumando poco a poco: unos 5 minutos más por semana es buen ritmo.`}</p>
+  const ref = ultimos.length ? `Ayer o el último día: <b class="num">${Datos.dias[ultimos[0]].paseo.min} min</b>${Datos.dias[ultimos[0]].paseos?.length > 1 ? ` en ${Datos.dias[ultimos[0]].paseos.length} paseos` : ""}.` : "";
+  const n = lista.length;
+  return `<section class="card paseos" aria-labelledby="t-paseo">
+    <div class="top"><h2 id="t-paseo">Paseos de hoy</h2><span class="num" style="font-size:1.5rem">${total} min</span></div>
+    <div class="puntos" aria-hidden="true">${Array.from({ length: Math.max(OBJ_PASEOS, n) }, (_, i) => `<i class="${i < n ? "lleno" : ""}"></i>`).join("")}</div>
+    <p class="muted small" style="margin:0"><b>${n} de ${OBJ_PASEOS} paseos</b>${n >= OBJ_PASEOS ? " ✓" : ""}. ${d.tipo === "dialisis" ? "Hoy, a tu ritmo y sin forzar." : "Lo normal son 2 o 3 al día, a tu ritmo."} ${ref}</p>
+    ${c ? `<div class="paseo-marcha" role="timer"><span class="eyebrow">Paseo en marcha desde las ${horaDe(c.inicio)}</span><b class="num" id="pCrono">${textoCrono(Date.now() - c.inicio)}</b>
+        <button class="btn grande" data-pfin>■ Terminar paseo</button><button class="enlace" data-pcancelar>Cancelar este paseo</button></div>`
+      : `<button class="btn grande verde" data-pempezar>▶ Empezar un paseo</button>`}
+    <div><p class="small muted" style="margin:0 0 6px">¿Ya has vuelto? Apunta el paseo sin cronómetro:</p>
+      <div class="fila">${[10, 15, 20, 30].map(m => `<button class="chip mini" data-pmas="${m}">+${m} min</button>`).join("")}</div></div>
+    ${n ? `<div class="historial">${lista.map((x, i) => `<div class="hist"><span><b>${i + 1}.º</b> · ${esc(x.hora || "")} · <b class="num">${x.min} min</b>${x.crono ? ` <span class="muted small">cronómetro</span>` : ""}</span><button class="enlace" data-pquitar="${i}" aria-label="Quitar el paseo ${i + 1}">Quitar</button></div>`).join("")}</div>` : ""}
     <div class="campos">
-      <label class="campo">Minutos<input class="num" type="number" inputmode="decimal" min="0" id="p-min" data-paseo="min" value="${esc(p.min)}"></label>
+      <label class="campo">Total de hoy (min)<input class="num" type="number" inputmode="decimal" min="0" id="p-min" data-paseo="min" value="${esc(p.min)}"></label>
       <label class="campo">Kilómetros<input class="num" type="number" inputmode="decimal" min="0" step="0.1" id="p-km" data-paseo="km" value="${esc(p.km)}"></label>
     </div>
-    <div class="sens" role="group" aria-label="¿Cómo fue el paseo?">${[["facil", "Fácil"], ["bien", "Bien"], ["duro", "Duro"]].map(([v, t]) => `<button class="chip" data-psens="${v}" aria-pressed="${p.esfuerzo === v}">${t}</button>`).join("")}</div>
+    <p class="small muted" style="margin:0">El total se suma solo con cada paseo; si no cuadra, corrígelo aquí.</p>
+    <div class="sens" role="group" aria-label="¿Cómo fueron los paseos?">${[["facil", "Fácil"], ["bien", "Bien"], ["duro", "Duro"]].map(([v, t]) => `<button class="chip" data-psens="${v}" aria-pressed="${p.esfuerzo === v}">${t}</button>`).join("")}</div>
   </section>`;
 }
 
@@ -640,7 +686,7 @@ function pintarProgreso() {
     const d = Datos.dias[k], hechos = (d.ejercicios || []).filter(e => e.hecho).length;
     const partes = [];
     if (hechos) partes.push(`${hechos} ejercicio${hechos > 1 ? "s" : ""}`);
-    if (Number(d.paseo?.min) > 0) partes.push(`${d.paseo.min} min andando`);
+    if (Number(d.paseo?.min) > 0) partes.push(`${d.paseos?.length > 1 ? `${d.paseos.length} paseos, ` : ""}${d.paseo.min} min andando`);
     return `<div class="hist"><span>${fechaLarga(deClave(k))}</span><span class="muted">${partes.join(" · ")}</span></div>`;
   }).join("")}</div></section></div>`;
   $("#vista").innerHTML = h;
@@ -743,6 +789,14 @@ window.App = {
       d.ejercicios = [...hechos, ...nueva.filter(n => !hechos.some(h => h.id === n.id)).slice(0, d.ejercicios.length - hechos.length)];
       tocar(HOY);
     }
+    else if ("pempezar" in b.dataset) { Datos.ajustes.paseoEnCurso = { inicio: Date.now(), dia: HOY }; Datos.guardarAjustes(); evento("gim-paseo-cronometro"); }
+    else if ("pfin" in b.dataset) terminarPaseo(false);
+    else if ("pcancelar" in b.dataset) { if (confirm("¿Cancelar este paseo sin apuntarlo?")) terminarPaseo(true); else return false; }
+    else if (b.dataset.pmas) sumarPaseo(HOY, Number(b.dataset.pmas), false);
+    else if (b.dataset.pquitar) {
+      const x = d.paseos?.[Number(b.dataset.pquitar)]; if (!x || !confirm(`¿Quitar el paseo de las ${x.hora} (${x.min} min)?`)) return false;
+      d.paseos.splice(Number(b.dataset.pquitar), 1); d.paseo.min = Math.max(0, (Number(d.paseo.min) || 0) - x.min); tocar(HOY);
+    }
     else if (b.dataset.psens) { d.paseo = d.paseo || {}; d.paseo.esfuerzo = d.paseo.esfuerzo === b.dataset.psens ? "" : b.dataset.psens; tocar(HOY); }
     else return false;
   },
@@ -757,6 +811,7 @@ window.App = {
       if (t.dataset.paseo === "min" && Number(t.value) > 0) eventoDelDia("gim-entreno-empezado");
       const ahora = cuantas(HOY);
       if (ahora > antes) { if (ahora === 5) abrirFiesta(); else { aviso(`⭐ ${ahora} de 5 estrellas: ${t.value} minutos andando`, "celebra"); vibrar(); } }
+      if (t.dataset.paseo === "min") evento("gim-paseo-corregido");
       // Después del cambio, no durante: el campo aún tiene el foco.
       setTimeout(repintar, 0);
     }
