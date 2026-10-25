@@ -724,6 +724,19 @@ window.App = {
   // Si la sesión de hoy ya estaba preparada con un ejercicio retirado (tumbado) sin hacer, se
   // cambia por otro de su bloque.
   alCargar() {
+    // Días guardados con el plan anterior (gimnasio lunes, miércoles y viernes): los de diálisis
+    // pasan a diálisis salvo que ese día se hiciera algún ejercicio. Hoy, si nadie lo ha elegido
+    // a mano y aún no se ha hecho nada, toma lo que diga el plan.
+    let cambios = 0;
+    for (const [k, x] of Object.entries(Datos.dias)) {
+      if (!x || x.tipoManual || k > HOY || (x.ejercicios || []).some(e => e.hecho)) continue;
+      const plan = PLAN_SEMANA[deClave(k).getDay()];
+      if (x.tipo !== plan && (plan === "dialisis" || k === HOY)) {
+        x.tipo = plan; cambios++;
+        if (plan === "gym" && !(x.ejercicios || []).length) x.ejercicios = generarSesion(k);
+      }
+    }
+    if (cambios) Datos.guardar();
     const d = Datos.dias[HOY];
     if (d?.tipo !== "gym") return;
     (d.ejercicios || []).forEach((e, i) => {
@@ -762,7 +775,7 @@ window.App = {
     if (b.dataset.energia) { d.energia = Number(b.dataset.energia); tocar(HOY); }
     else if ("alerta" in b.dataset) { d.alerta = !d.alerta; tocar(HOY); }
     else if (b.dataset.tipo) {
-      d.tipo = b.dataset.tipo;
+      d.tipo = b.dataset.tipo; d.tipoManual = true;
       if (d.tipo === "gym" && !(d.ejercicios || []).length) d.ejercicios = generarSesion(HOY);
       tocar(HOY);
     }
